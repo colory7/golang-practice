@@ -1,0 +1,24 @@
+syntax = "proto3";
+package message;
+option go_package = ".;message";
+
+//订单请求参数
+message OrderRequest{
+  string orderId = 1;
+  int64 timeStamp = 2;
+}
+
+//订单信息
+message OrderInfo{
+  string OrderId = 1;
+  string OrderName = 2;
+  string OrderStatus = 3;
+}
+
+//声明服务的方法(函数), GetOrderInfo-函数, OrderRequest-请求参数,OrderInfo-返回参数
+//OrderService是服务名,在对应的pb.go里面，会有注册这个服务的对应函数, RegisterOrderServiceServer
+service OrderService{
+  rpc GetOrderInfo(OrderRequest) returns (OrderInfo);
+}
+
+

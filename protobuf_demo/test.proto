@@ -1,0 +1,16 @@
+syntax = "proto3"; 	//proto版本信息
+package test;    //定义属于哪个包
+
+//如果报waring就加上这个，不加也能成功
+// ./aaa - 表示生成的go文件的存放地址，会自动生成目录的
+// test - 表示生成的go文件所属的包名
+option go_package = "./aaa;test";
+
+//message是固定格式，表示消息,  Order是数据对象的名
+// required - 必填项,  optional - 选填项, 这两个是proto2的参数，在proto3取消了
+// = 1, = 2, = 3是字段的顺序, 为了保证数据顺序的统一
+message Order{
+  int32 order_id = 1;
+  int64 num = 2;
+  string name = 3;
+}
