@@ -715,6 +715,8 @@ func parseNumFormat(format string) NumFmtDesc {
 		i++
 	}
 
+	return fmtDesc
+
 }
 
 // 解析数字参数
