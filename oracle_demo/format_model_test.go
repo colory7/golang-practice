@@ -366,7 +366,7 @@ func TestMatchNumberFormatModel(t *testing.T) {
 	parseNumFormat(format)
 }
 
-type NumDesc struct {
+type NumFmtDesc struct {
 	// 前半部分 9或0的个数
 	// 如果是V 模式 忽略9或0的个数，不用格式做截取，直接用参数做乘积计算
 	preDec int
@@ -374,14 +374,12 @@ type NumDesc struct {
 	isLeadingZero bool
 	// 后半部分 9或0的个数
 	postDec int
-	// 标志位
-	flag int
 	// 逗号位置 FIXME 同G
 	commaIndex int
 	// 点号位置 FIXME 同D
 	decIndex int
 	// S 位置 只能是开头或结尾
-	startWithS bool
+	s uint8
 	// X 的个数 输出区分大小写，输出前先对参数做四舍五入，转换为正整数
 	xCount int
 	// 辅助前缀
@@ -394,8 +392,9 @@ type NumDesc struct {
 	isEEEE bool
 	// 辅助前缀+ 独占后缀
 	isRn bool
-	isTm bool
+	tm   int
 	isX  bool
+	isV  bool
 }
 
 const (
@@ -417,9 +416,11 @@ const (
 	NUM_F_EEEE = 1 << 9
 
 	// 辅助前缀+ 独占后缀
-	NUM_F_RN = 1 << 10
-	NUM_F_TM = 1 << 11
-	NUM_F_X  = 1 << 12
+	NUM_F_RN  = 1 << 10
+	NUM_F_TM  = 1
+	NUM_F_TME = 2
+	NUM_F_TM9 = 3
+	NUM_F_X   = 1 << 12
 
 	// 中缀 或后缀
 	NUM_F_V = 1 << 13
@@ -427,6 +428,10 @@ const (
 
 	// 前缀 中缀 后缀
 	NUM_F_D = 1 << 15
+
+	//前缀 后缀
+	NUM_F_START_S = 1
+	NUM_F_END_S   = 1 << 1
 )
 
 type NumProc struct {
@@ -442,8 +447,10 @@ type NumProc struct {
 }
 
 // 解析数值格式
-func parseNumFormat(format string) {
-	var numDesc NumDesc
+func parseNumFormat(format string) NumFmtDesc {
+	var fmtDesc NumFmtDesc
+	fmtDesc.commaIndex = -1
+	fmtDesc.decIndex = -1
 
 	// 格式字节长度
 	formatLen := len(format)
@@ -453,8 +460,9 @@ func parseNumFormat(format string) {
 
 	isRerun := false
 	var c byte
-	commaIndex := -1
-	decIndex := -1
+
+	var preDec = bytes.Buffer{}
+	var postDec = bytes.Buffer{}
 	for i := 0; i < formatLen; {
 		// 截取一个字符
 
@@ -473,83 +481,101 @@ func parseNumFormat(format string) {
 			// 匹配关键词并存储
 			switch c {
 			case ',':
-				if commaIndex == -1 {
+				if fmtDesc.commaIndex == -1 {
 					if i == 0 {
 						panic(errors.New("不能以逗号开头"))
 					} else if i == lastFormatIndex {
 						panic(errors.New("逗号不能出现在数字最右边"))
-					} else if decIndex != -1 {
+					} else if fmtDesc.decIndex != -1 {
 						panic(errors.New("逗号不能出现在点号的右边"))
 					}
 
-					keywordGroup = append(keywordGroup, NUM_COMMA)
-					numDesc.flag |= NUM_F_COMMA
+					fmtDesc.commaIndex = i
 					break
 				} else {
 					panic(errors.New("格式错误，存在多个格式符号 ,"))
 				}
 
 			case '.':
-				// 小数点前和小数点后的数字个数 FIXME
-				if numDesc.flag&NUM_F_DEC == 0 {
-					keywordGroup = append(keywordGroup, NUM_DEC)
-					numDesc.flag |= NUM_F_DEC
+				if fmtDesc.decIndex == -1 {
+					fmtDesc.decIndex = i
 					break
 				} else {
 					panic(errors.New("只能有1个 ."))
 				}
-			case '$':
-				if numDesc.flag&NUM_F_DOLLAR == 0 && i == 0 {
-					keywordGroup = append(keywordGroup, NUM_DOLLAR)
-					numDesc.flag |= NUM_F_DOLLAR
-					break
-				} else {
-					panic(errors.New("只能有1个 $ .并且 $只能为第一个1字符"))
-				}
 			case '0':
-				// 记录第1个0和最后1个0 ？？？TODO
-				keywordGroup = append(keywordGroup, NUM_0)
+				if fmtDesc.decIndex == -1 {
+					preDec.WriteByte('0')
+				} else {
+					postDec.WriteByte('0')
+				}
 				break
 			case '9':
-				// 十进制数
-				keywordGroup = append(keywordGroup, NUM_9)
+				if fmtDesc.decIndex == -1 {
+					preDec.WriteByte('9')
+				} else {
+					postDec.WriteByte('9')
+				}
 				break
-			case 'B':
-				if numDesc.flag&NUM_F_B == 0 {
-					keywordGroup = append(keywordGroup, NUM_B)
-					numDesc.flag |= NUM_F_B
+			case '$':
+				if fmtDesc.prefix != 0 && i == 0 {
+					fmtDesc.prefix |= NUM_F_DOLLAR
 					break
 				} else {
-					panic(errors.New("只能有1个 B"))
+					panic(errors.New("格式前缀冲突 " + "$"))
+				}
+			case 'B':
+				if fmtDesc.prefix != 0 {
+					fmtDesc.prefix |= NUM_F_B
+					break
+				} else {
+					panic(errors.New("格式前缀冲突 " + "B"))
 				}
 			case 'C':
-				if numDesc.flag&NUM_F_C != 0 {
-					panic(errors.New("只能有1个 C"))
+				if fmtDesc.prefix != 0 {
+					panic(errors.New("格式前缀冲突 " + "C"))
 				} else if lastFormatIndex != i && 0 != i {
 					panic(errors.New("C 只能在开头或者结尾"))
 				}
-				keywordGroup = append(keywordGroup, NUM_C)
-				numDesc.flag |= NUM_F_C
+				fmtDesc.prefix |= NUM_F_C
 				break
-			case 'D':
-				// oracle中是变量可以设置为其他值 FIXME
-				if numDesc.flag&NUM_F_D == 0 {
-					keywordGroup = append(keywordGroup, NUM_D)
-					c = NLS_NUMERIC_CHARACTERS[0]
+			case 'L':
+				if fmtDesc.prefix != 0 {
+					panic(errors.New("格式前缀冲突 " + "L"))
+				}
+				break
+			case 'U':
+				if fmtDesc.prefix != 0 {
+					panic(errors.New("格式前缀冲突 " + "U"))
+				} else if lastFormatIndex != i && 0 != i {
+					panic(errors.New("U 只能在开头或者结尾"))
+				}
+				fmtDesc.prefix |= NUM_F_U
+				break
+			case NLS_NUMERIC_CHARACTERS[0]:
+				// 默认是 . oracle中是变量可以设置为其他值 FIXME
+				if fmtDesc.decIndex != -1 {
 					isRerun = true
-					numDesc.flag |= NUM_F_D
+					fmtDesc.decIndex = i
 					continue
 				} else {
-					panic(errors.New("只能有1个 D"))
+					panic(errors.New("只能有1个 " + string(NLS_NUMERIC_CHARACTERS[0])))
+				}
+			case NLS_NUMERIC_CHARACTERS[1]:
+				// oracle中是变量可以设置为其他值 FIXME
+				if fmtDesc.commaIndex != -1 {
+					isRerun = true
+					continue
+				} else {
+					panic(errors.New("只能有1个 " + string(NLS_NUMERIC_CHARACTERS[1])))
 				}
 			case 'E':
-				if numDesc.flag&NUM_F_EEEE == 0 {
+				if !fmtDesc.isEEEE {
 					j := i + 4
 					followingChars := format[i:j]
 					if "EEE" == followingChars {
-						keywordGroup = append(keywordGroup, NUM_E)
 						i = j
-						numDesc.flag |= NUM_F_EEEE
+						fmtDesc.isEEEE = true
 						break
 					} else {
 						panic(errors.New(num_fmt_part_err + "E"))
@@ -562,44 +588,22 @@ func parseNumFormat(format string) {
 				followingOneChar := format[i]
 				switch followingOneChar {
 				case 'M':
-					if numDesc.flag&NUM_F_FILLMODE != 0 {
+					if !fmtDesc.fm {
 						panic(errors.New("只能有1组 FM"))
 					}
 					if 1 == i {
-						keywordGroup = append(keywordGroup, NUM_FM)
-						numDesc.flag |= NUM_F_FILLMODE
+						fmtDesc.fm = true
 						break
 					} else {
 						panic(errors.New("FM 必须在开头"))
 					}
-
 				default:
 					panic(errors.New(num_fmt_part_err + "F"))
 				}
 				break
-			case 'G':
-				// oracle中是变量可以设置为其他值 FIXME
-				if numDesc.flag&NUM_F_G == 0 {
-					keywordGroup = append(keywordGroup, NUM_G)
-					numDesc.flag |= NUM_F_G
-					c = NLS_NUMERIC_CHARACTERS[1]
-					isRerun = true
-					continue
-				} else {
-					panic(errors.New("只能有1个 G"))
-				}
-			case 'L':
-				if numDesc.flag&NUM_F_L != 0 {
-					panic(errors.New("只能有1个 C"))
-				} else if lastFormatIndex != i && 0 != i {
-					panic(errors.New("C 只能在开头或者结尾"))
-				}
-				keywordGroup = append(keywordGroup, NUM_L)
-				numDesc.flag |= NUM_F_L
-				break
 			case 'M':
-				if numDesc.flag&NUM_F_MI != 0 {
-					panic(errors.New("只能有1个 MI"))
+				if fmtDesc.auxSuffix != 0 {
+					panic(errors.New("辅助后缀冲突" + "MI"))
 				} else if i == (lastFormatIndex - 1) {
 					panic(errors.New("MI 只能在结尾"))
 				}
@@ -608,16 +612,15 @@ func parseNumFormat(format string) {
 				followingOneChar := format[i]
 				switch followingOneChar {
 				case 'I':
-					keywordGroup = append(keywordGroup, NUM_MI)
-					numDesc.flag |= NUM_F_MI
+					fmtDesc.auxSuffix |= NUM_F_MI
 					break
 				default:
 					panic(errors.New(num_fmt_part_err + "M"))
 				}
 				break
 			case 'P':
-				if numDesc.flag&NUM_F_PR != 0 {
-					panic(errors.New("只能有1个 PR"))
+				if fmtDesc.auxSuffix != 0 {
+					panic(errors.New("辅助后缀冲突" + "PR"))
 				} else if i == (lastFormatIndex - 1) {
 					panic(errors.New("PR 只能在结尾"))
 				}
@@ -626,89 +629,80 @@ func parseNumFormat(format string) {
 				followingOneChar := format[i]
 				switch followingOneChar {
 				case 'R':
-					keywordGroup = append(keywordGroup, NUM_PR)
-					numDesc.flag |= NUM_F_PR
+					fmtDesc.auxSuffix |= NUM_F_PR
 					break
 				default:
 					panic(errors.New(num_fmt_part_err + "P"))
 				}
-
 			case 'R':
 				i++
 				followingOneChar := format[i]
 				switch followingOneChar {
 				case 'N':
-					// 判断独占 FIXME
-
-					if numDesc.flag&NUM_F_RN != 0 {
+					// 判断独占 长度 FIXME
+					if !fmtDesc.isRn {
 						panic(errors.New("只能有1个 RN"))
-					} else if (numDesc.flag&NUM_F_FILLMODE != 0) && (i == lastFormatIndex && i != 3) {
+					} else if (fmtDesc.fm) && (i == lastFormatIndex && i != 3) {
 						panic(errors.New("包含RN的格式,除了 FM 和 RN 不能有其他格式字符"))
-					} else if !(numDesc.flag&NUM_F_FILLMODE != 0) && i == lastFormatIndex && i != 1 {
+					} else if !(fmtDesc.fm) && i == lastFormatIndex && i != 1 {
 						panic(errors.New("包含RN的格式,除了 FM 和 RN 不能有其他格式字符"))
 					}
 
-					keywordGroup = append(keywordGroup, NUM_RN)
-					numDesc.flag |= NUM_F_FILLMODE
+					fmtDesc.isRn = true
 					break
 				default:
 					panic(errors.New(num_fmt_part_err + "R"))
 				}
 			case 'S':
-				if numDesc.flag&NUM_F_S != 0 {
+				if fmtDesc.s != 0 {
 					panic(errors.New("只能有1个 S"))
 				} else if i != lastFormatIndex && i != 0 {
 					panic(errors.New("S 只能在开头或者结尾"))
 				}
 
-				keywordGroup = append(keywordGroup, NUM_S)
-				numDesc.flag |= NUM_F_S
+				if i == 0 {
+					fmtDesc.s = NUM_F_START_S
+				} else {
+					fmtDesc.s = NUM_F_END_S
+				}
+
 				break
 			case 'T':
-				if numDesc.flag&NUM_F_S != 0 {
-					followingTwoChars := format[i : i+3]
-					if "M9" == followingTwoChars {
-						keywordGroup = append(keywordGroup, NUM_TM9)
-						i = i + 3
-						numDesc.flag |= NUM_F_TM
-						break
-					} else if "ME" == followingTwoChars {
-						keywordGroup = append(keywordGroup, NUM_TME)
-						i = i + 3
-						numDesc.flag |= NUM_F_TM
-						break
-					} else if 'M' == followingTwoChars[0] {
-						keywordGroup = append(keywordGroup, NUM_TM)
-						i = i + 2
-						numDesc.flag |= NUM_F_TM
-						break
+				if fmtDesc.tm != 0 {
+					i++
+					followingOneChar := format[i]
+					if 'M' == followingOneChar {
+						if i == lastFormatIndex {
+							fmtDesc.tm = NUM_F_TM
+						} else {
+							i++
+							followingOneChar = format[i]
+							if 'E' == followingOneChar {
+								fmtDesc.tm = NUM_F_TME
+							} else if '9' == followingOneChar {
+								fmtDesc.tm = NUM_F_TM9
+							} else {
+								panic(errors.New("格式错误在 TM 附近"))
+							}
+						}
 					} else {
-						panic(errors.New(num_fmt_part_err + "T"))
+						panic(errors.New("格式错误在 T 附近"))
 					}
-
 				} else {
-					panic(errors.New("只能有1个 S"))
+					panic(errors.New("只能有1组 TM"))
 				}
-			case 'U':
-				if numDesc.flag&NUM_F_U != 0 {
-					panic(errors.New("只能有1个 U"))
-				} else if lastFormatIndex != i && 0 != i {
-					panic(errors.New("U 只能在开头或者结尾"))
-				}
-				keywordGroup = append(keywordGroup, NUM_U)
-				numDesc.flag |= NUM_F_U
 				break
 			case 'V':
-				if numDesc.flag&NUM_F_V != 0 {
+				if !fmtDesc.isV {
 					panic(errors.New("只能有1个 V"))
 				} else if 0 != i {
-					panic(errors.New("U 不能在开头"))
+					panic(errors.New("V 不能在开头"))
 				}
-				keywordGroup = append(keywordGroup, NUM_V)
-				numDesc.flag |= NUM_F_V
+				fmtDesc.isV = true
 				break
 			case 'X':
-				keywordGroup = append(keywordGroup, NUM_X)
+				fmtDesc.isX = true
+				fmtDesc.xCount++
 				break
 			default:
 				panic(errors.New(out_keyword_range_err))
@@ -1145,7 +1139,7 @@ func parseDchFormat(format string) []string {
 }
 
 // 根据格式解析参数
-func parseNumParam(param string, keywordGroup []string, numDesc NumDesc) string {
+func parseNumParam(param string, keywordGroup []string, numDesc NumFmtDesc) string {
 	// 新的 数字或者 字符串或者 日期
 
 	// 结果的最后1个字符的索引
