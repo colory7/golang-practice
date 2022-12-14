@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"testing"
 	"unicode/utf8"
@@ -359,11 +360,11 @@ func TestMatchNumberFormatModel(t *testing.T) {
 }
 
 const (
-	// 辅助前缀
+	// 辅助前缀 没有冲突
 	NUM_FMT_AUX_PREFIX_EMPTY = 0
 	NUM_FMT_AUX_PREFIX_FM    = 1
 
-	// 前缀
+	// 前缀 前缀互斥
 	NUM_FMT_PREFIX_EMPTY  = 0
 	NUM_FMT_PREFIX_DOLLAR = '$'
 	NUM_FMT_PREFIX_B      = 'B'
@@ -371,7 +372,7 @@ const (
 	NUM_FMT_PREFIX_L      = 'L'
 	NUM_FMT_PREFIX_U      = 'U'
 
-	// 后缀 后缀决定了输出模式
+	// 后缀 后缀互斥 后缀决定了输出模式
 	NUM_FMT_SUFFIX_EMPTY = 0
 	NUM_FMT_SUFFIX_EEEE  = 1
 	NUM_FMT_SUFFIX_V     = 2
@@ -382,7 +383,7 @@ const (
 	NUM_FMT_SUFFIX_TME   = 7
 	NUM_FMT_SUFFIX_TMe   = 8
 
-	// 辅助后缀
+	// 辅助后缀 与MI PR冲突
 	NUM_FMT_AUX_SUFFIX_EMPTY = 0
 	NUM_FMT_AUX_SUFFIX_MI    = 1
 	NUM_FMT_AUX_SUFFIX_PR    = 2
@@ -822,41 +823,74 @@ func parseNum(f string, num string) string {
 
 	result := bytes.Buffer{}
 
-	switch numFmtDesc.suffix {
-	case NUM_FMT_SUFFIX_EMPTY:
-		if numParamDesc.isEEEE {
+	// FM 模式，去除空格
+	if numFmtDesc.auxPrefix == NUM_FMT_AUX_PREFIX_FM {
 
+	}
+
+	switch numFmtDesc.suffix {
+	// 十进制
+	case NUM_FMT_SUFFIX_EMPTY:
+		// 转换科学计数
+		if numParamDesc.isEEEE {
+			d, err := strconv.ParseFloat(numParamDesc.preDec+"."+numParamDesc.postDec, 64)
+			if err != nil {
+				panic(err)
+			}
+
+			d = d * math.Pow10(numParamDesc.eExponent)
 		}
 
 		paramLen := len(numParamDesc.preDec)
-		if numFmtDesc.preDec > paramLen {
+		if numFmtDesc.preDec >= paramLen {
+			for i := 0; i < numFmtDesc.preDec; i++ {
+				result.WriteByte(numParamDesc.preDec[i])
+			}
 
+			if numFmtDesc.postDec > 0 {
+				result.WriteByte('.')
+				for i := 0; i < numFmtDesc.postDec; i++ {
+					result.WriteByte(numParamDesc.postDec[i])
+				}
+			}
 		} else {
 			panic("格式的整数部分的长度不能比参数的整数部分的长度小")
 		}
+	// 科学计数
 	case NUM_FMT_SUFFIX_EEEE:
+		// 转换科学计数
+		if numParamDesc.isEEEE {
+
+		} else {
+
+		}
+	// 乘积
 	case NUM_FMT_SUFFIX_V:
 		if numParamDesc.isEEEE {
 			panic("格式V 不支持科学计数参数")
 		}
+	// 罗马数字
 	case NUM_FMT_SUFFIX_RN:
 		if numParamDesc.isEEEE {
 			panic("格式RN 不支持科学计数参数")
 		}
+	// 十六进制
 	case NUM_FMT_SUFFIX_X:
 		if numParamDesc.isEEEE {
 			panic("格式X 不支持科学计数参数")
 		}
+	// 十进制 少写几个9 最小文本匹配 没有修饰符逗号，货币符号等
 	case NUM_FMT_SUFFIX_TM, NUM_FMT_SUFFIX_TM9:
 		if numParamDesc.isEEEE {
 
 		}
+	// 科学计数 少写几个9 最小文本匹配 没有修饰符逗号，货币符号等
 	case NUM_FMT_SUFFIX_TME, NUM_FMT_SUFFIX_TMe:
 		if numParamDesc.isEEEE {
 
 		}
 	default:
-
+		panic("Theoretically unreachable")
 	}
 
 	return result.String()

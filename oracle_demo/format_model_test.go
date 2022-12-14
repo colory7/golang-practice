@@ -60,10 +60,17 @@ func TestParseNumParam(t *testing.T) {
 }
 
 func TestParseNum(t *testing.T) {
+	f := "99"
+	num := "-36.25"
+
+	result := parseNum(f, num)
+	fmt.Println(result)
+}
+
+func TestParseNum2(t *testing.T) {
 	f := "99EEEE"
 	num := "-36.25e+12"
 
 	result := parseNum(f, num)
 	fmt.Println(result)
-
 }
