@@ -23,6 +23,8 @@ const out_ascii_range_err = "Illegal character, not in ASCII [32-126] character 
 
 const invalid_num_err = "invalid number"
 
+const ()
+
 // ASCII 32-126
 var formatChar = [utf8.RuneSelf]byte{
 	' ',
@@ -121,16 +123,6 @@ var formatChar = [utf8.RuneSelf]byte{
 	'}',
 	'~',
 }
-
-const (
-	one    = '1'
-	two    = '2'
-	plus   = '+'
-	minus  = '-'
-	e      = 'e'
-	E      = 'E'
-	dollar = '$'
-)
 
 const (
 	// Number Format Model Keyword
@@ -434,16 +426,61 @@ const (
 	NUM_F_END_S   = 1 << 1
 )
 
-type NumProc struct {
-	leftMinusSign bool
-	leftPlusSign  bool
-	pre           int
-	post          int
-	readDec       bool
-	readE         bool
-	eeeeSign      bool // 幂的符号,true为+,false为-
-	eeeeExponent  int
-	decimalNumStr string
+const (
+	empty = ""
+	plus  = "+"
+	minus = "-"
+	dec   = "."
+)
+
+type NumParam struct {
+	sign      string
+	pre       string
+	post      string
+	eSign     string
+	eExponent int
+	// 可选
+	isFloat bool
+	isEEEE  bool
+}
+
+func (numParam *NumParam) string() string {
+	var result bytes.Buffer
+	if plus == numParam.sign {
+		result.WriteString(plus)
+	} else if minus == numParam.sign {
+		result.WriteString(minus)
+	} else if empty == numParam.sign {
+	} else {
+		panic("sign属性格式错误")
+	}
+
+	if empty != numParam.pre {
+		result.WriteString(numParam.pre)
+	} else {
+		panic("格式错误,整数部分是空的")
+	}
+
+	if numParam.post != empty {
+		result.WriteByte('.')
+		result.WriteString(string(numParam.post))
+	}
+
+	if numParam.eExponent != 0 {
+		result.WriteByte('e')
+
+		if plus == numParam.sign {
+			result.WriteString(plus)
+		} else if minus == numParam.sign {
+			result.WriteString(minus)
+		} else if empty == numParam.sign {
+		} else {
+			panic("eSign属性格式错误")
+		}
+		result.WriteString(fmt.Sprint(numParam.eExponent))
+	}
+
+	return result.String()
 }
 
 // 解析数值格式
@@ -491,7 +528,6 @@ func parseNumFormat(format string) NumFmtDesc {
 					}
 
 					fmtDesc.commaIndex = i
-					break
 				} else {
 					panic(errors.New("格式错误，存在多个格式符号 ,"))
 				}
@@ -499,7 +535,6 @@ func parseNumFormat(format string) NumFmtDesc {
 			case '.':
 				if fmtDesc.decIndex == -1 {
 					fmtDesc.decIndex = i
-					break
 				} else {
 					panic(errors.New("只能有1个 ."))
 				}
@@ -509,25 +544,21 @@ func parseNumFormat(format string) NumFmtDesc {
 				} else {
 					postDec.WriteByte('0')
 				}
-				break
 			case '9':
 				if fmtDesc.decIndex == -1 {
 					preDec.WriteByte('9')
 				} else {
 					postDec.WriteByte('9')
 				}
-				break
 			case '$':
 				if fmtDesc.prefix != 0 && i == 0 {
 					fmtDesc.prefix |= NUM_F_DOLLAR
-					break
 				} else {
 					panic(errors.New("格式前缀冲突 " + "$"))
 				}
 			case 'B':
 				if fmtDesc.prefix != 0 {
 					fmtDesc.prefix |= NUM_F_B
-					break
 				} else {
 					panic(errors.New("格式前缀冲突 " + "B"))
 				}
@@ -538,12 +569,10 @@ func parseNumFormat(format string) NumFmtDesc {
 					panic(errors.New("C 只能在开头或者结尾"))
 				}
 				fmtDesc.prefix |= NUM_F_C
-				break
 			case 'L':
 				if fmtDesc.prefix != 0 {
 					panic(errors.New("格式前缀冲突 " + "L"))
 				}
-				break
 			case 'U':
 				if fmtDesc.prefix != 0 {
 					panic(errors.New("格式前缀冲突 " + "U"))
@@ -551,7 +580,6 @@ func parseNumFormat(format string) NumFmtDesc {
 					panic(errors.New("U 只能在开头或者结尾"))
 				}
 				fmtDesc.prefix |= NUM_F_U
-				break
 			case NLS_NUMERIC_CHARACTERS[0]:
 				// 默认是 . oracle中是变量可以设置为其他值 FIXME
 				if fmtDesc.decIndex != -1 {
@@ -572,11 +600,10 @@ func parseNumFormat(format string) NumFmtDesc {
 			case 'E':
 				if !fmtDesc.isEEEE {
 					j := i + 4
-					followingChars := format[i:j]
+					followingChars := format[i+1 : j]
 					if "EEE" == followingChars {
 						i = j
 						fmtDesc.isEEEE = true
-						break
 					} else {
 						panic(errors.New(num_fmt_part_err + "E"))
 					}
@@ -593,14 +620,12 @@ func parseNumFormat(format string) NumFmtDesc {
 					}
 					if 1 == i {
 						fmtDesc.fm = true
-						break
 					} else {
 						panic(errors.New("FM 必须在开头"))
 					}
 				default:
 					panic(errors.New(num_fmt_part_err + "F"))
 				}
-				break
 			case 'M':
 				if fmtDesc.auxSuffix != 0 {
 					panic(errors.New("辅助后缀冲突" + "MI"))
@@ -613,11 +638,9 @@ func parseNumFormat(format string) NumFmtDesc {
 				switch followingOneChar {
 				case 'I':
 					fmtDesc.auxSuffix |= NUM_F_MI
-					break
 				default:
 					panic(errors.New(num_fmt_part_err + "M"))
 				}
-				break
 			case 'P':
 				if fmtDesc.auxSuffix != 0 {
 					panic(errors.New("辅助后缀冲突" + "PR"))
@@ -630,7 +653,6 @@ func parseNumFormat(format string) NumFmtDesc {
 				switch followingOneChar {
 				case 'R':
 					fmtDesc.auxSuffix |= NUM_F_PR
-					break
 				default:
 					panic(errors.New(num_fmt_part_err + "P"))
 				}
@@ -649,7 +671,6 @@ func parseNumFormat(format string) NumFmtDesc {
 					}
 
 					fmtDesc.isRn = true
-					break
 				default:
 					panic(errors.New(num_fmt_part_err + "R"))
 				}
@@ -665,8 +686,6 @@ func parseNumFormat(format string) NumFmtDesc {
 				} else {
 					fmtDesc.s = NUM_F_END_S
 				}
-
-				break
 			case 'T':
 				if fmtDesc.tm != 0 {
 					i++
@@ -691,7 +710,6 @@ func parseNumFormat(format string) NumFmtDesc {
 				} else {
 					panic(errors.New("只能有1组 TM"))
 				}
-				break
 			case 'V':
 				if !fmtDesc.isV {
 					panic(errors.New("只能有1个 V"))
@@ -699,11 +717,9 @@ func parseNumFormat(format string) NumFmtDesc {
 					panic(errors.New("V 不能在开头"))
 				}
 				fmtDesc.isV = true
-				break
 			case 'X':
 				fmtDesc.isX = true
 				fmtDesc.xCount++
-				break
 			default:
 				panic(errors.New(out_keyword_range_err))
 			}
@@ -720,100 +736,83 @@ func parseNumFormat(format string) NumFmtDesc {
 }
 
 // 解析数字参数
-func preParseNumParam(num string) NumProc {
-	var numProc NumProc
-	numProc.pre = 0
-	numProc.post = 0
-	numProc.readDec = false
-	numProc.readE = false
-	numProc.leftMinusSign = false
-	numProc.leftPlusSign = false
+func preParseNumParam(num string) NumParam {
+	var numParam NumParam
 
-	var decimalNumStr = bytes.Buffer{}
+	readDec := false
+
+	var preBuf = bytes.Buffer{}
+	var postBuf = bytes.Buffer{}
 	for i := 0; i < len(num); i++ {
 		c := num[i]
+		fmt.Println(string(c))
 		switch c {
-		case '0':
-		case '1':
-		case '2':
-		case '3':
-		case '4':
-		case '5':
-		case '6':
-		case '7':
-		case '8':
-		case '9':
-			if numProc.readDec {
-				numProc.post++
+		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+			if readDec {
+				postBuf.WriteByte(c)
 			} else {
-				numProc.pre++
+				preBuf.WriteByte(c)
 			}
-			decimalNumStr.WriteByte(c)
-			break
 		case '.':
-			if numProc.readDec == false {
-				numProc.readDec = true
-				decimalNumStr.WriteByte(c)
+			if readDec == false {
+				readDec = true
+				numParam.isFloat = true
 			} else {
 				panic("多个符号 " + ".")
 			}
-			break
-		case 'e':
-		case 'E':
-			numProc.readE = true
+		case 'e', 'E':
 			i++
 
-			if num[i] == '+' {
-				numProc.eeeeSign = true
-			} else if num[i] == '-' {
-				numProc.eeeeSign = false
-			} else {
-				numProc.eeeeSign = true
-				var exponent = bytes.Buffer{}
-				for ; i < len(num); i++ {
-					if num[i] <= '9' && num[i] >= '0' {
-						exponent.WriteByte(num[i])
+			numParam.isEEEE = true
+			var exponent = bytes.Buffer{}
 
-					} else {
-						panic(errors.New("科学计数的指数使用了非法字符 " + string(num[i])))
-					}
-				}
-				exponentNum, err := strconv.Atoi(exponent.String())
-				if err != nil {
-					panic(err)
-				}
-				numProc.eeeeExponent = exponentNum
+			if num[i] == '+' {
+				numParam.eSign = plus
+			} else if num[i] == '-' {
+				numParam.eSign = minus
+			} else if num[i] <= '9' && num[i] >= '0' {
+				numParam.eSign = empty
+				exponent.WriteByte(num[i])
 			}
-			break
+
+			for i++; i < len(num); i++ {
+				if num[i] <= '9' && num[i] >= '0' {
+					exponent.WriteByte(num[i])
+				} else {
+					panic(errors.New("科学计数的指数使用了非法字符 " + string(num[i])))
+				}
+			}
+
+			exponentNum, err := strconv.Atoi(exponent.String())
+			if err != nil {
+				panic(err)
+			}
+			numParam.eExponent = exponentNum
+			fmt.Println(exponent.String())
 		case '-':
 			if i == 0 {
-				numProc.leftMinusSign = true
+				numParam.sign = minus
 			} else {
 				panic("符号位置不对 " + "-")
 			}
-			break
 		case '+':
 			if i == 0 {
-				numProc.leftPlusSign = true
+				numParam.sign = plus
 			} else {
 				panic("符号位置不对 " + "+")
 			}
-			break
 		case ',':
 			panic("暂时不支持 " + ",")
-			break
 		default:
 			panic(errors.New("不支持的数字符号"))
 		}
 	}
 
-	numProc.decimalNumStr = decimalNumStr.String()
-
 	// EEEE
 	// 十进制 符号可选
 	// 十进制 符号可选 逗号分组
 
-	return numProc
+	return numParam
 }
 
 // 解析日期格式
@@ -843,31 +842,25 @@ func parseDchFormat(format string) []string {
 					if "A.D." == followingChars {
 						keywordGroup = append(keywordGroup, DCH_A_D)
 						i = j
-						break
 					} else if "A.M." == followingChars {
 						keywordGroup = append(keywordGroup, DCH_A_M)
 						i = j
-						break
 					} else {
 						panic(errors.New(dch_fmt_part_err + "A."))
 					}
 				case 'D':
 					keywordGroup = append(keywordGroup, DCH_AD)
-					break
 				case 'M':
 					keywordGroup = append(keywordGroup, DCH_AM)
-					break
 				default:
 					panic(errors.New(dch_fmt_part_err + "A"))
 				}
-				break
 			case 'B':
 				i++
 				followingOneChar := format[i]
 				switch followingOneChar {
 				case 'C':
 					keywordGroup = append(keywordGroup, DCH_BC)
-					break
 				case '.':
 					j := i + 4
 					followingChars := format[i:j]
@@ -875,22 +868,18 @@ func parseDchFormat(format string) []string {
 						keywordGroup = append(keywordGroup, DCH_B_C)
 					}
 					i = j
-					break
 				default:
 					panic(errors.New(dch_fmt_part_err + "B"))
 				}
-				break
 			case 'C':
 				i++
 				followingOneChar := format[i]
 				switch followingOneChar {
 				case 'C':
 					keywordGroup = append(keywordGroup, DCH_CC)
-					break
 				default:
 					panic(errors.New(dch_fmt_part_err + "C"))
 				}
-				break
 			case 'D':
 				i++
 				followingOneChar := format[i]
@@ -900,210 +889,189 @@ func parseDchFormat(format string) []string {
 					thirdChar := format[i+1]
 					if thirdChar == 'D' {
 						keywordGroup = append(keywordGroup, DCH_DDD)
-						break
 					}
-					break
 				case 'Y':
 					keywordGroup = append(keywordGroup, DCH_DY)
-					break
 				default:
 					followingTwoChars := format[i : i+3]
 					i = i + 3
 					if followingTwoChars == "AY" {
 						keywordGroup = append(keywordGroup, DCH_DAY)
-						break
 					} else {
 						panic(errors.New(dch_fmt_part_err + "D"))
 					}
 				}
-				break
 			case 'F':
 				i++
 				followingOneChar := format[i]
 				switch followingOneChar {
 				case 'X':
 					keywordGroup = append(keywordGroup, DCH_FX)
-					break
 				default:
 					followingTwoChars := format[i : i+3]
 					i = i + 3
 					switch followingTwoChars {
 					case "F1":
 						keywordGroup = append(keywordGroup, DCH_FF1)
-						break
 					case "F2":
 						keywordGroup = append(keywordGroup, DCH_FF2)
-						break
 					case "F3":
 						keywordGroup = append(keywordGroup, DCH_FF3)
-						break
 					case "F4":
 						keywordGroup = append(keywordGroup, DCH_FF4)
-						break
 					case "F5":
 						keywordGroup = append(keywordGroup, DCH_FF5)
-						break
 					case "F6":
 						keywordGroup = append(keywordGroup, DCH_FF6)
-						break
 					case "F7":
 						keywordGroup = append(keywordGroup, DCH_FF7)
-						break
 					case "F8":
 						keywordGroup = append(keywordGroup, DCH_FF8)
-						break
 					case "F9":
 						keywordGroup = append(keywordGroup, DCH_FF9)
-						break
 					default:
 						panic(errors.New(dch_fmt_part_err + "F"))
 					}
 				}
-				break
 			case 'H':
 				i++
 				followingOneChar := format[i]
 				switch followingOneChar {
 				case 'H':
 					keywordGroup = append(keywordGroup, DCH_HH)
-					break
 				default:
 					followingThreeChars := format[i : i+4]
 					i = i + 4
+
 					switch followingThreeChars {
 					case "H24":
 						keywordGroup = append(keywordGroup, DCH_HH24)
-						break
 					case "H12":
 						keywordGroup = append(keywordGroup, DCH_HH12)
-						break
 					default:
 						panic(errors.New(dch_fmt_part_err + "H"))
 					}
 				}
-				break
 			case 'I':
 				i++
 				followingOneChar := format[i]
 				switch followingOneChar {
 				case 'W':
 					keywordGroup = append(keywordGroup, DCH_IW)
-					break
 				case 'Y':
 					followingTwoChars := format[i : i+3]
 					if "YY" == followingTwoChars {
 						keywordGroup = append(keywordGroup, DCH_IYYY)
 						i = i + 3
-						break
 					}
 
 					followingOneChar = followingTwoChars[0]
 					if 'Y' == followingOneChar {
 						keywordGroup = append(keywordGroup, DCH_IYY)
 						i = i + 2
-						break
 					}
-
 					keywordGroup = append(keywordGroup, DCH_IY)
-					break
 				default:
 					panic(errors.New(dch_fmt_part_err + "I"))
 				}
 				// 匹配单个字符
 				keywordGroup = append(keywordGroup, DCH_I)
-				break
 			case 'J':
 				keywordGroup = append(keywordGroup, DCH_J)
-				break
 			case 'M':
 				i++
 				followingOneChar := format[i]
 				switch followingOneChar {
 				case 'M':
-					break
+					keywordGroup = append(keywordGroup, DCH_MM)
 				case 'I':
-					break
-				case 'S':
-					break
+					keywordGroup = append(keywordGroup, DCH_MI)
 				default:
 					start := i
 					i += 2
-					followingTwoChars := format[start:i]
-					if "ON" == followingTwoChars {
-						keywordGroup = append(keywordGroup, DCH_MON)
-						start = i
-						i += 2
-						followingTwoChars = format[start:i]
-						if "TH" == followingTwoChars {
-							keywordGroup = append(keywordGroup, DCH_MONTH)
+					if i < l {
+						followingTwoChars := format[start:i]
+						if "ON" == followingTwoChars {
+							keywordGroup = append(keywordGroup, DCH_MON)
+							start = i
+							i += 2
+							if i < l {
+								followingTwoChars = format[start:i]
+								if "TH" == followingTwoChars {
+									keywordGroup = append(keywordGroup, DCH_MONTH)
+								} else {
+									panic(errors.New(dch_fmt_part_err + "MON"))
+								}
+							} else {
+								panic(errors.New(dch_fmt_part_err + "MON"))
+							}
 						} else {
-							panic(errors.New(dch_fmt_part_err + "MON"))
+							panic(errors.New(dch_fmt_part_err + "M"))
 						}
 					} else {
 						panic(errors.New(dch_fmt_part_err + "M"))
 					}
 				}
-				break
 			case 'O':
 				i++
 				if 'F' == format[i] {
 					keywordGroup = append(keywordGroup, DCH_MONTH)
-					break
 				}
 				panic(errors.New(dch_fmt_part_err + "O"))
 			case 'P':
 				i++
-				if 'M' == format[i] {
-					keywordGroup = append(keywordGroup, DCH_PM)
-					break
+				if i < l {
+					if 'M' == format[i] {
+						keywordGroup = append(keywordGroup, DCH_PM)
+					} else {
+						start := i
+						i += 3
+						if i < l {
+							followingThreeChars := format[start:i]
+							if ".M." == followingThreeChars {
+								keywordGroup = append(keywordGroup, DCH_P_M)
+							} else {
+								panic(errors.New(dch_fmt_part_err + "P"))
+							}
+						} else {
+							panic(errors.New(dch_fmt_part_err + "P"))
+						}
+					}
+				} else {
+					panic(errors.New(dch_fmt_part_err + "P"))
 				}
-				start := i
-				i += 3
-				followingThreeChars := format[start:i]
-				if ".M." == followingThreeChars {
-					keywordGroup = append(keywordGroup, DCH_P_M)
-					break
-				}
-
-				panic(errors.New(dch_fmt_part_err + "P"))
 			case 'Q':
 				keywordGroup = append(keywordGroup, DCH_Q)
-				break
 			case 'R':
 				i++
 				if 'M' == format[i] {
 					keywordGroup = append(keywordGroup, DCH_RM)
-					break
+				} else {
+					panic(errors.New(dch_fmt_part_err + "R"))
 				}
-				panic(errors.New(dch_fmt_part_err + "P"))
 			case 'S':
 				start := i
 				i += 4
 				followingFourChars := format[start:i]
 				if "SSSS" == followingFourChars {
 					keywordGroup = append(keywordGroup, DCH_SSSSS)
-					break
 				} else if "SSS" == followingFourChars[0:3] {
 					keywordGroup = append(keywordGroup, DCH_SSSS)
-					break
 				} else if "S" == followingFourChars[0:3] {
 					keywordGroup = append(keywordGroup, DCH_SS)
-					break
+				} else {
+					panic(errors.New(dch_fmt_part_err + "S"))
 				}
-				panic(errors.New(dch_fmt_part_err + "S"))
 			case 'T':
 				start := i
 				i += 2
 				followingTwoChars := format[start:i]
 				if "ZH" == followingTwoChars {
 					keywordGroup = append(keywordGroup, DCH_TZH)
-					break
 				} else if "ZM" == followingTwoChars {
 					keywordGroup = append(keywordGroup, DCH_TZM)
-					break
 				} else if 'Z' == followingTwoChars[0] {
 					keywordGroup = append(keywordGroup, DCH_TZM)
-					break
 				} else {
 					panic(errors.New(dch_fmt_part_err + "T"))
 				}
@@ -1112,10 +1080,9 @@ func parseDchFormat(format string) []string {
 				followingOneChar := format[i]
 				if 'W' == followingOneChar {
 					keywordGroup = append(keywordGroup, DCH_WW)
-					break
+				} else {
+					keywordGroup = append(keywordGroup, DCH_W)
 				}
-				keywordGroup = append(keywordGroup, DCH_W)
-				break
 			case 'Y':
 				start := i
 				i += 4
@@ -1126,9 +1093,9 @@ func parseDchFormat(format string) []string {
 					keywordGroup = append(keywordGroup, DCH_YYY)
 				} else if "YY" == followingFourChars[0:2] {
 					keywordGroup = append(keywordGroup, DCH_YY)
+				} else {
+					keywordGroup = append(keywordGroup, DCH_Y)
 				}
-				keywordGroup = append(keywordGroup, DCH_Y)
-				break
 			default:
 				panic(errors.New(out_keyword_range_err))
 			}
@@ -1164,19 +1131,14 @@ func parseNumParam(param string, keywordGroup []string, numDesc NumFmtDesc) stri
 		//,(comma) 半角逗号 装饰作用
 		case NUM_COMMA:
 			paramIndex++
-			break
 		// .(period) 半角句号,点号，小数点
 		case NUM_DEC:
 			inverseResult = append(inverseResult, '.')
 			paramIndex++
-			break
-
 		// $ 美元符号 返回的值以$符号开头 TODO
 		// to_number和to_char的输出表现不一样
 		case NUM_DOLLAR:
-			break
 		case NUM_0:
-			break
 		//9 替换数字，开头的0替换为空格，0除外
 		case NUM_9:
 			// 校验参数是否合法
@@ -1187,45 +1149,31 @@ func parseNumParam(param string, keywordGroup []string, numDesc NumFmtDesc) stri
 			}
 
 			paramIndex++
-			break
 		case NUM_B:
-			break
 		case NUM_C:
-			break
 		case NUM_D:
-			break
 		case NUM_E:
-			scienceFmt := "%" + fmt.Sprint(numDesc.post) + ".E"
+			scienceFmt := "%" + fmt.Sprint(numDesc.postDec) + ".E"
 			//
 			result.WriteString(fmt.Sprintf(scienceFmt, param))
-			break
 		case NUM_FM:
-			break
 		case NUM_G:
-			break
 		case NUM_L:
-			break
 		case NUM_MI:
-			break
 		case NUM_PR:
 			// 如果开头的字符是负号，则用尖括号包裹值
 			// FIXME
 			result.WriteByte('<')
 			result.WriteByte('>')
-			break
 		case NUM_RN:
 			d, err := strconv.Atoi(param)
 			if err != nil {
 				panic(err)
 			}
 			result = intToRoman(d)
-			break
 		case NUM_S:
-			break
 		case NUM_V:
-			break
 		case NUM_X:
-			break
 		default:
 			panic(errors.New("不应该到达此处.不应该出现的格式"))
 		}
@@ -1271,4 +1219,30 @@ func intToRoman(num int) bytes.Buffer {
 		}
 	}
 	return rm
+}
+
+func TestParseNumFmt(t *testing.T) {
+	f := "99EEEE"
+	numFmtDesc := parseNumFormat(f)
+
+	str := fmt.Sprintf("%#v\n", numFmtDesc)
+	fmt.Println(str)
+}
+
+func TestParseNumParam(t *testing.T) {
+	num := "-36.25e+97"
+	numProc := preParseNumParam(num)
+	str := fmt.Sprintf("%#v\n", numProc)
+	fmt.Println(str)
+}
+
+func TestToString(t *testing.T) {
+	var numParam NumParam
+	numParam.sign = plus
+	numParam.pre = "36"
+	numParam.post = "25"
+	numParam.eSign = empty
+	numParam.eExponent = 12
+
+	fmt.Println(numParam.string())
 }
