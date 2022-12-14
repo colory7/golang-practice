@@ -1,16 +1,16 @@
-package struct_demo
+package main
 
 import (
 	"fmt"
 )
 
-//结构体
+// 结构体
 type User struct {
 	Name  string
 	Email string
 }
 
-//方法
+// 方法
 func (u User) Notify() {
 	fmt.Printf("%v : %v \n", u.Name, u.Email)
 }

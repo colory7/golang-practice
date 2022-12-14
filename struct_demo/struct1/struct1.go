@@ -1,4 +1,4 @@
-package struct_demo
+package main
 
 type Test struct{}
 
