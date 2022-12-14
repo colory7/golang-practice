@@ -56,6 +56,5 @@ func TestToString(t *testing.T) {
 	numParam.post = "25"
 	numParam.eSign = empty
 	numParam.eExponent = 12
-
 	fmt.Println(numParam.string())
 }
