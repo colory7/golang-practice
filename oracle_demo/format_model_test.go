@@ -34,6 +34,16 @@ func TestV(t *testing.T) {
 
 }
 
+func TestToString(t *testing.T) {
+	var numParam NumParamDesc
+	numParam.sign = plus
+	numParam.preDec = "36"
+	numParam.postDec = "25"
+	numParam.eSign = empty
+	numParam.eExponent = 12
+	fmt.Println(numParam.string())
+}
+
 func TestParseNumFmt(t *testing.T) {
 	f := "99EEEE"
 	numFmtDesc := parseNumFormat(f)
@@ -44,17 +54,16 @@ func TestParseNumFmt(t *testing.T) {
 
 func TestParseNumParam(t *testing.T) {
 	num := "-36.25e+97"
-	numProc := preParseNumParam(num)
-	str := fmt.Sprintf("%#v\n", numProc)
+	numParamDesc := parseNumParam(num)
+	str := fmt.Sprintf("%#v\n", numParamDesc)
 	fmt.Println(str)
 }
 
-func TestToString(t *testing.T) {
-	var numParam NumParam
-	numParam.sign = plus
-	numParam.pre = "36"
-	numParam.post = "25"
-	numParam.eSign = empty
-	numParam.eExponent = 12
-	fmt.Println(numParam.string())
+func TestParseNum(t *testing.T) {
+	f := "99EEEE"
+	num := "-36.25e+12"
+
+	result := parseNum(f, num)
+	fmt.Println(result)
+
 }

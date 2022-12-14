@@ -358,12 +358,54 @@ func TestMatchNumberFormatModel(t *testing.T) {
 	parseNumFormat(format)
 }
 
+const (
+	// 辅助前缀
+	NUM_FMT_AUX_PREFIX_EMPTY = 0
+	NUM_FMT_AUX_PREFIX_FM    = 1
+
+	// 前缀
+	NUM_FMT_PREFIX_EMPTY  = 0
+	NUM_FMT_PREFIX_DOLLAR = '$'
+	NUM_FMT_PREFIX_B      = 'B'
+	NUM_FMT_PREFIX_C      = 'C'
+	NUM_FMT_PREFIX_L      = 'L'
+	NUM_FMT_PREFIX_U      = 'U'
+
+	// 后缀 后缀决定了输出模式
+	NUM_FMT_SUFFIX_EMPTY = 0
+	NUM_FMT_SUFFIX_EEEE  = 1
+	NUM_FMT_SUFFIX_V     = 2
+	NUM_FMT_SUFFIX_RN    = 3
+	NUM_FMT_SUFFIX_X     = 4
+	NUM_FMT_SUFFIX_TM    = 5
+	NUM_FMT_SUFFIX_TM9   = 6
+	NUM_FMT_SUFFIX_TME   = 7
+	NUM_FMT_SUFFIX_TMe   = 8
+
+	// 辅助后缀
+	NUM_FMT_AUX_SUFFIX_EMPTY = 0
+	NUM_FMT_AUX_SUFFIX_MI    = 1
+	NUM_FMT_AUX_SUFFIX_PR    = 2
+
+	// S
+	NUM_FMT_S_EMPTY = 0
+	NUM_FMT_S_START = 1
+	NUM_FMT_S_END   = 2
+)
+
 type NumFmtDesc struct {
+	// 辅助前缀 前缀 十进制前半部分 逗号 小数点 十进制后半部分 后缀 辅助后缀
+	// 辅助前缀
+	auxPrefix int
+	// 互斥前缀
+	prefix int
 	// 前半部分 9或0的个数
 	// 如果是V 模式 忽略9或0的个数，不用格式做截取，直接用参数做乘积计算
 	preDec int
 	// 前半部分 是否是0开头
 	isLeadingZero bool
+	// 0开头的个数 FIXME
+	zeroCount int
 	// 后半部分 9或0的个数
 	postDec int
 	// 逗号位置 FIXME 同G
@@ -374,57 +416,11 @@ type NumFmtDesc struct {
 	s uint8
 	// X 的个数 输出区分大小写，输出前先对参数做四舍五入，转换为正整数
 	xCount int
-	// 辅助前缀
-	fm bool
-	// 互斥前缀
-	prefix int
+	// 后缀
+	suffix int
 	// 辅助后缀
 	auxSuffix int
-	// 辅助前缀+ 十进制+ EEEE
-	isEEEE bool
-	// 辅助前缀+ 独占后缀
-	isRn bool
-	tm   int
-	isX  bool
-	isV  bool
 }
-
-const (
-	// 辅助前缀
-	NUM_F_FILLMODE = 1 << 1
-
-	// 互斥前缀
-	NUM_F_DOLLAR = 1 << 2
-	NUM_F_B      = 1 << 3
-	NUM_F_C      = 1 << 4
-	NUM_F_L      = 1 << 5
-	NUM_F_U      = 1 << 6
-
-	// 辅助后缀
-	NUM_F_MI = 1 << 7
-	NUM_F_PR = 1 << 8
-
-	// 辅助前缀+ 十进制+ EEEE
-	NUM_F_EEEE = 1 << 9
-
-	// 辅助前缀+ 独占后缀
-	NUM_F_RN  = 1 << 10
-	NUM_F_TM  = 1
-	NUM_F_TME = 2
-	NUM_F_TM9 = 3
-	NUM_F_X   = 1 << 12
-
-	// 中缀 或后缀
-	NUM_F_V = 1 << 13
-	NUM_F_G = 1 << 14
-
-	// 前缀 中缀 后缀
-	NUM_F_D = 1 << 15
-
-	//前缀 后缀
-	NUM_F_START_S = 1
-	NUM_F_END_S   = 1 << 1
-)
 
 const (
 	empty = ""
@@ -433,18 +429,18 @@ const (
 	dec   = "."
 )
 
-type NumParam struct {
+type NumParamDesc struct {
 	sign      string
-	pre       string
-	post      string
+	preDec    string
+	postDec   string
 	eSign     string
 	eExponent int
 	// 可选
-	isFloat bool
-	isEEEE  bool
+	existDec bool
+	isEEEE   bool
 }
 
-func (numParam *NumParam) string() string {
+func (numParam *NumParamDesc) string() string {
 	var result bytes.Buffer
 	if plus == numParam.sign {
 		result.WriteString(plus)
@@ -455,15 +451,15 @@ func (numParam *NumParam) string() string {
 		panic("sign属性格式错误")
 	}
 
-	if empty != numParam.pre {
-		result.WriteString(numParam.pre)
+	if empty != numParam.preDec {
+		result.WriteString(numParam.preDec)
 	} else {
 		panic("格式错误,整数部分是空的")
 	}
 
-	if numParam.post != empty {
+	if numParam.postDec != empty {
 		result.WriteByte('.')
-		result.WriteString(string(numParam.post))
+		result.WriteString(string(numParam.postDec))
 	}
 
 	if numParam.eExponent != 0 {
@@ -486,8 +482,6 @@ func (numParam *NumParam) string() string {
 // 解析数值格式
 func parseNumFormat(format string) NumFmtDesc {
 	var fmtDesc NumFmtDesc
-	fmtDesc.commaIndex = -1
-	fmtDesc.decIndex = -1
 
 	// 格式字节长度
 	formatLen := len(format)
@@ -498,8 +492,9 @@ func parseNumFormat(format string) NumFmtDesc {
 	isRerun := false
 	var c byte
 
-	var preDec = bytes.Buffer{}
-	var postDec = bytes.Buffer{}
+	readDec := false
+	//var preDec = bytes.Buffer{}
+	//var postDec = bytes.Buffer{}
 	for i := 0; i < formatLen; {
 		// 截取一个字符
 		if !isRerun {
@@ -517,7 +512,7 @@ func parseNumFormat(format string) NumFmtDesc {
 			// 匹配关键词并存储
 			switch c {
 			case ',':
-				if fmtDesc.commaIndex == -1 {
+				if fmtDesc.commaIndex == 0 {
 					if i == 0 {
 						panic(errors.New("不能以逗号开头"))
 					} else if i == lastFormatIndex {
@@ -532,93 +527,85 @@ func parseNumFormat(format string) NumFmtDesc {
 				}
 
 			case '.':
-				if fmtDesc.decIndex == -1 {
+				if !readDec {
 					fmtDesc.decIndex = i
+					readDec = true
 				} else {
 					panic(errors.New("只能有1个 ."))
 				}
 			case '0':
-				if fmtDesc.decIndex == -1 {
-					preDec.WriteByte('0')
+				if readDec {
+					fmtDesc.postDec++
+					//postDec.WriteByte('0')
 				} else {
-					postDec.WriteByte('0')
+					fmtDesc.preDec++
+					//preDec.WriteByte('0')
 				}
 			case '9':
-				if fmtDesc.decIndex == -1 {
-					preDec.WriteByte('9')
+				if readDec {
+					fmtDesc.postDec++
+					//postDec.WriteByte('9')
 				} else {
-					postDec.WriteByte('9')
+					fmtDesc.preDec++
+					//preDec.WriteByte('9')
 				}
 			case '$':
-				if fmtDesc.prefix != 0 && i == 0 {
-					fmtDesc.prefix |= NUM_F_DOLLAR
+				if fmtDesc.prefix == NUM_FMT_PREFIX_EMPTY && i == 0 {
+					fmtDesc.prefix = NUM_FMT_PREFIX_DOLLAR
 				} else {
 					panic(errors.New("格式前缀冲突 " + "$"))
 				}
 			case 'B':
-				if fmtDesc.prefix != 0 {
-					fmtDesc.prefix |= NUM_F_B
+				if fmtDesc.prefix == NUM_FMT_PREFIX_EMPTY {
+					fmtDesc.prefix = NUM_FMT_PREFIX_B
 				} else {
 					panic(errors.New("格式前缀冲突 " + "B"))
 				}
 			case 'C':
-				if fmtDesc.prefix != 0 {
+				if fmtDesc.prefix == NUM_FMT_PREFIX_EMPTY {
 					panic(errors.New("格式前缀冲突 " + "C"))
 				} else if lastFormatIndex != i && 0 != i {
 					panic(errors.New("C 只能在开头或者结尾"))
 				}
-				fmtDesc.prefix |= NUM_F_C
+				fmtDesc.prefix = NUM_FMT_PREFIX_C
 			case 'L':
-				if fmtDesc.prefix != 0 {
+				if fmtDesc.prefix == NUM_FMT_PREFIX_EMPTY {
+					fmtDesc.prefix = NUM_FMT_PREFIX_L
+				} else {
 					panic(errors.New("格式前缀冲突 " + "L"))
 				}
 			case 'U':
-				if fmtDesc.prefix != 0 {
+				if fmtDesc.prefix == NUM_FMT_PREFIX_EMPTY {
 					panic(errors.New("格式前缀冲突 " + "U"))
 				} else if lastFormatIndex != i && 0 != i {
 					panic(errors.New("U 只能在开头或者结尾"))
 				}
-				fmtDesc.prefix |= NUM_F_U
+				fmtDesc.prefix = NUM_FMT_PREFIX_U
 			case NLS_NUMERIC_CHARACTERS[0]:
-				// 默认是 . oracle中是变量可以设置为其他值 FIXME
-				if fmtDesc.decIndex != -1 {
-					isRerun = true
-					fmtDesc.decIndex = i
-					continue
-				} else {
-					panic(errors.New("只能有1个 " + string(NLS_NUMERIC_CHARACTERS[0])))
-				}
 			case NLS_NUMERIC_CHARACTERS[1]:
-				// oracle中是变量可以设置为其他值 FIXME
-				if fmtDesc.commaIndex != -1 {
-					isRerun = true
-					continue
-				} else {
-					panic(errors.New("只能有1个 " + string(NLS_NUMERIC_CHARACTERS[1])))
-				}
 			case 'E':
-				if !fmtDesc.isEEEE {
+				if fmtDesc.suffix == NUM_FMT_SUFFIX_EMPTY {
 					j := i + 4
 					followingChars := format[i+1 : j]
 					if "EEE" == followingChars {
 						i = j
-						fmtDesc.isEEEE = true
+						fmtDesc.suffix = NUM_FMT_SUFFIX_EEEE
 					} else {
 						panic(errors.New(num_fmt_part_err + "E"))
 					}
 				} else {
-					panic(errors.New("格式不正确,只能有1组 EEEE"))
+					panic(errors.New("conflict with E"))
 				}
 			case 'F':
 				i++
 				followingOneChar := format[i]
 				switch followingOneChar {
 				case 'M':
-					if !fmtDesc.fm {
+					if fmtDesc.auxPrefix == NUM_FMT_AUX_PREFIX_EMPTY {
 						panic(errors.New("只能有1组 FM"))
 					}
 					if 1 == i {
-						fmtDesc.fm = true
+						fmtDesc.auxPrefix = NUM_FMT_AUX_PREFIX_FM
 					} else {
 						panic(errors.New("FM 必须在开头"))
 					}
@@ -626,7 +613,7 @@ func parseNumFormat(format string) NumFmtDesc {
 					panic(errors.New(num_fmt_part_err + "F"))
 				}
 			case 'M':
-				if fmtDesc.auxSuffix != 0 {
+				if fmtDesc.auxSuffix == NUM_FMT_AUX_SUFFIX_EMPTY {
 					panic(errors.New("辅助后缀冲突" + "MI"))
 				} else if i == (lastFormatIndex - 1) {
 					panic(errors.New("MI 只能在结尾"))
@@ -636,12 +623,12 @@ func parseNumFormat(format string) NumFmtDesc {
 				followingOneChar := format[i]
 				switch followingOneChar {
 				case 'I':
-					fmtDesc.auxSuffix |= NUM_F_MI
+					fmtDesc.auxSuffix = NUM_FMT_AUX_SUFFIX_MI
 				default:
 					panic(errors.New(num_fmt_part_err + "M"))
 				}
 			case 'P':
-				if fmtDesc.auxSuffix != 0 {
+				if fmtDesc.auxSuffix == NUM_FMT_AUX_SUFFIX_EMPTY {
 					panic(errors.New("辅助后缀冲突" + "PR"))
 				} else if i == (lastFormatIndex - 1) {
 					panic(errors.New("PR 只能在结尾"))
@@ -651,54 +638,56 @@ func parseNumFormat(format string) NumFmtDesc {
 				followingOneChar := format[i]
 				switch followingOneChar {
 				case 'R':
-					fmtDesc.auxSuffix |= NUM_F_PR
+					fmtDesc.auxSuffix = NUM_FMT_AUX_SUFFIX_PR
 				default:
 					panic(errors.New(num_fmt_part_err + "P"))
 				}
 			case 'R':
+				// 判断独占 长度 FIXME
 				i++
 				followingOneChar := format[i]
 				switch followingOneChar {
 				case 'N':
-					// 判断独占 长度 FIXME
-					if !fmtDesc.isRn {
+					if fmtDesc.suffix == NUM_FMT_SUFFIX_EMPTY {
 						panic(errors.New("只能有1个 RN"))
-					} else if (fmtDesc.fm) && (i == lastFormatIndex && i != 3) {
+					} else if fmtDesc.auxPrefix == NUM_FMT_AUX_PREFIX_FM && formatLen == 4 {
 						panic(errors.New("包含RN的格式,除了 FM 和 RN 不能有其他格式字符"))
-					} else if !(fmtDesc.fm) && i == lastFormatIndex && i != 1 {
+					} else if fmtDesc.auxPrefix == NUM_FMT_AUX_PREFIX_EMPTY && formatLen == 2 {
 						panic(errors.New("包含RN的格式,除了 FM 和 RN 不能有其他格式字符"))
 					}
 
-					fmtDesc.isRn = true
+					fmtDesc.suffix = NUM_FMT_SUFFIX_RN
 				default:
 					panic(errors.New(num_fmt_part_err + "R"))
 				}
 			case 'S':
-				if fmtDesc.s != 0 {
+				if fmtDesc.s == NUM_FMT_S_EMPTY {
 					panic(errors.New("只能有1个 S"))
-				} else if i != lastFormatIndex && i != 0 {
+				} else if i == lastFormatIndex && i != 0 {
 					panic(errors.New("S 只能在开头或者结尾"))
 				}
 
 				if i == 0 {
-					fmtDesc.s = NUM_F_START_S
+					fmtDesc.s = NUM_FMT_S_START
 				} else {
-					fmtDesc.s = NUM_F_END_S
+					fmtDesc.s = NUM_FMT_S_END
 				}
 			case 'T':
-				if fmtDesc.tm != 0 {
+				if fmtDesc.suffix == NUM_FMT_SUFFIX_EMPTY {
 					i++
 					followingOneChar := format[i]
 					if 'M' == followingOneChar {
 						if i == lastFormatIndex {
-							fmtDesc.tm = NUM_F_TM
+							fmtDesc.suffix = NUM_FMT_SUFFIX_TM
 						} else {
 							i++
 							followingOneChar = format[i]
 							if 'E' == followingOneChar {
-								fmtDesc.tm = NUM_F_TME
+								fmtDesc.suffix = NUM_FMT_SUFFIX_TME
+							} else if 'e' == followingOneChar { // FIXME 已经转换为了大写
+								fmtDesc.suffix = NUM_FMT_SUFFIX_TMe
 							} else if '9' == followingOneChar {
-								fmtDesc.tm = NUM_F_TM9
+								fmtDesc.suffix = NUM_FMT_SUFFIX_TM9
 							} else {
 								panic(errors.New("格式错误在 TM 附近"))
 							}
@@ -710,14 +699,20 @@ func parseNumFormat(format string) NumFmtDesc {
 					panic(errors.New("只能有1组 TM"))
 				}
 			case 'V':
-				if !fmtDesc.isV {
+				if fmtDesc.suffix == NUM_FMT_SUFFIX_EMPTY {
 					panic(errors.New("只能有1个 V"))
 				} else if 0 != i {
 					panic(errors.New("V 不能在开头"))
 				}
-				fmtDesc.isV = true
+				fmtDesc.suffix = NUM_FMT_SUFFIX_V
 			case 'X':
-				fmtDesc.isX = true
+				if fmtDesc.suffix == NUM_FMT_SUFFIX_EMPTY {
+					panic(errors.New("conflict with X"))
+				} else if 0 != i {
+					panic(errors.New("V 不能在开头"))
+				}
+
+				fmtDesc.suffix = NUM_FMT_SUFFIX_X
 				fmtDesc.xCount++
 			default:
 				panic(errors.New(out_keyword_range_err))
@@ -735,8 +730,8 @@ func parseNumFormat(format string) NumFmtDesc {
 }
 
 // 解析数字参数
-func preParseNumParam(num string) NumParam {
-	var numParam NumParam
+func parseNumParam(num string) NumParamDesc {
+	var paramDesc NumParamDesc
 
 	readDec := false
 
@@ -755,22 +750,22 @@ func preParseNumParam(num string) NumParam {
 		case '.':
 			if readDec == false {
 				readDec = true
-				numParam.isFloat = true
+				paramDesc.existDec = true
 			} else {
 				panic("多个符号 " + ".")
 			}
 		case 'e', 'E':
 			i++
 
-			numParam.isEEEE = true
+			paramDesc.isEEEE = true
 			var exponent = bytes.Buffer{}
 
 			if num[i] == '+' {
-				numParam.eSign = plus
+				paramDesc.eSign = plus
 			} else if num[i] == '-' {
-				numParam.eSign = minus
+				paramDesc.eSign = minus
 			} else if num[i] <= '9' && num[i] >= '0' {
-				numParam.eSign = empty
+				paramDesc.eSign = empty
 				exponent.WriteByte(num[i])
 			}
 
@@ -786,17 +781,17 @@ func preParseNumParam(num string) NumParam {
 			if err != nil {
 				panic(err)
 			}
-			numParam.eExponent = exponentNum
+			paramDesc.eExponent = exponentNum
 			fmt.Println(exponent.String())
 		case '-':
 			if i == 0 {
-				numParam.sign = minus
+				paramDesc.sign = minus
 			} else {
 				panic("符号位置不对 " + "-")
 			}
 		case '+':
 			if i == 0 {
-				numParam.sign = plus
+				paramDesc.sign = plus
 			} else {
 				panic("符号位置不对 " + "+")
 			}
@@ -811,7 +806,60 @@ func preParseNumParam(num string) NumParam {
 	// 十进制 符号可选
 	// 十进制 符号可选 逗号分组
 
-	return numParam
+	paramDesc.preDec = preBuf.String()
+	paramDesc.postDec = postBuf.String()
+	return paramDesc
+}
+
+func parseNum(f string, num string) string {
+	numFmtDesc := parseNumFormat(f)
+	numFmtDescStr := fmt.Sprintf("%#v\n", numFmtDesc)
+	fmt.Println(numFmtDescStr)
+
+	numParamDesc := parseNumParam(num)
+	numParamStr := fmt.Sprintf("%#v\n", numParamDesc)
+	fmt.Println(numParamStr)
+
+	result := bytes.Buffer{}
+
+	switch numFmtDesc.suffix {
+	case NUM_FMT_SUFFIX_EMPTY:
+		if numParamDesc.isEEEE {
+
+		}
+
+		paramLen := len(numParamDesc.preDec)
+		if numFmtDesc.preDec > paramLen {
+
+		} else {
+			panic("格式的整数部分的长度不能比参数的整数部分的长度小")
+		}
+	case NUM_FMT_SUFFIX_EEEE:
+	case NUM_FMT_SUFFIX_V:
+		if numParamDesc.isEEEE {
+			panic("格式V 不支持科学计数参数")
+		}
+	case NUM_FMT_SUFFIX_RN:
+		if numParamDesc.isEEEE {
+			panic("格式RN 不支持科学计数参数")
+		}
+	case NUM_FMT_SUFFIX_X:
+		if numParamDesc.isEEEE {
+			panic("格式X 不支持科学计数参数")
+		}
+	case NUM_FMT_SUFFIX_TM, NUM_FMT_SUFFIX_TM9:
+		if numParamDesc.isEEEE {
+
+		}
+	case NUM_FMT_SUFFIX_TME, NUM_FMT_SUFFIX_TMe:
+		if numParamDesc.isEEEE {
+
+		}
+	default:
+
+	}
+
+	return result.String()
 }
 
 // 解析日期格式
@@ -1104,100 +1152,6 @@ func parseDchFormat(format string) []string {
 	}
 
 	return keywordGroup
-}
-
-// 根据格式解析参数
-func parseNumParam(param string, keywordGroup []string, numDesc NumFmtDesc) string {
-	// 新的 数字或者 字符串或者 日期
-
-	// 结果的最后1个字符的索引
-	//reaultEnd := len(param) - 1
-	// 获取参数的字符的下标
-	paramIndex := 0
-	// 参数字节长度
-	paramLen := len(param)
-
-	// 倒序存储
-	inverseResult := make([]byte, paramLen)
-
-	result := bytes.Buffer{}
-
-	// 循环模式
-	// 获取模式，去字符或字符串，校验，处理
-	for _, keyword := range keywordGroup {
-		// 获取长度，截取字符串 TODO
-		switch keyword {
-		//,(comma) 半角逗号 装饰作用
-		case NUM_COMMA:
-			paramIndex++
-		// .(period) 半角句号,点号，小数点
-		case NUM_DEC:
-			inverseResult = append(inverseResult, '.')
-			paramIndex++
-		// $ 美元符号 返回的值以$符号开头 TODO
-		// to_number和to_char的输出表现不一样
-		case NUM_DOLLAR:
-		case NUM_0:
-		//9 替换数字，开头的0替换为空格，0除外
-		case NUM_9:
-			// 校验参数是否合法
-			if '0' <= param[paramIndex] && param[paramIndex] <= '9' {
-				inverseResult = append(inverseResult, param[paramIndex])
-			} else {
-				panic(errors.New(invalid_num_err))
-			}
-
-			paramIndex++
-		case NUM_B:
-		case NUM_C:
-		case NUM_D:
-		case NUM_E:
-			scienceFmt := "%" + fmt.Sprint(numDesc.postDec) + ".E"
-			//
-			result.WriteString(fmt.Sprintf(scienceFmt, param))
-		case NUM_FM:
-		case NUM_G:
-		case NUM_L:
-		case NUM_MI:
-		case NUM_PR:
-			// 如果开头的字符是负号，则用尖括号包裹值
-			// FIXME
-			result.WriteByte('<')
-			result.WriteByte('>')
-		case NUM_RN:
-			d, err := strconv.Atoi(param)
-			if err != nil {
-				panic(err)
-			}
-			result = intToRoman(d)
-		case NUM_S:
-		case NUM_V:
-		case NUM_X:
-		default:
-			panic(errors.New("不应该到达此处.不应该出现的格式"))
-		}
-
-		// 检查 格式长度是否超过参数长度
-		// 超过部分是0 还是空格?
-		//if paramIndex == paramLen {
-		//	break
-		//}
-	}
-
-	//if paramIndex != paramLen {
-	//	panic(errors.New("参数长度比格式个数多"))
-	//}
-
-	//result := bytes.Buffer{}
-	//for i := len(inverseResult) - 1; i >= 0; i-- {
-	//	result.WriteByte(inverseResult[i])
-	//}
-
-	//if len(result) == 0 {
-	//
-	//}
-
-	return result.String()
 }
 
 func ToUpper(c *byte) {
