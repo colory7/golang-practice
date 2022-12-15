@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"math"
 	"strconv"
 	"testing"
 	"unicode/utf8"
@@ -803,12 +802,36 @@ func parseNumParam(num string) NumParamDesc {
 		}
 	}
 
-	// EEEE
 	// 十进制 符号可选
 	// 十进制 符号可选 逗号分组
 
-	paramDesc.preDec = preBuf.String()
-	paramDesc.postDec = postBuf.String()
+	// 科学计数 转换为 十进制
+	// TODO 提前转换 还是不转换 十进制
+	if paramDesc.isEEEE {
+		if preBuf.Len() > 0 {
+			paramDesc.preDec = preBuf.String()
+		} else {
+			paramDesc.preDec = "0"
+		}
+
+		if postBuf.Len() > 0 {
+			paramDesc.postDec = postBuf.String()
+		}
+		ff := paramDesc.preDec + "." + paramDesc.postDec
+		fmt.Println(ff)
+		d, err := strconv.ParseFloat(ff, 64)
+		if err != nil {
+			panic(err)
+		}
+		fff := "%" + paramDesc.preDec + "." + paramDesc.postDec + "f"
+		v := fmt.Sprintf(fff, d)
+		fmt.Println(v)
+
+	} else {
+		paramDesc.preDec = preBuf.String()
+		paramDesc.postDec = postBuf.String()
+	}
+
 	return paramDesc
 }
 
@@ -823,34 +846,42 @@ func parseNum(f string, num string) string {
 
 	result := bytes.Buffer{}
 
+	var bs []byte
+
 	// FM 模式，去除空格
-	if numFmtDesc.auxPrefix == NUM_FMT_AUX_PREFIX_FM {
 
-	}
-
+	wroteSign := false
 	switch numFmtDesc.suffix {
 	// 十进制
 	case NUM_FMT_SUFFIX_EMPTY:
-		// 转换科学计数
-		if numParamDesc.isEEEE {
-			d, err := strconv.ParseFloat(numParamDesc.preDec+"."+numParamDesc.postDec, 64)
-			if err != nil {
-				panic(err)
-			}
-
-			d = d * math.Pow10(numParamDesc.eExponent)
-		}
-
 		paramLen := len(numParamDesc.preDec)
 		if numFmtDesc.preDec >= paramLen {
-			for i := 0; i < numFmtDesc.preDec; i++ {
-				result.WriteByte(numParamDesc.preDec[i])
+			for i := numFmtDesc.preDec; i >= 0; i-- {
+				if i < paramLen {
+					if !wroteSign {
+						if numFmtDesc.auxPrefix == NUM_FMT_AUX_PREFIX_FM {
+							if numParamDesc.sign == minus {
+								bs = append(bs, '-')
+							}
+						} else {
+							if numParamDesc.sign == minus {
+								bs = append(bs, '-')
+							} else {
+								bs = append(bs, ' ')
+							}
+						}
+						wroteSign = true
+					}
+					bs = append(bs, numParamDesc.preDec[paramLen-i-1])
+				} else {
+					bs = append(bs, ' ')
+				}
 			}
 
 			if numFmtDesc.postDec > 0 {
-				result.WriteByte('.')
+				bs = append(bs, '.')
 				for i := 0; i < numFmtDesc.postDec; i++ {
-					result.WriteByte(numParamDesc.postDec[i])
+					bs = append(bs, numParamDesc.postDec[i])
 				}
 			}
 		} else {
@@ -879,12 +910,16 @@ func parseNum(f string, num string) string {
 		if numParamDesc.isEEEE {
 			panic("格式X 不支持科学计数参数")
 		}
-	// 十进制 少写几个9 最小文本匹配 没有修饰符逗号，货币符号等
+	// 十进制
+	// 少写几个9 最小文本匹配 没有修饰符逗号，货币符号等
+	// 超过64个字符则转换为科学计数
 	case NUM_FMT_SUFFIX_TM, NUM_FMT_SUFFIX_TM9:
 		if numParamDesc.isEEEE {
 
 		}
-	// 科学计数 少写几个9 最小文本匹配 没有修饰符逗号，货币符号等
+	// 科学计数
+	// 少写几个9 最小文本匹配 没有修饰符逗号，货币符号等
+	// 小数部分最多36个字符，整数部分最多1个字符
 	case NUM_FMT_SUFFIX_TME, NUM_FMT_SUFFIX_TMe:
 		if numParamDesc.isEEEE {
 
@@ -893,6 +928,7 @@ func parseNum(f string, num string) string {
 		panic("Theoretically unreachable")
 	}
 
+	result.Write(bs)
 	return result.String()
 }
 
