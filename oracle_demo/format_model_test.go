@@ -8,6 +8,35 @@ import (
 	"testing"
 )
 
+//NumberFormatModel
+//DatetimeFormatModel
+
+func TestMatchNumberFormatModel(t *testing.T) {
+	// 1.找到模式,最大匹配
+	// 2.根据模式替换字符串
+
+	//param:="111"
+	format := "999"
+	parseNumFormat(format)
+}
+
+func TestAscii(t *testing.T) {
+	theme := "狙击 start"
+	for i := 0; i < len(theme); i++ {
+		fmt.Printf("ascii:%c %d\n", theme[i], theme[i])
+	}
+}
+
+func TestAscii2(t *testing.T) {
+	theme := "狙击 start"
+	for i := 0; i < len(theme); i++ {
+		f := theme[i]
+		if f >= 32 && f <= 127 {
+			fmt.Println((string)(f))
+		}
+	}
+}
+
 func TestE(t *testing.T) {
 	fmt.Printf("%f\n", 1.345e2*10) //e9 就是小数点向右移动9位
 
@@ -108,4 +137,23 @@ func TestParseNum3(t *testing.T) {
 
 	result := parseNum(f, num)
 	fmt.Println(result)
+}
+
+func TestParseDchByStr(t *testing.T) {
+	param := "公元"
+	format := "A.D."
+
+	//fmt.Println(format[2:4])
+
+	parseDchByStr(param, format)
+}
+
+func TestParseDchByStr2(t *testing.T) {
+	param := "公元 2023-10-26 01:30:56"
+	format := "A.D. yyyy-MM-dd hh:mi:ss"
+
+	parseDchByStr(param, format)
+}
+
+func TestParseDchByTime(t *testing.T) {
 }

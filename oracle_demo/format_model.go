@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"testing"
 	"unicode/utf8"
 )
 
@@ -219,143 +218,68 @@ const (
 
 var dchSkip = [...]uint8{'-', '/', ',', '.', ';', ':', '"'}
 
-//type keyword struct {
-//	name string
-//	len uint8
-//	id int
-//}
+type keyword struct {
+	name string
+	len  uint8
+}
 
-var numKeywords map[string]uint8
-var dchKeywords map[string]uint8
+var dchKeywords map[string]keyword
 
 func init() {
-	numKeywords = map[string]uint8{
-		",":    1,
-		".":    1,
-		"0":    1,
-		"9":    1,
-		"B":    1,
-		"C":    1,
-		"D":    1,
-		"EEEE": 4,
-		"FM":   2,
-		"G":    1,
-		"L":    1,
-		"MI":   2,
-		"PL":   2,
-		"PR":   2,
-		"RN":   2,
-		"SG":   2,
-		"SP":   2,
-		"S":    1,
-		"TH":   2,
-		"V":    1,
-		"b":    1,
-		"c":    1,
-		"d":    1,
-		"eeee": 4,
-		"fm":   1,
-		"g":    1,
-		"l":    1,
-		"mi":   2,
-		"pl":   2,
-		"pr":   2,
-		"rn":   2,
-		"sg":   2,
-		"sp":   2,
-		"s":    1,
-		"th":   2,
-		"v":    1,
+
+	dchKeywords = map[string]keyword{
+		DCH_A_D:   {DCH_A_D, 4},
+		DCH_AD:    {DCH_AD, 2},
+		DCH_AM:    {DCH_AM, 2},
+		DCH_A_M:   {DCH_A_M, 4},
+		DCH_BC:    {DCH_BC, 2},
+		DCH_B_C:   {DCH_B_C, 4},
+		DCH_CC:    {DCH_CC, 2},
+		DCH_DAY:   {DCH_DAY, 3},
+		DCH_DDD:   {DCH_DDD, 3},
+		DCH_DD:    {DCH_DD, 2},
+		DCH_DY:    {DCH_DY, 2},
+		DCH_D:     {DCH_D, 1},
+		DCH_FF1:   {DCH_FF1, 3},
+		DCH_FF2:   {DCH_FF2, 3},
+		DCH_FF3:   {DCH_FF3, 3},
+		DCH_FF4:   {DCH_FF4, 3},
+		DCH_FF5:   {DCH_FF5, 3},
+		DCH_FF6:   {DCH_FF6, 3},
+		DCH_FF7:   {DCH_FF7, 3},
+		DCH_FF8:   {DCH_FF8, 3},
+		DCH_FF9:   {DCH_FF9, 3},
+		DCH_FX:    {DCH_FX, 2},
+		DCH_HH24:  {DCH_HH24, 4},
+		DCH_HH12:  {DCH_HH12, 4},
+		DCH_HH:    {DCH_HH, 2},
+		DCH_IW:    {DCH_IW, 2},
+		DCH_IYYY:  {DCH_IYYY, 4},
+		DCH_IYY:   {DCH_IYY, 3},
+		DCH_IY:    {DCH_IY, 2},
+		DCH_I:     {DCH_I, 1},
+		DCH_J:     {DCH_J, 1},
+		DCH_MI:    {DCH_MI, 2},
+		DCH_MM:    {DCH_MM, 2},
+		DCH_MONTH: {DCH_MONTH, 5},
+		DCH_MON:   {DCH_MON, 3},
+		DCH_P_M:   {DCH_P_M, 4},
+		DCH_PM:    {DCH_PM, 2},
+		DCH_Q:     {DCH_Q, 1},
+		DCH_RM:    {DCH_RM, 2},
+		DCH_SSSSS: {DCH_SSSSS, 5},
+		DCH_SSSS:  {DCH_SSSS, 4},
+		DCH_SS:    {DCH_SS, 2},
+		DCH_TZH:   {DCH_TZH, 3},
+		DCH_TZM:   {DCH_TZM, 3},
+		DCH_WW:    {DCH_WW, 2},
+		DCH_W:     {DCH_W, 1},
+		DCH_Y_YYY: {DCH_Y_YYY, 5},
+		DCH_YYYY:  {DCH_YYYY, 4},
+		DCH_YYY:   {DCH_YYY, 3},
+		DCH_YY:    {DCH_YY, 2},
+		DCH_Y:     {DCH_Y, 1},
 	}
-
-	dchKeywords = map[string]uint8{
-		"DCH_A_D":   4,
-		"DCH_A_M":   4,
-		"DCH_AD":    2,
-		"DCH_AM":    2,
-		"DCH_B_C":   4,
-		"DCH_BC":    2,
-		"DCH_CC":    2,
-		"DCH_DAY":   3,
-		"DCH_DDD":   3,
-		"DCH_DD":    2,
-		"DCH_DY":    2,
-		"DCH_D":     1,
-		"DCH_FF1":   3,
-		"DCH_FF2":   3,
-		"DCH_FF3":   3,
-		"DCH_FF4":   3,
-		"DCH_FF5":   3,
-		"DCH_FF6":   3,
-		"DCH_FF7":   3,
-		"DCH_FF8":   3,
-		"DCH_FF9":   3,
-		"DCH_FX":    2,
-		"DCH_HH24":  4,
-		"DCH_HH12":  4,
-		"DCH_HH":    2,
-		"DCH_IDDD":  4,
-		"DCH_ID":    2,
-		"DCH_IW":    2,
-		"DCH_IYYY":  4,
-		"DCH_IYY":   3,
-		"DCH_IY":    2,
-		"DCH_I":     1,
-		"DCH_J":     1,
-		"DCH_MI":    2,
-		"DCH_MM":    2,
-		"DCH_MONTH": 5,
-		"DCH_MON":   3,
-		"DCH_MS":    2,
-		"DCH_OF":    2,
-		"DCH_P_M":   4,
-		"DCH_PM":    2,
-		"DCH_Q":     1,
-		"DCH_RM":    2,
-		"DCH_SSSSS": 5,
-		"DCH_SSSS":  4,
-		"DCH_SS":    2,
-		"DCH_TZH":   3,
-		"DCH_TZM":   3,
-		"DCH_TZ":    2,
-		"DCH_US":    2,
-		"DCH_WW":    2,
-		"DCH_W":     1,
-		"DCH_Y_YYY": 5,
-		"DCH_YYYY":  4,
-		"DCH_YYY":   3,
-		"DCH_YY":    2,
-		"DCH_Y":     1,
-	}
-}
-
-func TestAscii(t *testing.T) {
-	theme := "狙击 start"
-	for i := 0; i < len(theme); i++ {
-		fmt.Printf("ascii:%c %d\n", theme[i], theme[i])
-	}
-}
-
-func TestAscii2(t *testing.T) {
-	theme := "狙击 start"
-	for i := 0; i < len(theme); i++ {
-		f := theme[i]
-		if f >= 32 && f <= 127 {
-			fmt.Println((string)(f))
-		}
-	}
-}
-
-//NumberFormatModel
-//DatetimeFormatModel
-
-func TestMatchNumberFormatModel(t *testing.T) {
-	// 1.找到模式,最大匹配
-	// 2.根据模式替换字符串
-
-	//param:="111"
-	format := "999"
-	parseNumFormat(format)
 }
 
 const (
@@ -932,12 +856,21 @@ func parseNum(f string, num string) string {
 	return result.String()
 }
 
+const (
+	NLS_AD = "公元"
+	NLS_AM = "上午"
+	//NLS_BC = "公元前"
+	//NLS_PM = "下午"
+)
+
 // 解析日期格式
 // 可以适当考虑使用字典树实现
-func parseDchFormat(format string) []string {
-	var keywordGroup = make([]string, 4)
+func parseDchByStr(param string, format string) string {
+	//var keywordGroup = make([]keyword, 4)
 
+	result := bytes.Buffer{}
 	l := len(format)
+
 	for i := 0; i < l; {
 		// 截取一个字符
 		c := format[i]
@@ -949,26 +882,64 @@ func parseDchFormat(format string) []string {
 
 			// 匹配关键词并存储
 			switch c {
+			// 跳过字符
+			case '-', '/', ',', '.', ';', ':':
+
+			case '"':
+				var skipWord bytes.Buffer
+				for ; i < l; i++ {
+					if '"' == format[i] {
+						break
+					} else {
+						skipWord.WriteByte(format[i])
+					}
+				}
+				result.Write(skipWord.Bytes())
 			case 'A':
+				start := i
 				i++
 				followingOneChar := format[i]
 				switch followingOneChar {
 				case '.':
-					j := i + 4
-					followingChars := format[i:j]
-					if "A.D." == followingChars {
-						keywordGroup = append(keywordGroup, DCH_A_D)
-						i = j
-					} else if "A.M." == followingChars {
-						keywordGroup = append(keywordGroup, DCH_A_M)
-						i = j
+					i++
+					j := i + 2
+					if j <= len(format) {
+						followingChars := format[i:j]
+						if "D." == followingChars {
+							v := param[start:(start + len(NLS_AD))]
+							if v == NLS_AD {
+								fmt.Println(NLS_AD)
+								i = j
+							} else {
+								panic("语法错误,参数与 A.D. 格式不匹配")
+							}
+						} else if "M." == followingChars {
+							v := param[i:j]
+							if v == NLS_AM {
+								i = j
+							} else {
+								panic("语法错误,参数与 A.M. 格式不匹配")
+							}
+						} else {
+							panic(errors.New(dch_fmt_part_err + "A."))
+						}
 					} else {
 						panic(errors.New(dch_fmt_part_err + "A."))
 					}
 				case 'D':
-					keywordGroup = append(keywordGroup, DCH_AD)
+					v := param[start:i]
+					if v == NLS_AD {
+						//
+					} else {
+						panic("语法错误,参数与 AD 格式不匹配")
+					}
 				case 'M':
-					keywordGroup = append(keywordGroup, DCH_AM)
+					v := param[start:i]
+					if v == NLS_AM {
+						//
+					} else {
+						panic("语法错误,参数与 AM 格式不匹配")
+					}
 				default:
 					panic(errors.New(dch_fmt_part_err + "A"))
 				}
@@ -977,12 +948,12 @@ func parseDchFormat(format string) []string {
 				followingOneChar := format[i]
 				switch followingOneChar {
 				case 'C':
-					keywordGroup = append(keywordGroup, DCH_BC)
+					//keywordGroup = append(keywordGroup, DCH_BC)
 				case '.':
 					j := i + 4
 					followingChars := format[i:j]
 					if ".C." == followingChars {
-						keywordGroup = append(keywordGroup, DCH_B_C)
+						//keywordGroup = append(keywordGroup, DCH_B_C)
 					}
 					i = j
 				default:
@@ -993,27 +964,31 @@ func parseDchFormat(format string) []string {
 				followingOneChar := format[i]
 				switch followingOneChar {
 				case 'C':
-					keywordGroup = append(keywordGroup, DCH_CC)
+					//keywordGroup = append(keywordGroup, DCH_CC)
 				default:
 					panic(errors.New(dch_fmt_part_err + "C"))
 				}
 			case 'D':
+				// FIXME 逻辑问题 DDD DD D
+				start := i
 				i++
 				followingOneChar := format[i]
 				switch followingOneChar {
 				case 'D':
-					keywordGroup = append(keywordGroup, DCH_DD)
+					//keywordGroup = append(keywordGroup, DCH_DD)
 					thirdChar := format[i+1]
 					if thirdChar == 'D' {
-						keywordGroup = append(keywordGroup, DCH_DDD)
+						//keywordGroup = append(keywordGroup, DCH_DDD)
 					}
+					v := param[start:i]
+					result.WriteString(v)
 				case 'Y':
-					keywordGroup = append(keywordGroup, DCH_DY)
+					//keywordGroup = append(keywordGroup, DCH_DY)
 				default:
 					followingTwoChars := format[i : i+3]
 					i = i + 3
 					if followingTwoChars == "AY" {
-						keywordGroup = append(keywordGroup, DCH_DAY)
+						//keywordGroup = append(keywordGroup, DCH_DAY)
 					} else {
 						panic(errors.New(dch_fmt_part_err + "D"))
 					}
@@ -1023,29 +998,31 @@ func parseDchFormat(format string) []string {
 				followingOneChar := format[i]
 				switch followingOneChar {
 				case 'X':
-					keywordGroup = append(keywordGroup, DCH_FX)
+					//keywordGroup = append(keywordGroup, DCH_FX)
+				case 'M':
+					//FIXME
 				default:
 					followingTwoChars := format[i : i+3]
 					i = i + 3
 					switch followingTwoChars {
 					case "F1":
-						keywordGroup = append(keywordGroup, DCH_FF1)
+						//keywordGroup = append(keywordGroup, DCH_FF1)
 					case "F2":
-						keywordGroup = append(keywordGroup, DCH_FF2)
+						//keywordGroup = append(keywordGroup, DCH_FF2)
 					case "F3":
-						keywordGroup = append(keywordGroup, DCH_FF3)
+						//keywordGroup = append(keywordGroup, DCH_FF3)
 					case "F4":
-						keywordGroup = append(keywordGroup, DCH_FF4)
+						//keywordGroup = append(keywordGroup, DCH_FF4)
 					case "F5":
-						keywordGroup = append(keywordGroup, DCH_FF5)
+						//keywordGroup = append(keywordGroup, DCH_FF5)
 					case "F6":
-						keywordGroup = append(keywordGroup, DCH_FF6)
+						//keywordGroup = append(keywordGroup, DCH_FF6)
 					case "F7":
-						keywordGroup = append(keywordGroup, DCH_FF7)
+						//keywordGroup = append(keywordGroup, DCH_FF7)
 					case "F8":
-						keywordGroup = append(keywordGroup, DCH_FF8)
+						//keywordGroup = append(keywordGroup, DCH_FF8)
 					case "F9":
-						keywordGroup = append(keywordGroup, DCH_FF9)
+						//keywordGroup = append(keywordGroup, DCH_FF9)
 					default:
 						panic(errors.New(dch_fmt_part_err + "F"))
 					}
@@ -1055,16 +1032,16 @@ func parseDchFormat(format string) []string {
 				followingOneChar := format[i]
 				switch followingOneChar {
 				case 'H':
-					keywordGroup = append(keywordGroup, DCH_HH)
+					//keywordGroup = append(keywordGroup, DCH_HH)
 				default:
 					followingThreeChars := format[i : i+4]
 					i = i + 4
 
 					switch followingThreeChars {
 					case "H24":
-						keywordGroup = append(keywordGroup, DCH_HH24)
+						//keywordGroup = append(keywordGroup, DCH_HH24)
 					case "H12":
-						keywordGroup = append(keywordGroup, DCH_HH12)
+						//keywordGroup = append(keywordGroup, DCH_HH12)
 					default:
 						panic(errors.New(dch_fmt_part_err + "H"))
 					}
@@ -1074,48 +1051,51 @@ func parseDchFormat(format string) []string {
 				followingOneChar := format[i]
 				switch followingOneChar {
 				case 'W':
-					keywordGroup = append(keywordGroup, DCH_IW)
+					//keywordGroup = append(keywordGroup, DCH_IW)
 				case 'Y':
 					followingTwoChars := format[i : i+3]
 					if "YY" == followingTwoChars {
-						keywordGroup = append(keywordGroup, DCH_IYYY)
+						//keywordGroup = append(keywordGroup, DCH_IYYY)
 						i = i + 3
 					}
 
 					followingOneChar = followingTwoChars[0]
 					if 'Y' == followingOneChar {
-						keywordGroup = append(keywordGroup, DCH_IYY)
+						//keywordGroup = append(keywordGroup, DCH_IYY)
 						i = i + 2
 					}
-					keywordGroup = append(keywordGroup, DCH_IY)
+					//keywordGroup = append(keywordGroup, DCH_IY)
 				default:
 					panic(errors.New(dch_fmt_part_err + "I"))
 				}
 				// 匹配单个字符
-				keywordGroup = append(keywordGroup, DCH_I)
+				//keywordGroup = append(keywordGroup, DCH_I)
 			case 'J':
-				keywordGroup = append(keywordGroup, DCH_J)
+				//keywordGroup = append(keywordGroup, DCH_J)
 			case 'M':
+				start := i
 				i++
 				followingOneChar := format[i]
 				switch followingOneChar {
 				case 'M':
-					keywordGroup = append(keywordGroup, DCH_MM)
+					//keywordGroup = append(keywordGroup, DCH_MM)
+					v := param[start:i]
+					result.WriteString(v)
 				case 'I':
-					keywordGroup = append(keywordGroup, DCH_MI)
+					//keywordGroup = append(keywordGroup, DCH_MI)
 				default:
 					start := i
 					i += 2
 					if i < l {
 						followingTwoChars := format[start:i]
 						if "ON" == followingTwoChars {
-							keywordGroup = append(keywordGroup, DCH_MON)
+							//keywordGroup = append(keywordGroup, DCH_MON)
 							start = i
 							i += 2
 							if i < l {
 								followingTwoChars = format[start:i]
 								if "TH" == followingTwoChars {
-									keywordGroup = append(keywordGroup, DCH_MONTH)
+									//keywordGroup = append(keywordGroup, DCH_MONTH)
 								} else {
 									panic(errors.New(dch_fmt_part_err + "MON"))
 								}
@@ -1132,21 +1112,21 @@ func parseDchFormat(format string) []string {
 			case 'O':
 				i++
 				if 'F' == format[i] {
-					keywordGroup = append(keywordGroup, DCH_MONTH)
+					//keywordGroup = append(keywordGroup, DCH_MONTH)
 				}
 				panic(errors.New(dch_fmt_part_err + "O"))
 			case 'P':
 				i++
 				if i < l {
 					if 'M' == format[i] {
-						keywordGroup = append(keywordGroup, DCH_PM)
+						//keywordGroup = append(keywordGroup, DCH_PM)
 					} else {
 						start := i
 						i += 3
 						if i < l {
 							followingThreeChars := format[start:i]
 							if ".M." == followingThreeChars {
-								keywordGroup = append(keywordGroup, DCH_P_M)
+								//keywordGroup = append(keywordGroup, DCH_P_M)
 							} else {
 								panic(errors.New(dch_fmt_part_err + "P"))
 							}
@@ -1158,11 +1138,11 @@ func parseDchFormat(format string) []string {
 					panic(errors.New(dch_fmt_part_err + "P"))
 				}
 			case 'Q':
-				keywordGroup = append(keywordGroup, DCH_Q)
+				//keywordGroup = append(keywordGroup, DCH_Q)
 			case 'R':
 				i++
 				if 'M' == format[i] {
-					keywordGroup = append(keywordGroup, DCH_RM)
+					//keywordGroup = append(keywordGroup, DCH_RM)
 				} else {
 					panic(errors.New(dch_fmt_part_err + "R"))
 				}
@@ -1171,11 +1151,11 @@ func parseDchFormat(format string) []string {
 				i += 4
 				followingFourChars := format[start:i]
 				if "SSSS" == followingFourChars {
-					keywordGroup = append(keywordGroup, DCH_SSSSS)
+					//keywordGroup = append(keywordGroup, DCH_SSSSS)
 				} else if "SSS" == followingFourChars[0:3] {
-					keywordGroup = append(keywordGroup, DCH_SSSS)
+					//keywordGroup = append(keywordGroup, DCH_SSSS)
 				} else if "S" == followingFourChars[0:3] {
-					keywordGroup = append(keywordGroup, DCH_SS)
+					//keywordGroup = append(keywordGroup, DCH_SS)
 				} else {
 					panic(errors.New(dch_fmt_part_err + "S"))
 				}
@@ -1184,11 +1164,11 @@ func parseDchFormat(format string) []string {
 				i += 2
 				followingTwoChars := format[start:i]
 				if "ZH" == followingTwoChars {
-					keywordGroup = append(keywordGroup, DCH_TZH)
+					//keywordGroup = append(keywordGroup, DCH_TZH)
 				} else if "ZM" == followingTwoChars {
-					keywordGroup = append(keywordGroup, DCH_TZM)
+					//keywordGroup = append(keywordGroup, DCH_TZM)
 				} else if 'Z' == followingTwoChars[0] {
-					keywordGroup = append(keywordGroup, DCH_TZM)
+					//keywordGroup = append(keywordGroup, DCH_TZM)
 				} else {
 					panic(errors.New(dch_fmt_part_err + "T"))
 				}
@@ -1196,22 +1176,24 @@ func parseDchFormat(format string) []string {
 				i++
 				followingOneChar := format[i]
 				if 'W' == followingOneChar {
-					keywordGroup = append(keywordGroup, DCH_WW)
+					//keywordGroup = append(keywordGroup, DCH_WW)
 				} else {
-					keywordGroup = append(keywordGroup, DCH_W)
+					//keywordGroup = append(keywordGroup, DCH_W)
 				}
 			case 'Y':
 				start := i
 				i += 4
 				followingFourChars := format[start:i]
 				if ",YYYY" == followingFourChars {
-					keywordGroup = append(keywordGroup, DCH_Y_YYY)
+					//keywordGroup = append(keywordGroup, DCH_Y_YYY)
 				} else if "YYY" == followingFourChars[0:3] {
-					keywordGroup = append(keywordGroup, DCH_YYY)
+					//keywordGroup = append(keywordGroup, DCH_YYY)
+					v := param[start:i]
+					result.WriteString(v)
 				} else if "YY" == followingFourChars[0:2] {
-					keywordGroup = append(keywordGroup, DCH_YY)
+					//keywordGroup = append(keywordGroup, DCH_YY)
 				} else {
-					keywordGroup = append(keywordGroup, DCH_Y)
+					//keywordGroup = append(keywordGroup, DCH_Y)
 				}
 			default:
 				panic(errors.New(out_keyword_range_err))
@@ -1221,7 +1203,7 @@ func parseDchFormat(format string) []string {
 		}
 	}
 
-	return keywordGroup
+	return result.String()
 }
 
 func ToUpper(c *byte) {
