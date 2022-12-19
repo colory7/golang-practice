@@ -857,7 +857,7 @@ func parseNum(f string, num string) string {
 }
 
 const (
-	NLS_AD = "a.d."
+	NLS_AD = "公元"
 	NLS_AM = "上午"
 	//NLS_BC = "公元前"
 	//NLS_PM = "下午"
@@ -878,7 +878,7 @@ func parseDchByStr(param string, format string) string {
 		if c >= 32 && c <= 127 {
 			fmt.Println("c: " + (string)(c))
 
-			//frest := flen - fi
+			frest := flen - fi
 
 			// 不区分大小写 FIXME
 			ToUpper(&c)
@@ -925,6 +925,7 @@ func parseDchByStr(param string, format string) string {
 								fmt.Println("TODO: " + NLS_AD)
 								fi = j
 								pi = pe
+								fmt.Println("pi: " + fmt.Sprint(pi))
 							} else {
 								panic("语法错误,参数与 A.D. 格式不匹配")
 							}
@@ -1209,54 +1210,53 @@ func parseDchByStr(param string, format string) string {
 					}
 				}
 			case 'Y':
-				result.WriteByte(format[pi])
 				fi++
-				pi++
+				pe := 0
 
-				// 2nd
-				if format[fi] == 'Y' && fi <= flen {
-					// DCH YY
-					result.WriteByte(format[pi])
-					fi++
-					pi++
-					// 3th
-					if format[fi] == 'Y' {
-						// DCH YYY
-						result.WriteByte(format[pi])
-						fi++
-						pi++
-						// 4th
-						if format[fi] == 'Y' {
-							// DCH YYYY
-							fi++
-							pi++
-							result.WriteByte(format[pi])
-						} else {
-							panic("格式错误 YYY")
-						}
-					} else {
-						panic("格式错误 YY")
-					}
-				} else if format[fi] == ',' && fi <= flen {
-					result.WriteByte(format[pi])
-					fi++
-					pi++
-
-					fe := fi + 3
-					pe := fe
-					if fe <= flen {
-						// DCH Y,YYY
-						if format[fi:fe] == "YYY" {
-							result.WriteString(format[pi:pe])
-						} else {
-							panic("格式错误 Y,")
-						}
-					} else {
-						panic("格式错误 Y,")
-					}
+				start := fi
+				frest--
+				if frest >= 4 {
+					fi += 4
 				} else {
-					result.WriteByte(format[pi])
-					pi++
+					fi += frest
+				}
+				followingNChars := format[start:fi]
+				missed := true
+
+				if frest >= 4 && (",YYY" == followingNChars[0:4] || ",yyy" == followingNChars[0:4]) {
+					// DCH Y,YYY
+					pe = pi + 5
+					v := param[pi:pe]
+					result.WriteString(v)
+					missed = false
+				}
+				if missed && frest >= 3 && ("YYY" == followingNChars[0:3] || "yyy" == followingNChars[0:3]) {
+					// DCH YYYY
+					pe = pi + 4
+					v := param[pi:pe]
+					result.WriteString(v)
+					missed = false
+				}
+				if missed && frest >= 2 && ("YY" == followingNChars[0:2] || "yy" == followingNChars[0:4]) {
+					// DCH YYY
+					pe = pi + 3
+					v := param[pi:pe]
+					result.WriteString(v)
+					missed = false
+				}
+				if missed && frest >= 1 && ("Y" == followingNChars[0:1] || "y" == followingNChars[0:4]) {
+					// DCH YY
+					pe = pi + 2
+					v := param[pi:pe]
+					result.WriteString(v)
+					missed = false
+				}
+
+				if missed {
+					// DCH Y
+					pe = pi + 1
+					v := param[pi:pe]
+					result.WriteString(v)
 				}
 
 			default:

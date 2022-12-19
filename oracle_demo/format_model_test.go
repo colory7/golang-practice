@@ -212,7 +212,7 @@ func TestParseDchByStrY_YYY2(t *testing.T) {
 }
 
 func TestParseDchByStrADY_YYY(t *testing.T) {
-	param := "a.d. 2023"
+	param := "公元 2023"
 	format := "A.D. yyyy"
 
 	result := parseDchByStr(param, format)
@@ -229,4 +229,21 @@ func TestParseDchByStr2(t *testing.T) {
 
 func TestParseDchByTime(t *testing.T) {
 
+}
+
+func TestChar(t *testing.T) {
+	param := "公元 2023"
+	fmt.Println(param[0:3])
+	fmt.Println(param[0:6])
+	fmt.Println(param[3:6])
+	fmt.Println(param[0:8])
+	fmt.Println(param[0:10])
+	fmt.Println(param[0:11])
+	fmt.Println(param[3:11])
+	fmt.Println("====")
+	fmt.Println(param[4:11])
+	fmt.Println(param[5:11])
+	fmt.Println(param[6:11])
+	fmt.Println(param[7:11])
+	fmt.Println(param[8:11])
 }
