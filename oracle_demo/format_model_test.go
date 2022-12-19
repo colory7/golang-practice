@@ -176,6 +176,15 @@ func TestParseDchByStrA_M_(t *testing.T) {
 }
 
 func TestParseDchByStrY_YYY(t *testing.T) {
+	param := "2013"
+	format := "yyyy"
+
+	result := parseDchByStr(param, format)
+	fmt.Println(result)
+
+}
+
+func TestParseDchByStrY_YYY2(t *testing.T) {
 	param := "2,013"
 	format := "Y,YYY"
 
@@ -200,6 +209,14 @@ func TestParseDchByStrY_YYY(t *testing.T) {
 	result = parseDchByStr(param, format)
 	fmt.Println(result)
 
+}
+
+func TestParseDchByStrADY_YYY(t *testing.T) {
+	param := "a.d. 2023"
+	format := "A.D. yyyy"
+
+	result := parseDchByStr(param, format)
+	fmt.Println(result)
 }
 
 func TestParseDchByStr2(t *testing.T) {

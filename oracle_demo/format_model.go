@@ -857,7 +857,7 @@ func parseNum(f string, num string) string {
 }
 
 const (
-	NLS_AD = "公元"
+	NLS_AD = "a.d."
 	NLS_AM = "上午"
 	//NLS_BC = "公元前"
 	//NLS_PM = "下午"
@@ -880,7 +880,7 @@ func parseDchByStr(param string, format string) string {
 
 			frest := flen - fi
 
-			// 不区分大小写
+			// 不区分大小写 FIXME
 			ToUpper(&c)
 
 			// 匹配关键词并存储
@@ -1210,39 +1210,52 @@ func parseDchByStr(param string, format string) string {
 			case 'Y':
 				fi++
 
-				suffix_Y := []string{
-					// DCH Y
-					"",
-					// DCH YY
-					"Y",
-					// DCH YYY
-					"YY",
-					// DCH YYYY
-					"YYY",
-					// DCH Y,YYYY
-					",YYY",
-				}
-				missed := true
 				start := fi
-				n := frest
+				frest--
 				if frest >= 4 {
 					fi += 4
 				} else {
-					fi += frest - 1
+					fi += frest
 				}
-
 				followingNChars := format[start:fi]
+				missed := true
 
-				li := n - 1
-				for missed {
-					if frest >= li && suffix_Y[li] == followingNChars[0:li] {
-						pi += n
-						v := param[start-1 : pi]
-						result.WriteString(v)
-						missed = false
-					}
-					n--
+				if frest >= 4 && ",YYY" == followingNChars[0:4] {
+					// DCH Y,YYY
+					pi += 5
+					v := param[start-1 : pi]
+					result.WriteString(v)
+					missed = false
 				}
+				if missed && frest >= 3 && "YYY" == followingNChars[0:3] {
+					// DCH YYYY
+					pi += 4
+					v := param[start-1 : pi]
+					result.WriteString(v)
+					missed = false
+				}
+				if missed && frest >= 2 && "YY" == followingNChars[0:2] {
+					// DCH YYY
+					pi += 3
+					v := param[start-1 : pi]
+					result.WriteString(v)
+					missed = false
+				}
+				if missed && frest >= 1 && "Y" == followingNChars[0:1] {
+					// DCH YY
+					pi += 2
+					v := param[start-1 : pi]
+					result.WriteString(v)
+					missed = false
+				}
+
+				if missed {
+					// DCH Y
+					pi += 1
+					v := param[start-1 : pi]
+					result.WriteString(v)
+				}
+
 			default:
 				panic(errors.New(out_keyword_range_err))
 			}
