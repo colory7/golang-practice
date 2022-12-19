@@ -878,7 +878,7 @@ func parseDchByStr(param string, format string) string {
 		if c >= 32 && c <= 127 {
 			fmt.Println("c: " + (string)(c))
 
-			frest := flen - fi
+			//frest := flen - fi
 
 			// 不区分大小写 FIXME
 			ToUpper(&c)
@@ -1186,6 +1186,7 @@ func parseDchByStr(param string, format string) string {
 				} else {
 					panic(errors.New(dch_fmt_part_err + "S"))
 				}
+
 			case 'T':
 				start := fi
 				fi += 2
@@ -1201,59 +1202,61 @@ func parseDchByStr(param string, format string) string {
 				}
 			case 'W':
 				fi++
-				followingOneChar := format[fi]
-				if 'W' == followingOneChar {
-					//keywordGroup = append(keywordGroup, DCH_WW)
-				} else {
-					//keywordGroup = append(keywordGroup, DCH_W)
+				if format[fi] == 'W' {
+					fi++
+					if format[fi] == 'W' {
+
+					}
 				}
 			case 'Y':
+				result.WriteByte(format[pi])
 				fi++
+				pi++
 
-				start := fi
-				frest--
-				if frest >= 4 {
-					fi += 4
-				} else {
-					fi += frest
-				}
-				followingNChars := format[start:fi]
-				missed := true
-
-				if frest >= 4 && ",YYY" == followingNChars[0:4] {
-					// DCH Y,YYY
-					pi += 5
-					v := param[start-1 : pi]
-					result.WriteString(v)
-					missed = false
-				}
-				if missed && frest >= 3 && "YYY" == followingNChars[0:3] {
-					// DCH YYYY
-					pi += 4
-					v := param[start-1 : pi]
-					result.WriteString(v)
-					missed = false
-				}
-				if missed && frest >= 2 && "YY" == followingNChars[0:2] {
-					// DCH YYY
-					pi += 3
-					v := param[start-1 : pi]
-					result.WriteString(v)
-					missed = false
-				}
-				if missed && frest >= 1 && "Y" == followingNChars[0:1] {
+				// 2nd
+				if format[fi] == 'Y' && fi <= flen {
 					// DCH YY
-					pi += 2
-					v := param[start-1 : pi]
-					result.WriteString(v)
-					missed = false
-				}
+					result.WriteByte(format[pi])
+					fi++
+					pi++
+					// 3th
+					if format[fi] == 'Y' {
+						// DCH YYY
+						result.WriteByte(format[pi])
+						fi++
+						pi++
+						// 4th
+						if format[fi] == 'Y' {
+							// DCH YYYY
+							fi++
+							pi++
+							result.WriteByte(format[pi])
+						} else {
+							panic("格式错误 YYY")
+						}
+					} else {
+						panic("格式错误 YY")
+					}
+				} else if format[fi] == ',' && fi <= flen {
+					result.WriteByte(format[pi])
+					fi++
+					pi++
 
-				if missed {
-					// DCH Y
-					pi += 1
-					v := param[start-1 : pi]
-					result.WriteString(v)
+					fe := fi + 3
+					pe := fe
+					if fe <= flen {
+						// DCH Y,YYY
+						if format[fi:fe] == "YYY" {
+							result.WriteString(format[pi:pe])
+						} else {
+							panic("格式错误 Y,")
+						}
+					} else {
+						panic("格式错误 Y,")
+					}
+				} else {
+					result.WriteByte(format[pi])
+					pi++
 				}
 
 			default:
