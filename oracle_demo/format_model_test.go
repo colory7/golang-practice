@@ -139,7 +139,16 @@ func TestParseNum3(t *testing.T) {
 	fmt.Println(result)
 }
 
-func TestParseDchByStr(t *testing.T) {
+func TestParseDchByStrAD(t *testing.T) {
+	param := "公元"
+	format := "AD"
+
+	//fmt.Println(format[2:4])
+
+	parseDchByStr(param, format)
+}
+
+func TestParseDchByStrA_D_(t *testing.T) {
 	param := "公元"
 	format := "A.D."
 
@@ -148,12 +157,59 @@ func TestParseDchByStr(t *testing.T) {
 	parseDchByStr(param, format)
 }
 
-func TestParseDchByStr2(t *testing.T) {
-	param := "公元 2023-10-26 01:30:56"
-	format := "A.D. yyyy-MM-dd hh:mi:ss"
+func TestParseDchByStrAM(t *testing.T) {
+	param := "上午"
+	format := "AM"
+
+	//fmt.Println(format[2:4])
 
 	parseDchByStr(param, format)
 }
 
+func TestParseDchByStrA_M_(t *testing.T) {
+	param := "上午"
+	format := "A.M."
+
+	//fmt.Println(format[2:4])
+
+	parseDchByStr(param, format)
+}
+
+func TestParseDchByStrY_YYY(t *testing.T) {
+	param := "2,013"
+	format := "Y,YYY"
+
+	result := parseDchByStr(param, format)
+	fmt.Println(result)
+
+	param = "213"
+	format = "YYY"
+
+	result = parseDchByStr(param, format)
+	fmt.Println(result)
+
+	param = "13"
+	format = "YY"
+
+	result = parseDchByStr(param, format)
+	fmt.Println(result)
+
+	param = "3"
+	format = "Y"
+
+	result = parseDchByStr(param, format)
+	fmt.Println(result)
+
+}
+
+func TestParseDchByStr2(t *testing.T) {
+	param := "公元 2023-10-26 01:30:56"
+	format := "A.D. yyyy-MM-dd hh:mi:ss"
+
+	result := parseDchByStr(param, format)
+	fmt.Println(result)
+}
+
 func TestParseDchByTime(t *testing.T) {
+
 }

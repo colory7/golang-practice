@@ -869,13 +869,16 @@ func parseDchByStr(param string, format string) string {
 	//var keywordGroup = make([]keyword, 4)
 
 	result := bytes.Buffer{}
-	l := len(format)
+	flen := len(format)
 
-	for i := 0; i < l; {
+	pi := 0
+	for fi := 0; fi < flen; {
 		// 截取一个字符
-		c := format[i]
+		c := format[fi]
 		if c >= 32 && c <= 127 {
-			fmt.Println((string)(c))
+			fmt.Println("c: " + (string)(c))
+
+			frest := flen - fi
 
 			// 不区分大小写
 			ToUpper(&c)
@@ -883,40 +886,56 @@ func parseDchByStr(param string, format string) string {
 			// 匹配关键词并存储
 			switch c {
 			// 跳过字符
-			case '-', '/', ',', '.', ';', ':':
-
+			case '-', '/', ',', '.', ';', ':', ' ':
+				fmt.Println("skip: " + string(c))
+				fmt.Println(fi)
+				pc := param[pi]
+				switch pc {
+				case '-', '/', ',', '.', ';', ':', ' ':
+					fmt.Println("TODO: skip char " + string(pc))
+					fi++
+					pi++
+				default:
+					panic("不匹配的字符: " + string(pc))
+				}
 			case '"':
 				var skipWord bytes.Buffer
-				for ; i < l; i++ {
-					if '"' == format[i] {
+				for ; fi < flen; fi++ {
+					if '"' == format[fi] {
 						break
 					} else {
-						skipWord.WriteByte(format[i])
+						skipWord.WriteByte(format[fi])
 					}
 				}
 				result.Write(skipWord.Bytes())
 			case 'A':
-				start := i
-				i++
-				followingOneChar := format[i]
+				fi++
+				followingOneChar := format[fi]
 				switch followingOneChar {
 				case '.':
-					i++
-					j := i + 2
+					fi++
+					j := fi + 2
 					if j <= len(format) {
-						followingChars := format[i:j]
+						followingChars := format[fi:j]
 						if "D." == followingChars {
-							v := param[start:(start + len(NLS_AD))]
+							// DCH A.D.
+							pe := pi + len(NLS_AD)
+							v := param[pi:pe]
 							if v == NLS_AD {
-								fmt.Println(NLS_AD)
-								i = j
+								fmt.Println("TODO: " + NLS_AD)
+								fi = j
+								pi = pe
 							} else {
 								panic("语法错误,参数与 A.D. 格式不匹配")
 							}
 						} else if "M." == followingChars {
-							v := param[i:j]
+							// DCH A.M.
+							pe := pi + len(NLS_AD)
+							v := param[pi:pe]
 							if v == NLS_AM {
-								i = j
+								fmt.Println("TODO: " + NLS_AM)
+								fi = j
+								pi = pe
 							} else {
 								panic("语法错误,参数与 A.M. 格式不匹配")
 							}
@@ -927,16 +946,24 @@ func parseDchByStr(param string, format string) string {
 						panic(errors.New(dch_fmt_part_err + "A."))
 					}
 				case 'D':
-					v := param[start:i]
+					// DCH AD
+					fi++
+					pe := pi + len(NLS_AD)
+					v := param[pi:pe]
 					if v == NLS_AD {
-						//
+						fmt.Println("TODO: " + NLS_AD)
+						pi = pe
 					} else {
 						panic("语法错误,参数与 AD 格式不匹配")
 					}
 				case 'M':
-					v := param[start:i]
+					// DCH AM
+					fi++
+					pe := pi + len(NLS_AD)
+					v := param[pi:pe]
 					if v == NLS_AM {
-						//
+						fmt.Println("TODO: " + NLS_AM)
+						pi = pe
 					} else {
 						panic("语法错误,参数与 AM 格式不匹配")
 					}
@@ -944,24 +971,24 @@ func parseDchByStr(param string, format string) string {
 					panic(errors.New(dch_fmt_part_err + "A"))
 				}
 			case 'B':
-				i++
-				followingOneChar := format[i]
+				fi++
+				followingOneChar := format[fi]
 				switch followingOneChar {
 				case 'C':
 					//keywordGroup = append(keywordGroup, DCH_BC)
 				case '.':
-					j := i + 4
-					followingChars := format[i:j]
+					j := fi + 4
+					followingChars := format[fi:j]
 					if ".C." == followingChars {
 						//keywordGroup = append(keywordGroup, DCH_B_C)
 					}
-					i = j
+					fi = j
 				default:
 					panic(errors.New(dch_fmt_part_err + "B"))
 				}
 			case 'C':
-				i++
-				followingOneChar := format[i]
+				fi++
+				followingOneChar := format[fi]
 				switch followingOneChar {
 				case 'C':
 					//keywordGroup = append(keywordGroup, DCH_CC)
@@ -970,23 +997,23 @@ func parseDchByStr(param string, format string) string {
 				}
 			case 'D':
 				// FIXME 逻辑问题 DDD DD D
-				start := i
-				i++
-				followingOneChar := format[i]
+				start := fi
+				fi++
+				followingOneChar := format[fi]
 				switch followingOneChar {
 				case 'D':
 					//keywordGroup = append(keywordGroup, DCH_DD)
-					thirdChar := format[i+1]
+					thirdChar := format[fi+1]
 					if thirdChar == 'D' {
 						//keywordGroup = append(keywordGroup, DCH_DDD)
 					}
-					v := param[start:i]
+					v := param[start:fi]
 					result.WriteString(v)
 				case 'Y':
 					//keywordGroup = append(keywordGroup, DCH_DY)
 				default:
-					followingTwoChars := format[i : i+3]
-					i = i + 3
+					followingTwoChars := format[fi : fi+3]
+					fi = fi + 3
 					if followingTwoChars == "AY" {
 						//keywordGroup = append(keywordGroup, DCH_DAY)
 					} else {
@@ -994,16 +1021,16 @@ func parseDchByStr(param string, format string) string {
 					}
 				}
 			case 'F':
-				i++
-				followingOneChar := format[i]
+				fi++
+				followingOneChar := format[fi]
 				switch followingOneChar {
 				case 'X':
 					//keywordGroup = append(keywordGroup, DCH_FX)
 				case 'M':
 					//FIXME
 				default:
-					followingTwoChars := format[i : i+3]
-					i = i + 3
+					followingTwoChars := format[fi : fi+3]
+					fi = fi + 3
 					switch followingTwoChars {
 					case "F1":
 						//keywordGroup = append(keywordGroup, DCH_FF1)
@@ -1028,14 +1055,14 @@ func parseDchByStr(param string, format string) string {
 					}
 				}
 			case 'H':
-				i++
-				followingOneChar := format[i]
+				fi++
+				followingOneChar := format[fi]
 				switch followingOneChar {
 				case 'H':
 					//keywordGroup = append(keywordGroup, DCH_HH)
 				default:
-					followingThreeChars := format[i : i+4]
-					i = i + 4
+					followingThreeChars := format[fi : fi+4]
+					fi = fi + 4
 
 					switch followingThreeChars {
 					case "H24":
@@ -1047,22 +1074,22 @@ func parseDchByStr(param string, format string) string {
 					}
 				}
 			case 'I':
-				i++
-				followingOneChar := format[i]
+				fi++
+				followingOneChar := format[fi]
 				switch followingOneChar {
 				case 'W':
 					//keywordGroup = append(keywordGroup, DCH_IW)
 				case 'Y':
-					followingTwoChars := format[i : i+3]
+					followingTwoChars := format[fi : fi+3]
 					if "YY" == followingTwoChars {
 						//keywordGroup = append(keywordGroup, DCH_IYYY)
-						i = i + 3
+						fi = fi + 3
 					}
 
 					followingOneChar = followingTwoChars[0]
 					if 'Y' == followingOneChar {
 						//keywordGroup = append(keywordGroup, DCH_IYY)
-						i = i + 2
+						fi = fi + 2
 					}
 					//keywordGroup = append(keywordGroup, DCH_IY)
 				default:
@@ -1073,27 +1100,27 @@ func parseDchByStr(param string, format string) string {
 			case 'J':
 				//keywordGroup = append(keywordGroup, DCH_J)
 			case 'M':
-				start := i
-				i++
-				followingOneChar := format[i]
+				start := fi
+				fi++
+				followingOneChar := format[fi]
 				switch followingOneChar {
 				case 'M':
 					//keywordGroup = append(keywordGroup, DCH_MM)
-					v := param[start:i]
+					v := param[start:fi]
 					result.WriteString(v)
 				case 'I':
 					//keywordGroup = append(keywordGroup, DCH_MI)
 				default:
-					start := i
-					i += 2
-					if i < l {
-						followingTwoChars := format[start:i]
+					start := fi
+					fi += 2
+					if fi < flen {
+						followingTwoChars := format[start:fi]
 						if "ON" == followingTwoChars {
 							//keywordGroup = append(keywordGroup, DCH_MON)
-							start = i
-							i += 2
-							if i < l {
-								followingTwoChars = format[start:i]
+							start = fi
+							fi += 2
+							if fi < flen {
+								followingTwoChars = format[start:fi]
 								if "TH" == followingTwoChars {
 									//keywordGroup = append(keywordGroup, DCH_MONTH)
 								} else {
@@ -1110,21 +1137,21 @@ func parseDchByStr(param string, format string) string {
 					}
 				}
 			case 'O':
-				i++
-				if 'F' == format[i] {
+				fi++
+				if 'F' == format[fi] {
 					//keywordGroup = append(keywordGroup, DCH_MONTH)
 				}
 				panic(errors.New(dch_fmt_part_err + "O"))
 			case 'P':
-				i++
-				if i < l {
-					if 'M' == format[i] {
+				fi++
+				if fi < flen {
+					if 'M' == format[fi] {
 						//keywordGroup = append(keywordGroup, DCH_PM)
 					} else {
-						start := i
-						i += 3
-						if i < l {
-							followingThreeChars := format[start:i]
+						start := fi
+						fi += 3
+						if fi < flen {
+							followingThreeChars := format[start:fi]
 							if ".M." == followingThreeChars {
 								//keywordGroup = append(keywordGroup, DCH_P_M)
 							} else {
@@ -1140,16 +1167,16 @@ func parseDchByStr(param string, format string) string {
 			case 'Q':
 				//keywordGroup = append(keywordGroup, DCH_Q)
 			case 'R':
-				i++
-				if 'M' == format[i] {
+				fi++
+				if 'M' == format[fi] {
 					//keywordGroup = append(keywordGroup, DCH_RM)
 				} else {
 					panic(errors.New(dch_fmt_part_err + "R"))
 				}
 			case 'S':
-				start := i
-				i += 4
-				followingFourChars := format[start:i]
+				start := fi
+				fi += 4
+				followingFourChars := format[start:fi]
 				if "SSSS" == followingFourChars {
 					//keywordGroup = append(keywordGroup, DCH_SSSSS)
 				} else if "SSS" == followingFourChars[0:3] {
@@ -1160,9 +1187,9 @@ func parseDchByStr(param string, format string) string {
 					panic(errors.New(dch_fmt_part_err + "S"))
 				}
 			case 'T':
-				start := i
-				i += 2
-				followingTwoChars := format[start:i]
+				start := fi
+				fi += 2
+				followingTwoChars := format[start:fi]
 				if "ZH" == followingTwoChars {
 					//keywordGroup = append(keywordGroup, DCH_TZH)
 				} else if "ZM" == followingTwoChars {
@@ -1173,27 +1200,48 @@ func parseDchByStr(param string, format string) string {
 					panic(errors.New(dch_fmt_part_err + "T"))
 				}
 			case 'W':
-				i++
-				followingOneChar := format[i]
+				fi++
+				followingOneChar := format[fi]
 				if 'W' == followingOneChar {
 					//keywordGroup = append(keywordGroup, DCH_WW)
 				} else {
 					//keywordGroup = append(keywordGroup, DCH_W)
 				}
 			case 'Y':
-				start := i
-				i += 4
-				followingFourChars := format[start:i]
-				if ",YYYY" == followingFourChars {
-					//keywordGroup = append(keywordGroup, DCH_Y_YYY)
-				} else if "YYY" == followingFourChars[0:3] {
-					//keywordGroup = append(keywordGroup, DCH_YYY)
-					v := param[start:i]
-					result.WriteString(v)
-				} else if "YY" == followingFourChars[0:2] {
-					//keywordGroup = append(keywordGroup, DCH_YY)
+				fi++
+
+				suffix_Y := []string{
+					// DCH Y
+					"",
+					// DCH YY
+					"Y",
+					// DCH YYY
+					"YY",
+					// DCH YYYY
+					"YYY",
+					// DCH Y,YYYY
+					",YYY",
+				}
+				missed := true
+				start := fi
+				n := frest
+				if frest >= 4 {
+					fi += 4
 				} else {
-					//keywordGroup = append(keywordGroup, DCH_Y)
+					fi += frest - 1
+				}
+
+				followingNChars := format[start:fi]
+
+				li := n - 1
+				for missed {
+					if frest >= li && suffix_Y[li] == followingNChars[0:li] {
+						pi += n
+						v := param[start-1 : pi]
+						result.WriteString(v)
+						missed = false
+					}
+					n--
 				}
 			default:
 				panic(errors.New(out_keyword_range_err))
