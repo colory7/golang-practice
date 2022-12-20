@@ -6,6 +6,18 @@ import (
 	"testing"
 )
 
+type FM_DCH string
+
+const (
+	DCH_MINUS FM_DCH = "-"
+	DCH_SLASH        = "/"
+)
+
+func TestConstType(t *testing.T) {
+	fmt.Println(reflect.TypeOf(DCH_MINUS).String())
+	fmt.Println(reflect.TypeOf(DCH_SLASH).String())
+}
+
 func TestType(t *testing.T) {
 	num := 222
 	fmt.Println(reflect.TypeOf(num))

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 //NumberFormatModel
@@ -231,6 +232,22 @@ func TestParseDchByTime(t *testing.T) {
 
 }
 
+func TestCentry(t *testing.T) {
+
+	ti := time.Now()
+	fmt.Println(ti.Year())
+	fmt.Println((ti.Year()-1)/100 + 1)
+	fmt.Println((1900-1)/100 + 1)
+	fmt.Println((1901-1)/100 + 1)
+	fmt.Println((2000-1)/100 + 1)
+
+	fmt.Println("====")
+	fmt.Println((ti.Year() + 99) / 100)
+	fmt.Println((1900 + 99) / 100)
+	fmt.Println((1901 + 99) / 100)
+	fmt.Println((2000 + 99) / 100)
+	fmt.Println((2001 + 99) / 100)
+}
 func TestChar(t *testing.T) {
 	param := "公元 2023"
 	fmt.Println(param[0:3])
@@ -246,4 +263,9 @@ func TestChar(t *testing.T) {
 	fmt.Println(param[6:11])
 	fmt.Println(param[7:11])
 	fmt.Println(param[8:11])
+}
+
+func TestJulian(t *testing.T) {
+	fmt.Println(toJulianDayNumber(2022, 12, 19))
+	fmt.Println(toJulianDayNumber(2023, 10, 29))
 }

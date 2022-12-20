@@ -3,6 +3,7 @@ package time_demo
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -148,4 +149,52 @@ func addMonth(t *time.Time, yInterval int, mInterval int) time.Time {
 	}
 
 	return time.Date(yFinal, mFinal, d, t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), time.UTC)
+}
+
+func TestWeek(t *testing.T) {
+	weekDay := time.Now().Weekday()
+	fmt.Println(weekDay)
+	fmt.Println(int(weekDay))
+	fmt.Println(strconv.Itoa(int(weekDay)))
+}
+
+func TestMonth(t *testing.T) {
+	t2 := time.Now()
+	fmt.Println(t2.Month() < 10)
+}
+
+func TestNanoSecond(t *testing.T) {
+	fmt.Println(time.Now().Second())
+	fmt.Println(time.Now().UnixNano())
+	fmt.Println(time.Now().Nanosecond())
+}
+
+func TestHour24(t *testing.T) {
+	fmt.Println(time.Now().Hour())
+}
+
+func TestCalendarWeekOfYear(txx *testing.T) {
+	fmt.Println(time.Now().Weekday())
+	fmt.Println(time.Now().ISOWeek())
+}
+
+func TestISO(t *testing.T) {
+	ti := time.Now()
+	y, _ := ti.ISOWeek()
+	fmt.Println(strconv.Itoa(y)[1:])
+	fmt.Println(strconv.Itoa(y)[2:])
+	fmt.Println(strconv.Itoa(y)[3:])
+}
+
+func TestBC(t *testing.T) {
+	time1 := time.Unix(-1480390585, 0)
+	fmt.Println(time1.Year())
+	fmt.Println(time.Now().Day())
+}
+
+func TestInsertStr(t *testing.T) {
+	p := "green"
+	index := 2
+	q := p[:index] + "HI" + p[index:]
+	fmt.Println(p, q)
 }
