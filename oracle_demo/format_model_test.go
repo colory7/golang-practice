@@ -229,7 +229,8 @@ func TestParseDchByStr2(t *testing.T) {
 }
 
 func TestParseDchByTime(t *testing.T) {
-
+	b := ToRoman(4278)
+	fmt.Println(b.String())
 }
 
 func TestCentry(t *testing.T) {
@@ -266,6 +267,6 @@ func TestChar(t *testing.T) {
 }
 
 func TestJulian(t *testing.T) {
-	fmt.Println(toJulianDayNumber(2022, 12, 19))
-	fmt.Println(toJulianDayNumber(2023, 10, 29))
+	fmt.Println(ToJulian(2022, 12, 19))
+	fmt.Println(ToJulian(2023, 10, 29))
 }

@@ -1154,7 +1154,7 @@ func parseDchByStr(param string, format string) string {
 				//keywordGroup = append(keywordGroup, DCH_I)
 			case 'J':
 				t := time.Now()
-				result.WriteString(strconv.Itoa(toJulian(t.Year(), int(t.Month()), t.Day())))
+				result.WriteString(strconv.Itoa(ToJulian(t.Year(), int(t.Month()), t.Day())))
 			case 'M':
 				t := time.Now()
 				fi++
@@ -1514,7 +1514,7 @@ func parseDchByTime(t time.Time, format string) string {
 					result.WriteString(strconv.Itoa(y)[3:])
 				}
 			case 'J':
-				result.WriteString(strconv.Itoa(toJulian(t.Year(), int(t.Month()), t.Day())))
+				result.WriteString(strconv.Itoa(ToJulian(t.Year(), int(t.Month()), t.Day())))
 			case 'M':
 				fi++
 				if fi <= flen && format[fi] == 'I' {
@@ -1570,7 +1570,7 @@ func parseDchByTime(t time.Time, format string) string {
 			case 'R':
 				fi++
 				if 'M' == format[fi] {
-					result.WriteString(toRoman(int(t.Month())).String())
+					result.WriteString(ToRoman(int(t.Month())).String())
 				} else {
 					panic(errors.New(dch_fmt_part_err + "R"))
 				}
@@ -1590,7 +1590,7 @@ func parseDchByTime(t time.Time, format string) string {
 				followingFourChars := format[start:fi]
 				if "SSSS" == followingFourChars {
 					//keywordGroup = append(keywordGroup, DCH_SSSSS)
-					result.WriteString()
+					//result.WriteString()
 				} else if "S" == followingFourChars[0:3] {
 					//keywordGroup = append(keywordGroup, DCH_SS)
 				} else {
@@ -1649,7 +1649,7 @@ func ToUpper(c *byte) {
 	}
 }
 
-func toRoman(num int) *bytes.Buffer {
+func ToRoman(num int) *bytes.Buffer {
 	romes := []string{"M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"}
 	numbers := []int{1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1}
 
@@ -1663,7 +1663,7 @@ func toRoman(num int) *bytes.Buffer {
 	return rm
 }
 
-func toJulian(year int, month int, day int) int {
+func ToJulian(year int, month int, day int) int {
 	adj := (14 - month) / 12
 	y := year + 4800 - adj
 	m := month + 12*adj - 3
