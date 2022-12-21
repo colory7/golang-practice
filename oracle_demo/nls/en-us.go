@@ -85,15 +85,15 @@ var englishUnits = []string{"", "one", "two", "three", "four", "five", "six", "s
 var englishTens = []string{"", "ten", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"}
 var englishTeens = []string{"ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"}
 
-func IntegerToOrdinal(input int) string {
+func NumToOrdinalWord(input int) string {
 	return integerToEnUs(input, ORDINAL)
 }
 
-func IntegerToCardinal(input int) string {
+func NumToCardinalWord(input int) string {
 	return integerToEnUs(input, CARDINAL)
 }
 
-func IntegerToWithOrdinalSuffix(input int) string {
+func NumToWithOrdinalSuffix(input int) string {
 	if input == 0 {
 		return "0th"
 	}

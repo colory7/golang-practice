@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"golang_practice/oracle_demo/nls"
 	"strconv"
 	"time"
 	"unicode/utf8"
@@ -543,8 +544,8 @@ func parseNumFormat(format string) NumFmtDesc {
 					panic(errors.New("U 只能在开头或者结尾"))
 				}
 				fmtDesc.prefix = NUM_FMT_PREFIX_U
-			case NLS_NUMERIC_CHARACTERS[0]:
-			case NLS_NUMERIC_CHARACTERS[1]:
+			case ntw.NLS_NUMERIC_CHARACTERS[0]:
+			case ntw.NLS_NUMERIC_CHARACTERS[1]:
 			case 'E':
 				if fmtDesc.suffix == NUM_FMT_SUFFIX_EMPTY {
 					j := i + 4
@@ -895,17 +896,19 @@ func parseNum(f string, num string) string {
 }
 
 const (
-	NLS_AD   = "公元"
-	NLS_A_D_ = "公元"
-	NLS_AM   = "上午"
-	NLS_A_M_ = "上午"
-	NLS_BC   = "公元前"
-	NLS_B_C_ = "公元前"
-	NLS_PM   = "下午"
-	NLS_P_M_ = "下午"
-	NLS_DL   = "YYYY年MM月DD日 DAY"
-	NLS_DS   = "YYYY-MM-DD"
-	NLS_X    = "."
+	SPACE       = " "
+	ASSIC_SPACE = ' '
+	NLS_AD      = "公元"
+	NLS_A_D_    = "公元"
+	NLS_AM      = "上午"
+	NLS_A_M_    = "上午"
+	NLS_BC      = "公元前"
+	NLS_B_C_    = "公元前"
+	NLS_PM      = "下午"
+	NLS_P_M_    = "下午"
+	NLS_DL      = "YYYY年MM月DD日 DAY"
+	NLS_DS      = "YYYY-MM-DD"
+	NLS_X       = "."
 )
 
 // 解析日期格式
@@ -1580,29 +1583,63 @@ func parseDchByTime(t time.Time, format string) string {
 				// DCH RR
 				result.WriteString(strconv.Itoa(t.Year())[2:])
 			case 'S':
-				// DCH SYEAR
-				// DCH SYYYY
-				// DCH SSSSS
-				// DCH SP
+				// DCH SYEAR 正负号+基数词
+				//if 公元前 {result.WriteByte('-')}
+				result.WriteString(ntw.NumToCardinalWord(t.Year()))
 
+				// DCH SYYYY 正负号+数字
+				//if 公元前 {result.WriteByte('-')}
+				result.WriteString(strconv.Itoa(t.Year()))
+
+				// DCH SP TODO 最后处理
 				start := fi
 				fi += 4
 				followingFourChars := format[start:fi]
 				if "SSSS" == followingFourChars {
-					//keywordGroup = append(keywordGroup, DCH_SSSSS)
-					//result.WriteString()
+					// DCH SSSSS
+					result.WriteString(strconv.Itoa((t.Hour()*60+t.Minute())*60 + t.Second()))
 				} else if "S" == followingFourChars[0:3] {
-					//keywordGroup = append(keywordGroup, DCH_SS)
+					// DCH SS
+					result.WriteString(strconv.Itoa(t.Second()))
 				} else {
 					panic(errors.New(dch_fmt_part_err + "S"))
 				}
 			case 'T':
-				// DCH TS
-				// DCH TZD
-				// DCH TZH
-				// DCH TZM
-				// DCH TZR
-				// DCH TH
+				// DCH TS 下午 9:30:00
+				{
+					tsFormat := "15:04:05"
+
+					if t.Hour() > 12 {
+						result.WriteString(NLS_AM)
+						result.WriteByte(ASSIC_SPACE)
+					} else {
+						result.WriteString(NLS_AM)
+						result.WriteByte(ASSIC_SPACE)
+					}
+					result.WriteString(t.Format(tsFormat))
+				}
+
+				// DCH TZD PDT 时区
+				{
+					zone, _ := t.Local().Zone()
+					result.WriteString(zone)
+				}
+
+				// DCH TZH -07 时区小时
+				{
+					result.WriteString(t.Format("-07"))
+				}
+
+				// DCH TZM 00 时区分
+				{
+					result.WriteString(t.Format("-0700")[3:])
+				}
+
+				// DCH TZR US/PACIFIC 时区区域
+				{
+					result.WriteString(t.Location().String())
+				}
+				// DCH TH TODO 最后处理
 			case 'W':
 				fi++
 				if format[fi] == 'W' {
@@ -1622,7 +1659,8 @@ func parseDchByTime(t time.Time, format string) string {
 
 				// DCH Y,YYY
 				result.WriteString(year[:1] + "," + year[1:])
-				// DCH YEAR
+				// DCH YEAR 基数词
+				result.WriteString(ntw.NumToCardinalWord(t.Year()))
 				// DCH YYYY
 				result.WriteString(year)
 				// DCH YYY

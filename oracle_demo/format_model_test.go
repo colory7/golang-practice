@@ -233,7 +233,7 @@ func TestParseDchByTime(t *testing.T) {
 	fmt.Println(b.String())
 }
 
-func TestCentry(t *testing.T) {
+func TestCentury(t *testing.T) {
 
 	ti := time.Now()
 	fmt.Println(ti.Year())
