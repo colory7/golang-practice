@@ -1,8 +1,17 @@
 package ntw
 
 import (
+	"bytes"
 	"fmt"
+	"strconv"
 	"strings"
+)
+
+type flag int
+
+const (
+	CARDINAL flag = 0
+	ORDINAL  flag = 1
 )
 
 var ordinalNums = map[string]string{
@@ -77,15 +86,37 @@ var englishTens = []string{"", "ten", "twenty", "thirty", "forty", "fifty", "six
 var englishTeens = []string{"ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"}
 
 func IntegerToOrdinal(input int) string {
-	return integerToEnUs(input, true)
+	return integerToEnUs(input, ORDINAL)
 }
 
 func IntegerToCardinal(input int) string {
-	return integerToEnUs(input, false)
+	return integerToEnUs(input, CARDINAL)
+}
+
+func IntegerToWithOrdinalSuffix(input int) string {
+	if input == 0 {
+		return "0th"
+	}
+
+	words := bytes.Buffer{}
+	words.WriteString(strconv.Itoa(input))
+
+	remainder := input % 10
+	switch remainder {
+	case 1:
+		words.WriteString("st")
+	case 2:
+		words.WriteString("nd")
+	case 3:
+		words.WriteString("rd")
+	default:
+		words.WriteString("th")
+	}
+	return words.String()
 }
 
 // integerToEnUs converts an integer to American English words
-func integerToEnUs(input int, convertOrdinalNum bool) string {
+func integerToEnUs(input int, f flag) string {
 
 	//log.Printf("Input: %d\n", input)
 	words := []string{}
@@ -101,7 +132,11 @@ func integerToEnUs(input int, convertOrdinalNum bool) string {
 
 	// zero is a special case
 	if len(triplets) == 0 {
-		return "zero"
+		if f == ORDINAL {
+			return "zeroth"
+		} else {
+			return "zero"
+		}
 	}
 
 	// iterate over triplets
@@ -132,7 +167,6 @@ func integerToEnUs(input int, convertOrdinalNum bool) string {
 			words = append(words, englishUnits[units])
 		case 1:
 			words = append(words, englishTeens[units])
-			break
 		default:
 			if units > 0 {
 				word := fmt.Sprintf("%s-%s", englishTens[tens], englishUnits[units])
@@ -150,7 +184,7 @@ func integerToEnUs(input int, convertOrdinalNum bool) string {
 		}
 	}
 
-	if convertOrdinalNum {
+	if f == ORDINAL {
 		li := len(words) - 1
 		lastWord := words[li]
 		ordinalWord := ordinalNums[lastWord]

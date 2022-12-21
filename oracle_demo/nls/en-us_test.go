@@ -8,14 +8,14 @@ import (
 )
 
 func Test(t *testing.T) {
-	fmt.Println(integerToEnUs(4236, false))
-	fmt.Println(integerToEnUs(1111111, false))
-	fmt.Println(integerToEnUs(111111120, false))
-	fmt.Println(integerToEnUs(111111121, false))
-	fmt.Println(integerToEnUs(111111130, false))
-	fmt.Println(integerToEnUs(111111131, false))
-	fmt.Println(integerToEnUs(111111100, false))
-	fmt.Println(integerToEnUs(111000000, false))
+	fmt.Println(integerToEnUs(4236, CARDINAL))
+	fmt.Println(integerToEnUs(1111111, CARDINAL))
+	fmt.Println(integerToEnUs(111111120, CARDINAL))
+	fmt.Println(integerToEnUs(111111121, CARDINAL))
+	fmt.Println(integerToEnUs(111111130, CARDINAL))
+	fmt.Println(integerToEnUs(111111131, CARDINAL))
+	fmt.Println(integerToEnUs(111111100, CARDINAL))
+	fmt.Println(integerToEnUs(111000000, CARDINAL))
 	fmt.Println("====")
 	fmt.Println(IntegerToOrdinal(4236))
 	fmt.Println(IntegerToOrdinal(1111111))
@@ -37,8 +37,65 @@ func Test(t *testing.T) {
 }
 
 func ExampleIntegerToEnUs() {
-	fmt.Println(integerToEnUs(42, false))
+	fmt.Println(integerToEnUs(42, CARDINAL))
 	// Output: forty-two
+}
+
+func Test232(t *testing.T) {
+	n := IntegerToCardinal(1)
+	fmt.Println(n)
+	m := IntegerToWithOrdinalSuffix(1)
+	fmt.Println(m)
+
+	n = IntegerToCardinal(23)
+	fmt.Println(n)
+	m = IntegerToWithOrdinalSuffix(23)
+	fmt.Println(m)
+
+	n = IntegerToCardinal(123)
+	fmt.Println(n)
+	m = IntegerToWithOrdinalSuffix(123)
+	fmt.Println(m)
+
+	n = IntegerToCardinal(1123)
+	fmt.Println(n)
+	m = IntegerToWithOrdinalSuffix(1123)
+	fmt.Println(m)
+
+	n = IntegerToCardinal(11123)
+	fmt.Println(n)
+	m = IntegerToWithOrdinalSuffix(11123)
+	fmt.Println(m)
+
+	n = IntegerToCardinal(111123)
+	fmt.Println(n)
+	m = IntegerToWithOrdinalSuffix(111123)
+	fmt.Println(m)
+
+	n = IntegerToCardinal(1111123)
+	fmt.Println(n)
+	m = IntegerToWithOrdinalSuffix(1111123)
+	fmt.Println(m)
+
+	n = IntegerToCardinal(11111123)
+	fmt.Println(n)
+	m = IntegerToWithOrdinalSuffix(11111123)
+	fmt.Println(m)
+
+	n = IntegerToCardinal(11111111111111123)
+	fmt.Println(n)
+	m = IntegerToWithOrdinalSuffix(11111111111111123)
+	fmt.Println(m)
+
+	n = IntegerToCardinal(111111111111111123)
+	fmt.Println(n)
+	m = IntegerToWithOrdinalSuffix(111111111111111123)
+	fmt.Println(m)
+
+	n = IntegerToCardinal(1111111111111111123)
+	fmt.Println(n)
+	m = IntegerToWithOrdinalSuffix(1111111111111111123)
+	fmt.Println(m)
 }
 
 func TestIntegerToEnUs(t *testing.T) {
@@ -97,7 +154,7 @@ func TestIntegerToEnUs(t *testing.T) {
 	for input, expectedOutput := range tests {
 		name := fmt.Sprintf("%d", input)
 		t.Run(name, func(t *testing.T) {
-			assert.Equal(t, expectedOutput, integerToEnUs(input, false))
+			assert.Equal(t, expectedOutput, integerToEnUs(input, CARDINAL))
 		})
 	}
 }
