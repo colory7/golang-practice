@@ -272,3 +272,19 @@ func TestOracleTZR(txx *testing.T) {
 	t := time.Now()
 	fmt.Println(t.Location().String())
 }
+
+var cstZone = time.FixedZone("CST", 8*3600)
+
+func TestParseTime(txx *testing.T) {
+	layout := "2006-01-02 15:04:05"
+
+	t := time.Date(2011, time.Month(3), 12, 15, 30, 20, 0, cstZone)
+	fmt.Println(t.Format(layout))
+}
+
+func TestParseTime2(txx *testing.T) {
+	layout := "2006-01-02 15:04:05"
+	t, _ := time.Parse(layout, "2021-01-10 15:01:02")
+	fmt.Println(t)
+	fmt.Println(t.Format(layout))
+}

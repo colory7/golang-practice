@@ -13,7 +13,8 @@ import (
 const skipCharSize = 32
 
 // 格式部分不匹配，报错
-const dch_fmt_part_err = "Number Format error, some formats do not match near "
+const dch_fmt_mismatch_err = "Date Format error, some formats do not match near "
+const dch_fmt_length_err = "Date Format error, incorrect format length near "
 const num_fmt_part_err = "Datetime Format error, some formats do not match near "
 
 // 非法字符,超出格式关键词范围
@@ -236,12 +237,12 @@ type keyword struct {
 
 var dchKeywords map[FMKeyword]int
 
-var weekDays = map[time.Weekday]string{}
-var month = map[time.Month]string{}
+var NLS_WEEKS = map[time.Weekday]string{}
+var NLS_MONTHS = map[time.Month]string{}
 
 func init() {
 
-	weekDays = map[time.Weekday]string{
+	NLS_WEEKS = map[time.Weekday]string{
 		time.Sunday:    "星期日",
 		time.Monday:    "星期一",
 		time.Tuesday:   "星期二",
@@ -251,7 +252,7 @@ func init() {
 		time.Saturday:  "星期六",
 	}
 
-	month = map[time.Month]string{
+	NLS_MONTHS = map[time.Month]string{
 		time.January:   "1月",
 		time.February:  "2月",
 		time.March:     "3月",
@@ -403,7 +404,7 @@ type NumParamDesc struct {
 	isEEEE   bool
 }
 
-func (numParam *NumParamDesc) string() string {
+func (numParam *NumParamDesc) string() (string, error) {
 	var result bytes.Buffer
 	if plus == numParam.sign {
 		result.WriteString(plus)
@@ -411,13 +412,13 @@ func (numParam *NumParamDesc) string() string {
 		result.WriteString(minus)
 	} else if empty == numParam.sign {
 	} else {
-		panic("sign属性格式错误")
+		return empty_str, errors.New("sign属性格式错误")
 	}
 
 	if empty != numParam.preDec {
 		result.WriteString(numParam.preDec)
 	} else {
-		panic("格式错误,整数部分是空的")
+		return empty_str, errors.New("格式错误,整数部分是空的")
 	}
 
 	if numParam.postDec != empty {
@@ -434,16 +435,16 @@ func (numParam *NumParamDesc) string() string {
 			result.WriteString(minus)
 		} else if empty == numParam.sign {
 		} else {
-			panic("eSign属性格式错误")
+			return empty_str, errors.New("eSign属性格式错误")
 		}
 		result.WriteString(fmt.Sprint(numParam.eExponent))
 	}
 
-	return result.String()
+	return result.String(), nil
 }
 
 // 解析数值格式
-func parseNumFormat(format string) NumFmtDesc {
+func parseNumFormat(format string) (NumFmtDesc, error) {
 	var fmtDesc NumFmtDesc
 
 	// 格式字节长度
@@ -477,16 +478,16 @@ func parseNumFormat(format string) NumFmtDesc {
 			case ',':
 				if fmtDesc.commaIndex == 0 {
 					if i == 0 {
-						panic(errors.New("不能以逗号开头"))
+						return fmtDesc, errors.New("不能以逗号开头")
 					} else if i == lastFormatIndex {
-						panic(errors.New("逗号不能出现在数字最右边"))
+						return fmtDesc, errors.New("逗号不能出现在数字最右边")
 					} else if fmtDesc.decIndex != -1 {
-						panic(errors.New("逗号不能出现在点号的右边"))
+						return fmtDesc, errors.New("逗号不能出现在点号的右边")
 					}
 
 					fmtDesc.commaIndex = i
 				} else {
-					panic(errors.New("格式错误，存在多个格式符号 ,"))
+					return fmtDesc, errors.New("格式错误，存在多个格式符号 ,")
 				}
 
 			case '.':
@@ -494,7 +495,7 @@ func parseNumFormat(format string) NumFmtDesc {
 					fmtDesc.decIndex = i
 					readDec = true
 				} else {
-					panic(errors.New("只能有1个 ."))
+					return fmtDesc, errors.New("只能有1个 .")
 				}
 			case '0':
 				if readDec {
@@ -516,32 +517,32 @@ func parseNumFormat(format string) NumFmtDesc {
 				if fmtDesc.prefix == NUM_FMT_PREFIX_EMPTY && i == 0 {
 					fmtDesc.prefix = NUM_FMT_PREFIX_DOLLAR
 				} else {
-					panic(errors.New("格式前缀冲突 " + "$"))
+					return fmtDesc, errors.New("格式前缀冲突 " + "$")
 				}
 			case 'B':
 				if fmtDesc.prefix == NUM_FMT_PREFIX_EMPTY {
 					fmtDesc.prefix = NUM_FMT_PREFIX_B
 				} else {
-					panic(errors.New("格式前缀冲突 " + "B"))
+					return fmtDesc, errors.New("格式前缀冲突 " + "B")
 				}
 			case 'C':
 				if fmtDesc.prefix == NUM_FMT_PREFIX_EMPTY {
-					panic(errors.New("格式前缀冲突 " + "C"))
+					return fmtDesc, errors.New("格式前缀冲突 " + "C")
 				} else if lastFormatIndex != i && 0 != i {
-					panic(errors.New("C 只能在开头或者结尾"))
+					return fmtDesc, errors.New("C 只能在开头或者结尾")
 				}
 				fmtDesc.prefix = NUM_FMT_PREFIX_C
 			case 'L':
 				if fmtDesc.prefix == NUM_FMT_PREFIX_EMPTY {
 					fmtDesc.prefix = NUM_FMT_PREFIX_L
 				} else {
-					panic(errors.New("格式前缀冲突 " + "L"))
+					return fmtDesc, errors.New("格式前缀冲突 " + "L")
 				}
 			case 'U':
 				if fmtDesc.prefix == NUM_FMT_PREFIX_EMPTY {
-					panic(errors.New("格式前缀冲突 " + "U"))
+					return fmtDesc, errors.New("格式前缀冲突 " + "U")
 				} else if lastFormatIndex != i && 0 != i {
-					panic(errors.New("U 只能在开头或者结尾"))
+					return fmtDesc, errors.New("U 只能在开头或者结尾")
 				}
 				fmtDesc.prefix = NUM_FMT_PREFIX_U
 			case ntw.NLS_NUMERIC_CHARACTERS[0]:
@@ -554,10 +555,10 @@ func parseNumFormat(format string) NumFmtDesc {
 						i = j
 						fmtDesc.suffix = NUM_FMT_SUFFIX_EEEE
 					} else {
-						panic(errors.New(num_fmt_part_err + "E"))
+						return fmtDesc, errors.New(num_fmt_part_err + "E")
 					}
 				} else {
-					panic(errors.New("conflict with E"))
+					return fmtDesc, errors.New("conflict with E")
 				}
 			case 'F':
 				i++
@@ -565,21 +566,21 @@ func parseNumFormat(format string) NumFmtDesc {
 				switch followingOneChar {
 				case 'M':
 					if fmtDesc.auxPrefix == NUM_FMT_AUX_PREFIX_EMPTY {
-						panic(errors.New("只能有1组 FM"))
+						return fmtDesc, errors.New("只能有1组 FM")
 					}
 					if 1 == i {
 						fmtDesc.auxPrefix = NUM_FMT_AUX_PREFIX_FM
 					} else {
-						panic(errors.New("FM 必须在开头"))
+						return fmtDesc, errors.New("FM 必须在开头")
 					}
 				default:
-					panic(errors.New(num_fmt_part_err + "F"))
+					return fmtDesc, errors.New(num_fmt_part_err + "F")
 				}
 			case 'M':
 				if fmtDesc.auxSuffix == NUM_FMT_AUX_SUFFIX_EMPTY {
-					panic(errors.New("辅助后缀冲突" + "MI"))
+					return fmtDesc, errors.New("辅助后缀冲突" + "MI")
 				} else if i == (lastFormatIndex - 1) {
-					panic(errors.New("MI 只能在结尾"))
+					return fmtDesc, errors.New("MI 只能在结尾")
 				}
 
 				i++
@@ -588,13 +589,13 @@ func parseNumFormat(format string) NumFmtDesc {
 				case 'I':
 					fmtDesc.auxSuffix = NUM_FMT_AUX_SUFFIX_MI
 				default:
-					panic(errors.New(num_fmt_part_err + "M"))
+					return fmtDesc, errors.New(num_fmt_part_err + "M")
 				}
 			case 'P':
 				if fmtDesc.auxSuffix == NUM_FMT_AUX_SUFFIX_EMPTY {
-					panic(errors.New("辅助后缀冲突" + "PR"))
+					return fmtDesc, errors.New("辅助后缀冲突" + "PR")
 				} else if i == (lastFormatIndex - 1) {
-					panic(errors.New("PR 只能在结尾"))
+					return fmtDesc, errors.New("PR 只能在结尾")
 				}
 
 				i++
@@ -603,7 +604,7 @@ func parseNumFormat(format string) NumFmtDesc {
 				case 'R':
 					fmtDesc.auxSuffix = NUM_FMT_AUX_SUFFIX_PR
 				default:
-					panic(errors.New(num_fmt_part_err + "P"))
+					return fmtDesc, errors.New(num_fmt_part_err + "P")
 				}
 			case 'R':
 				// 判断独占 长度 FIXME
@@ -612,22 +613,22 @@ func parseNumFormat(format string) NumFmtDesc {
 				switch followingOneChar {
 				case 'N':
 					if fmtDesc.suffix == NUM_FMT_SUFFIX_EMPTY {
-						panic(errors.New("只能有1个 RN"))
+						return fmtDesc, errors.New("只能有1个 RN")
 					} else if fmtDesc.auxPrefix == NUM_FMT_AUX_PREFIX_FM && formatLen == 4 {
-						panic(errors.New("包含RN的格式,除了 FM 和 RN 不能有其他格式字符"))
+						return fmtDesc, errors.New("包含RN的格式,除了 FM 和 RN 不能有其他格式字符")
 					} else if fmtDesc.auxPrefix == NUM_FMT_AUX_PREFIX_EMPTY && formatLen == 2 {
-						panic(errors.New("包含RN的格式,除了 FM 和 RN 不能有其他格式字符"))
+						return fmtDesc, errors.New("包含RN的格式,除了 FM 和 RN 不能有其他格式字符")
 					}
 
 					fmtDesc.suffix = NUM_FMT_SUFFIX_RN
 				default:
-					panic(errors.New(num_fmt_part_err + "R"))
+					return fmtDesc, errors.New(num_fmt_part_err + "R")
 				}
 			case 'S':
 				if fmtDesc.s == NUM_FMT_S_EMPTY {
-					panic(errors.New("只能有1个 S"))
+					return fmtDesc, errors.New("只能有1个 S")
 				} else if i == lastFormatIndex && i != 0 {
-					panic(errors.New("S 只能在开头或者结尾"))
+					return fmtDesc, errors.New("S 只能在开头或者结尾")
 				}
 
 				if i == 0 {
@@ -652,48 +653,48 @@ func parseNumFormat(format string) NumFmtDesc {
 							} else if '9' == followingOneChar {
 								fmtDesc.suffix = NUM_FMT_SUFFIX_TM9
 							} else {
-								panic(errors.New("格式错误在 TM 附近"))
+								return fmtDesc, errors.New("格式错误在 TM 附近")
 							}
 						}
 					} else {
-						panic(errors.New("格式错误在 T 附近"))
+						return fmtDesc, errors.New("格式错误在 T 附近")
 					}
 				} else {
-					panic(errors.New("只能有1组 TM"))
+					return fmtDesc, errors.New("只能有1组 TM")
 				}
 			case 'V':
 				if fmtDesc.suffix == NUM_FMT_SUFFIX_EMPTY {
-					panic(errors.New("只能有1个 V"))
+					return fmtDesc, errors.New("只能有1个 V")
 				} else if 0 != i {
-					panic(errors.New("V 不能在开头"))
+					return fmtDesc, errors.New("V 不能在开头")
 				}
 				fmtDesc.suffix = NUM_FMT_SUFFIX_V
 			case 'X':
 				if fmtDesc.suffix == NUM_FMT_SUFFIX_EMPTY {
-					panic(errors.New("conflict with X"))
+					return fmtDesc, errors.New("conflict with X")
 				} else if 0 != i {
-					panic(errors.New("V 不能在开头"))
+					return fmtDesc, errors.New("V 不能在开头")
 				}
 
 				fmtDesc.suffix = NUM_FMT_SUFFIX_X
 				fmtDesc.xCount++
 			default:
-				panic(errors.New(out_keyword_range_err))
+				return fmtDesc, errors.New(out_keyword_range_err)
 			}
 
 		} else {
-			panic(errors.New(out_ascii_range_err))
+			return fmtDesc, errors.New(out_ascii_range_err)
 		}
 
 		i++
 	}
 
-	return fmtDesc
+	return fmtDesc, nil
 
 }
 
 // 解析数字参数
-func parseNumParam(num string) NumParamDesc {
+func parseNumParam(num string) (NumParamDesc, error) {
 	var paramDesc NumParamDesc
 
 	readDec := false
@@ -715,7 +716,7 @@ func parseNumParam(num string) NumParamDesc {
 				readDec = true
 				paramDesc.existDec = true
 			} else {
-				panic("多个符号 " + ".")
+				return paramDesc, errors.New("多个符号 " + ".")
 			}
 		case 'e', 'E':
 			i++
@@ -736,13 +737,13 @@ func parseNumParam(num string) NumParamDesc {
 				if num[i] <= '9' && num[i] >= '0' {
 					exponent.WriteByte(num[i])
 				} else {
-					panic(errors.New("科学计数的指数使用了非法字符 " + string(num[i])))
+					return paramDesc, errors.New("科学计数的指数使用了非法字符 " + string(num[i]))
 				}
 			}
 
 			exponentNum, err := strconv.Atoi(exponent.String())
 			if err != nil {
-				panic(err)
+				return paramDesc, err
 			}
 			paramDesc.eExponent = exponentNum
 			fmt.Println(exponent.String())
@@ -750,18 +751,18 @@ func parseNumParam(num string) NumParamDesc {
 			if i == 0 {
 				paramDesc.sign = minus
 			} else {
-				panic("符号位置不对 " + "-")
+				return paramDesc, errors.New("符号位置不对 " + "-")
 			}
 		case '+':
 			if i == 0 {
 				paramDesc.sign = plus
 			} else {
-				panic("符号位置不对 " + "+")
+				return paramDesc, errors.New("符号位置不对 " + "+")
 			}
 		case ',':
-			panic("暂时不支持 " + ",")
+			return paramDesc, errors.New("暂时不支持 " + ",")
 		default:
-			panic(errors.New("不支持的数字符号"))
+			return paramDesc, errors.New("不支持的数字符号")
 		}
 	}
 
@@ -784,7 +785,7 @@ func parseNumParam(num string) NumParamDesc {
 		fmt.Println(ff)
 		d, err := strconv.ParseFloat(ff, 64)
 		if err != nil {
-			panic(err)
+			return paramDesc, err
 		}
 		fff := "%" + paramDesc.preDec + "." + paramDesc.postDec + "f"
 		v := fmt.Sprintf(fff, d)
@@ -795,15 +796,21 @@ func parseNumParam(num string) NumParamDesc {
 		paramDesc.postDec = postBuf.String()
 	}
 
-	return paramDesc
+	return paramDesc, nil
 }
 
-func parseNum(f string, num string) string {
-	numFmtDesc := parseNumFormat(f)
+func parseNum(f string, num string) (string, error) {
+	numFmtDesc, err := parseNumFormat(f)
+	if err != nil {
+		return empty_str, err
+	}
 	numFmtDescStr := fmt.Sprintf("%#v\n", numFmtDesc)
 	fmt.Println(numFmtDescStr)
 
-	numParamDesc := parseNumParam(num)
+	numParamDesc, err := parseNumParam(num)
+	if err != nil {
+		return empty_str, err
+	}
 	numParamStr := fmt.Sprintf("%#v\n", numParamDesc)
 	fmt.Println(numParamStr)
 
@@ -848,7 +855,7 @@ func parseNum(f string, num string) string {
 				}
 			}
 		} else {
-			panic("格式的整数部分的长度不能比参数的整数部分的长度小")
+			return empty_str, errors.New("格式的整数部分的长度不能比参数的整数部分的长度小")
 		}
 	// 科学计数
 	case NUM_FMT_SUFFIX_EEEE:
@@ -861,17 +868,17 @@ func parseNum(f string, num string) string {
 	// 乘积
 	case NUM_FMT_SUFFIX_V:
 		if numParamDesc.isEEEE {
-			panic("格式V 不支持科学计数参数")
+			return empty_str, errors.New("格式V 不支持科学计数参数")
 		}
 	// 罗马数字
 	case NUM_FMT_SUFFIX_RN:
 		if numParamDesc.isEEEE {
-			panic("格式RN 不支持科学计数参数")
+			return empty_str, errors.New("格式RN 不支持科学计数参数")
 		}
 	// 十六进制
 	case NUM_FMT_SUFFIX_X:
 		if numParamDesc.isEEEE {
-			panic("格式X 不支持科学计数参数")
+			return empty_str, errors.New("格式X 不支持科学计数参数")
 		}
 	// 十进制
 	// 少写几个9 最小文本匹配 没有修饰符逗号，货币符号等
@@ -888,11 +895,11 @@ func parseNum(f string, num string) string {
 
 		}
 	default:
-		panic("Theoretically unreachable")
+		return empty_str, errors.New("Theoretically unreachable")
 	}
 
 	result.Write(bs)
-	return result.String()
+	return result.String(), nil
 }
 
 const (
@@ -906,14 +913,14 @@ const (
 	NLS_B_C_    = "公元前"
 	NLS_PM      = "下午"
 	NLS_P_M_    = "下午"
-	NLS_DL      = "YYYY年MM月DD日 DAY"
+	NLS_DL      = "YYYY\"年\"MM\"月\"DD\"日\" DAY"
 	NLS_DS      = "YYYY-MM-DD"
 	NLS_X       = "."
 )
 
 // 解析日期格式
 // 可以适当考虑使用字典树实现
-func parseDchByStr(param string, format string) string {
+func parseDchByStr(param string, format string) (string, error) {
 	//var keywordGroup = make([]keyword, 4)
 
 	result := bytes.Buffer{}
@@ -944,7 +951,7 @@ func parseDchByStr(param string, format string) string {
 					fi++
 					pi++
 				default:
-					panic("不匹配的字符: " + string(pc))
+					return empty_str, errors.New("不匹配的字符: " + string(pc))
 				}
 			case '"':
 				var skipWord bytes.Buffer
@@ -977,7 +984,7 @@ func parseDchByStr(param string, format string) string {
 								fi = j
 								pi = pe
 							} else {
-								panic("语法错误,参数与 A.D. 格式不匹配")
+								return empty_str, errors.New("语法错误,参数与 A.D. 格式不匹配")
 							}
 						} else if "M." == followingChars {
 							// DCH A.M.
@@ -990,13 +997,13 @@ func parseDchByStr(param string, format string) string {
 								pi = pe
 
 							} else {
-								panic("语法错误,参数与 A.M. 格式不匹配")
+								return empty_str, errors.New("语法错误,参数与 A.M. 格式不匹配")
 							}
 						} else {
-							panic(errors.New(dch_fmt_part_err + "A."))
+							return empty_str, errors.New(dch_fmt_mismatch_err + "A.")
 						}
 					} else {
-						panic(errors.New(dch_fmt_part_err + "A."))
+						return empty_str, errors.New(dch_fmt_mismatch_err + "A.")
 					}
 				case 'D':
 					// DCH AD
@@ -1008,7 +1015,7 @@ func parseDchByStr(param string, format string) string {
 						result.WriteString(NLS_AD)
 						pi = pe
 					} else {
-						panic("语法错误,参数与 AD 格式不匹配")
+						return empty_str, errors.New("语法错误,参数与 AD 格式不匹配")
 					}
 				case 'M':
 					// DCH AM
@@ -1020,10 +1027,10 @@ func parseDchByStr(param string, format string) string {
 						result.WriteString(NLS_AM)
 						pi = pe
 					} else {
-						panic("语法错误,参数与 AM 格式不匹配")
+						return empty_str, errors.New("语法错误,参数与 AM 格式不匹配")
 					}
 				default:
-					panic(errors.New(dch_fmt_part_err + "A"))
+					return empty_str, errors.New(dch_fmt_mismatch_err + "A")
 				}
 				// 同上
 			case 'B':
@@ -1040,7 +1047,7 @@ func parseDchByStr(param string, format string) string {
 					}
 					fi = fe
 				default:
-					panic(errors.New(dch_fmt_part_err + "B"))
+					return empty_str, errors.New(dch_fmt_mismatch_err + "B")
 				}
 				// 只适用于时间类型参数
 			case 'C':
@@ -1051,7 +1058,7 @@ func parseDchByStr(param string, format string) string {
 					year := time.Now().Year()
 					result.WriteString(strconv.Itoa((year + 99) / 100))
 				default:
-					panic(errors.New(dch_fmt_part_err + "C"))
+					return empty_str, errors.New(dch_fmt_mismatch_err + "C")
 				}
 				// 字符串类型参数的 D 周中的日和julia 冲突
 				// 时间类型参数的 D
@@ -1061,17 +1068,17 @@ func parseDchByStr(param string, format string) string {
 				// DAY 同 DY
 				if frest >= 2 && format[fi:fi+2] == "AY" || frest >= 1 && format[fi] == 'Y' {
 					weekDay := time.Now().Weekday()
-					result.WriteString(weekDays[weekDay])
+					result.WriteString(NLS_WEEKS[weekDay])
 				} else if frest >= 1 && format[fi] == 'D' {
 					day := time.Now().Day()
 					result.WriteString(strconv.Itoa(day))
 				} else if frest >= 1 && format[fi] == 'L' {
 					// TODO 插入格式 continue
-					result.WriteString(parseDchByStr("???", NLS_DL))
+					//result.WriteString(parseDchByStr("???", NLS_DL))
 
 				} else if frest >= 1 && format[fi] == 'S' {
 					// TODO 插入格式 continue
-					result.WriteString(parseDchByStr("???", NLS_DS))
+					//result.WriteString(parseDchByStr("???", NLS_DS))
 
 				} else {
 					weekDay := time.Now().Weekday()
@@ -1109,7 +1116,7 @@ func parseDchByStr(param string, format string) string {
 					case "F9":
 						//keywordGroup = append(keywordGroup, DCH_FF9)
 					default:
-						panic(errors.New(dch_fmt_part_err + "F"))
+						return empty_str, errors.New(dch_fmt_mismatch_err + "F")
 					}
 				}
 			case 'H':
@@ -1128,7 +1135,7 @@ func parseDchByStr(param string, format string) string {
 					case "H12":
 						//keywordGroup = append(keywordGroup, DCH_HH12)
 					default:
-						panic(errors.New(dch_fmt_part_err + "H"))
+						return empty_str, errors.New(dch_fmt_mismatch_err + "H")
 					}
 				}
 			case 'I':
@@ -1151,7 +1158,7 @@ func parseDchByStr(param string, format string) string {
 					}
 					//keywordGroup = append(keywordGroup, DCH_IY)
 				default:
-					panic(errors.New(dch_fmt_part_err + "I"))
+					return empty_str, errors.New(dch_fmt_mismatch_err + "I")
 				}
 				// 匹配单个字符
 				//keywordGroup = append(keywordGroup, DCH_I)
@@ -1180,12 +1187,12 @@ func parseDchByStr(param string, format string) string {
 						} else {
 							// DCH MON
 						}
-						result.WriteString(month[t.Month()])
+						result.WriteString(NLS_MONTHS[t.Month()])
 					} else {
-						panic(errors.New(dch_fmt_part_err + "MO"))
+						return empty_str, errors.New(dch_fmt_mismatch_err + "MO")
 					}
 				} else {
-					panic(errors.New(dch_fmt_part_err + "M"))
+					return empty_str, errors.New(dch_fmt_mismatch_err + "M")
 				}
 			case 'P':
 				fi++
@@ -1200,14 +1207,14 @@ func parseDchByStr(param string, format string) string {
 							if ".M." == followingThreeChars {
 								//keywordGroup = append(keywordGroup, DCH_P_M)
 							} else {
-								panic(errors.New(dch_fmt_part_err + "P"))
+								return empty_str, errors.New(dch_fmt_mismatch_err + "P")
 							}
 						} else {
-							panic(errors.New(dch_fmt_part_err + "P"))
+							return empty_str, errors.New(dch_fmt_mismatch_err + "P")
 						}
 					}
 				} else {
-					panic(errors.New(dch_fmt_part_err + "P"))
+					return empty_str, errors.New(dch_fmt_mismatch_err + "P")
 				}
 			case 'Q':
 				t := time.Now()
@@ -1217,7 +1224,7 @@ func parseDchByStr(param string, format string) string {
 				if 'M' == format[fi] {
 					//keywordGroup = append(keywordGroup, DCH_RM)
 				} else {
-					panic(errors.New(dch_fmt_part_err + "R"))
+					return empty_str, errors.New(dch_fmt_mismatch_err + "R")
 				}
 			case 'S':
 				start := fi
@@ -1230,7 +1237,7 @@ func parseDchByStr(param string, format string) string {
 				} else if "S" == followingFourChars[0:3] {
 					//keywordGroup = append(keywordGroup, DCH_SS)
 				} else {
-					panic(errors.New(dch_fmt_part_err + "S"))
+					return empty_str, errors.New(dch_fmt_mismatch_err + "S")
 				}
 			case 'T':
 				start := fi
@@ -1243,7 +1250,7 @@ func parseDchByStr(param string, format string) string {
 				} else if 'Z' == followingTwoChars[0] {
 					//keywordGroup = append(keywordGroup, DCH_TZM)
 				} else {
-					panic(errors.New(dch_fmt_part_err + "T"))
+					return empty_str, errors.New(dch_fmt_mismatch_err + "T")
 				}
 			case 'W':
 				fi++
@@ -1302,383 +1309,559 @@ func parseDchByStr(param string, format string) string {
 				}
 
 			default:
-				panic(errors.New(out_keyword_range_err))
+				return empty_str, errors.New(out_keyword_range_err)
 			}
 		} else {
-			panic(errors.New(out_ascii_range_err))
+			return empty_str, errors.New(out_ascii_range_err)
 		}
 	}
 
-	return result.String()
+	return result.String(), nil
 }
 
+const (
+	empty_str = ""
+)
+
 // 解析日期格式
-func parseDchByTime(t time.Time, format string) string {
+func ParseDchByTime(t time.Time, format string) (string, error) {
 	result := bytes.Buffer{}
 	flen := len(format)
 
-	for fi := 0; fi < flen; {
+	println(format)
+
+	aux_flag_fm := false
+	aux_flag_fx := false
+	aux_flag_sp := false
+	aux_flag_th := false
+
+	for fi := 0; fi < flen; fi++ {
 		// 截取一个字符
 		c := format[fi]
 		if c >= 32 && c <= 127 {
-			fmt.Println("c: " + (string)(c))
-
-			frest := flen - fi
+			//log.Println("debug: c-> " + (string)(c))
+			//log.Println(result.String())
+			//frest := flen - fi
 			switch c {
-			// 跳过字符
+			// DCH 跳过字符
 			case '-', '/', ',', '.', ';', ':', ' ':
 				result.WriteByte(c)
 			case '"':
+				fi++
 				for ; fi < flen; fi++ {
 					if '"' == format[fi] {
 						break
 					} else {
+						// DCH "
 						result.WriteByte(format[fi])
 					}
 				}
 			case 'A':
 				fi++
-				followingOneChar := format[fi]
-				switch followingOneChar {
-				case '.':
-					fi++
-					j := fi + 2
-					if j <= len(format) {
-						followingChars := format[fi:j]
-						if "D." == followingChars {
-							// DCH A.D.
-							result.WriteString(NLS_AD)
-							fi = j
-						} else if "M." == followingChars {
-							// DCH A.M.
-							result.WriteString(NLS_AM)
-							fi = j
+				if fi < flen {
+					followingOneChar := format[fi]
+					switch followingOneChar {
+					case '.':
+						fi++
+						start := fi
+						fi += 2
+						if fi <= flen {
+							followingChars := format[start:fi]
+							if "D." == followingChars {
+								// DCH A.D.
+								result.WriteString(NLS_AD)
+							} else if "M." == followingChars {
+								// DCH A.M.
+								result.WriteString(NLS_AM)
+							} else {
+								return empty_str, errors.New(dch_fmt_mismatch_err + "A.")
+							}
 						} else {
-							panic(errors.New(dch_fmt_part_err + "A."))
+							return empty_str, errors.New(dch_fmt_length_err + "A.")
 						}
-					} else {
-						panic(errors.New(dch_fmt_part_err + "A."))
+					case 'D':
+						// DCH AD
+						result.WriteString(NLS_AD)
+					case 'M':
+						// DCH AM
+						result.WriteString(NLS_AM)
+					default:
+						return empty_str, errors.New(dch_fmt_mismatch_err + "A")
 					}
-				case 'D':
-					// DCH AD
-					fi++
-					result.WriteString(NLS_AD)
-				case 'M':
-					// DCH AM
-					fi++
-					result.WriteString(NLS_AM)
-				default:
-					panic(errors.New(dch_fmt_part_err + "A"))
+				} else {
+					return empty_str, errors.New(dch_fmt_length_err + "A")
 				}
 			case 'B':
 				fi++
-				followingOneChar := format[fi]
-				switch followingOneChar {
-				case 'C':
-					result.WriteString(NLS_BC)
-				case '.':
-					fe := fi + 4
-					followingChars := format[fi:fe]
-					if ".C." == followingChars {
+				if fi < flen {
+					followingOneChar := format[fi]
+					switch followingOneChar {
+					case 'C':
+						// DCH BC
 						result.WriteString(NLS_BC)
+					case '.':
+						fi++
+						start := fi
+						fi += 2
+						if fi <= flen && "C." == format[start:fi] {
+							// DCH B.C.
+							result.WriteString(NLS_BC)
+						} else {
+							return empty_str, errors.New(dch_fmt_mismatch_err + "B.")
+						}
+					default:
+						return empty_str, errors.New(dch_fmt_mismatch_err + "B")
 					}
-					fi = fe
-				default:
-					panic(errors.New(dch_fmt_part_err + "B"))
+				} else {
+					return empty_str, errors.New(dch_fmt_mismatch_err + "B")
 				}
 			case 'C':
 				fi++
-				followingOneChar := format[fi]
-				switch followingOneChar {
-				case 'C':
-					result.WriteString(strconv.Itoa((t.Year() + 99) / 100))
-				default:
-					panic(errors.New(dch_fmt_part_err + "C"))
+				if fi < flen {
+					followingOneChar := format[fi]
+					switch followingOneChar {
+					case 'C':
+						// DCH CC
+						result.WriteString(strconv.Itoa((t.Year() + 99) / 100))
+					default:
+						return empty_str, errors.New(dch_fmt_mismatch_err + "C")
+					}
+				} else {
+					return empty_str, errors.New(dch_fmt_length_err + "C")
 				}
 			case 'D':
 				fi++
-
-				// DAY 同 DY
-				if frest >= 2 && format[fi:fi+2] == "AY" || frest >= 1 && format[fi] == 'Y' {
-					weekDay := time.Now().Weekday()
-					result.WriteString(weekDays[weekDay])
-				} else if frest >= 1 && format[fi] == 'D' {
-					day := time.Now().Day()
-					result.WriteString(strconv.Itoa(day))
-				} else if frest >= 1 && format[fi] == 'L' {
-					// TODO 插入格式 continue
-					result.WriteString(parseDchByStr("???", NLS_DL))
-
-				} else if frest >= 1 && format[fi] == 'S' {
-					// TODO 插入格式 continue
-					result.WriteString(parseDchByStr("???", NLS_DS))
-
+				if fi < flen {
+					if format[fi] == 'A' {
+						fi++
+						if fi < flen && format[fi] == 'Y' {
+							// DCH DAY 同 DY
+							result.WriteString(NLS_WEEKS[t.Weekday()])
+						} else {
+							return empty_str, errors.New(dch_fmt_mismatch_err + "DA")
+						}
+					} else if format[fi] == 'D' {
+						fi++
+						if fi < flen && format[fi] == 'D' {
+							// DCH DDD
+							result.WriteString(strconv.Itoa(t.YearDay()))
+						} else {
+							// DCH DD
+							result.WriteString(strconv.Itoa(t.Day()))
+							fi--
+						}
+					} else if format[fi] == 'L' {
+						tmp, err := ParseDchByTime(t, NLS_DL)
+						if err != nil {
+							return empty_str, nil
+						}
+						result.WriteString(tmp)
+					} else if format[fi] == 'S' {
+						tmp, err := ParseDchByTime(t, NLS_DS)
+						if err != nil {
+							return empty_str, nil
+						}
+						result.WriteString(tmp)
+					} else if format[fi] == 'Y' {
+						// DCH DY
+						result.WriteString(NLS_WEEKS[t.Weekday()])
+					} else {
+						// DCH D
+						result.WriteString(strconv.Itoa(int(t.Weekday())))
+						fi--
+					}
 				} else {
-					weekDay := t.Weekday()
-					result.WriteString(strconv.Itoa(int(weekDay)))
+					// DCH D
+					result.WriteString(strconv.Itoa(int(t.Weekday())))
+					fi--
 				}
 			case 'E':
 				// TODO EE E
 			case 'F':
 				fi++
-				followingOneChar := format[fi]
-				switch followingOneChar {
-				case 'X':
-					// TODO
-				case 'M':
-					// TODO
-				default:
-					followingTwoChars := format[fi : fi+3]
-					fi = fi + 3
-					switch followingTwoChars {
-					case "F1":
-						result.WriteString(strconv.Itoa(t.Nanosecond() / 1e8))
-					case "F2":
-						result.WriteString(strconv.Itoa(t.Nanosecond() / 1e7))
-					case "F3":
-						result.WriteString(strconv.Itoa(t.Nanosecond() / 1e6))
-					case "F4":
-						result.WriteString(strconv.Itoa(t.Nanosecond() / 1e5))
-					case "F5":
-						result.WriteString(strconv.Itoa(t.Nanosecond() / 1e4))
-					case "F6":
-						result.WriteString(strconv.Itoa(t.Nanosecond() / 1e3))
-					case "F7":
-						result.WriteString(strconv.Itoa(t.Nanosecond() / 1e2))
-					case "F8":
-						result.WriteString(strconv.Itoa(t.Nanosecond() / 10))
-					case "F9":
-						result.WriteString(strconv.Itoa(t.Nanosecond()))
+				if fi < flen {
+					followingOneChar := format[fi]
+					switch followingOneChar {
+					case 'X':
+						// TODO 最后处理
+						aux_flag_fx = true
+					case 'M':
+						// TODO 最后处理
+						aux_flag_fm = true
+					case 'F':
+						fi++
+						if fi < flen {
+							switch format[fi] {
+							case '1':
+								result.WriteString(strconv.Itoa(t.Nanosecond() / 1e8))
+							case '2':
+								result.WriteString(strconv.Itoa(t.Nanosecond() / 1e7))
+							case '3':
+								result.WriteString(strconv.Itoa(t.Nanosecond() / 1e6))
+							case '4':
+								result.WriteString(strconv.Itoa(t.Nanosecond() / 1e5))
+							case '5':
+								result.WriteString(strconv.Itoa(t.Nanosecond() / 1e4))
+							case '6':
+								result.WriteString(strconv.Itoa(t.Nanosecond() / 1e3))
+							case '7':
+								result.WriteString(strconv.Itoa(t.Nanosecond() / 1e2))
+							case '8':
+								result.WriteString(strconv.Itoa(t.Nanosecond() / 1e1))
+							case '9':
+								result.WriteString(strconv.Itoa(t.Nanosecond()))
+							default:
+								return empty_str, errors.New(dch_fmt_mismatch_err + "FF")
+							}
+						} else {
+							return empty_str, errors.New(dch_fmt_length_err + "FF")
+						}
 					default:
-						panic(errors.New(dch_fmt_part_err + "F"))
+						return empty_str, errors.New(dch_fmt_length_err + "F")
 					}
+				} else {
+					return empty_str, errors.New(dch_fmt_length_err + "F")
 				}
 			case 'H':
 				fi++
-				followingOneChar := format[fi]
-				switch followingOneChar {
-				case 'H':
-					// DCH HH
-					hour := t.Hour()
-					if hour > 12 {
-						result.WriteString(strconv.Itoa(hour - 12))
-					} else {
-						result.WriteString(strconv.Itoa(hour))
-					}
-				default:
-					followingThreeChars := format[fi : fi+4]
-					fi = fi + 4
-
-					switch followingThreeChars {
-					case "H24":
-						// DCH HH24
-						result.WriteString(strconv.Itoa(t.Hour()))
-					case "H12":
-						// DCH HH12
+				if fi < flen {
+					switch format[fi] {
+					case 'H':
+						// DCH HH 同 HH12
 						hour := t.Hour()
 						if hour > 12 {
-							result.WriteString(strconv.Itoa(hour - 12))
-						} else {
-							result.WriteString(strconv.Itoa(hour))
+							hour = hour - 12
 						}
-					default:
-						panic(errors.New(dch_fmt_part_err + "H"))
+						if hour < 10 {
+							result.WriteByte('0')
+						}
+						result.WriteString(strconv.Itoa(hour))
+					case '2':
+						fi++
+						if fi < flen {
+							// DCH HH24
+							if format[fi] == '4' {
+								if t.Hour() < 10 {
+									result.WriteByte('0')
+								}
+								result.WriteString(strconv.Itoa(t.Hour()))
+							} else {
+								return empty_str, errors.New(dch_fmt_mismatch_err + "H2")
+							}
+						} else {
+							return empty_str, errors.New(dch_fmt_length_err + "H2")
+						}
+					case '1':
+						fi++
+						if fi < flen {
+							// DCH HH12
+							if format[fi] == '2' {
+								hour := t.Hour()
+								if hour > 12 {
+									hour = hour - 12
+								}
+								if hour < 10 {
+									result.WriteByte('0')
+								}
+								result.WriteString(strconv.Itoa(hour))
+							} else {
+								return empty_str, errors.New(dch_fmt_mismatch_err + "H2")
+							}
+						} else {
+							return empty_str, errors.New(dch_fmt_length_err + "H1")
+						}
 					}
+				} else {
+					return empty_str, errors.New(dch_fmt_length_err + "H")
 				}
 			case 'I':
 				fi++
 				y, w := t.ISOWeek()
 
 				if fi < flen {
-					followingOneChar := format[fi]
-					switch followingOneChar {
+					switch format[fi] {
 					case 'W':
+						// DCH IW
 						result.WriteString(strconv.Itoa(w))
 					case 'Y':
-						followingTwoChars := format[fi : fi+3]
-						if "YY" == followingTwoChars {
-							// DCH IYYY
-							fi = fi + 3
-							result.WriteString(strconv.Itoa(y))
-						}
-
-						followingOneChar = followingTwoChars[0]
-						if 'Y' == followingOneChar {
-							// DCH IYY
-							result.WriteString(strconv.Itoa(y)[1:])
-							fi = fi + 2
+						fi++
+						if fi < flen && format[fi] == 'Y' {
+							fi++
+							if fi < flen && format[fi] == 'Y' {
+								// DCH IYYY
+								result.WriteString(strconv.Itoa(y))
+							} else {
+								// DCH IYY
+								result.WriteString(strconv.Itoa(y)[1:])
+								fi--
+							}
 						} else {
 							// DCH IY
 							result.WriteString(strconv.Itoa(y)[2:])
+							fi--
 						}
 					}
 				} else {
 					// DCH I
 					result.WriteString(strconv.Itoa(y)[3:])
+					fi--
 				}
 			case 'J':
 				result.WriteString(strconv.Itoa(ToJulian(t.Year(), int(t.Month()), t.Day())))
 			case 'M':
 				fi++
-				if fi <= flen && format[fi] == 'I' {
+				if fi < flen && format[fi] == 'I' {
 					// DCH MI
 					result.WriteString(strconv.Itoa(t.Minute()))
-				} else if fi <= flen && format[fi] == 'M' {
+				} else if fi < flen && format[fi] == 'M' {
 					// DCH MM
 					if t.Month() < 10 {
-						result.WriteString("0")
+						result.WriteByte('0')
 					}
 					result.WriteString(strconv.Itoa(int(t.Month())))
-				} else if fi <= flen && format[fi] == 'O' {
+				} else if fi < flen && format[fi] == 'O' {
 					fi++
-					if fi <= flen && format[fi] == 'N' {
-						fe := fi + 2
-						if fi <= flen && format[fi:fe] == "TH" {
+					if fi < flen && format[fi] == 'N' {
+						fi++
+						start := fi
+						fi += 2
+						if fi <= flen && format[start:fi] == "TH" {
 							// DCH MONTH
-							fi = fe
 						} else {
 							// DCH MON
+							fi -= 2
 						}
-						result.WriteString(month[t.Month()])
+						result.WriteString(NLS_MONTHS[t.Month()])
 					} else {
-						panic(errors.New(dch_fmt_part_err + "MO"))
+						return empty_str, errors.New(dch_fmt_mismatch_err + "MO")
 					}
 				} else {
-					panic(errors.New(dch_fmt_part_err + "M"))
+					return empty_str, errors.New(dch_fmt_mismatch_err + "M")
 				}
 			case 'P':
 				fi++
 				if fi < flen {
 					if 'M' == format[fi] {
 						result.WriteString(NLS_PM)
-					} else {
+					} else if '.' == format[fi] {
+						fi++
 						start := fi
-						fi += 3
-						if fi < flen {
-							followingThreeChars := format[start:fi]
-							if ".M." == followingThreeChars {
+						fi += 2
+						if fi <= flen {
+							if "M." == format[start:fi] {
 								result.WriteString(NLS_P_M_)
 							} else {
-								panic(errors.New(dch_fmt_part_err + "P"))
+								return empty_str, errors.New(dch_fmt_mismatch_err + "P")
 							}
 						} else {
-							panic(errors.New(dch_fmt_part_err + "P"))
+							return empty_str, errors.New(dch_fmt_length_err + "P")
 						}
+					} else {
+						return empty_str, errors.New(dch_fmt_length_err + "P")
 					}
 				} else {
-					panic(errors.New(dch_fmt_part_err + "P"))
+					return empty_str, errors.New(dch_fmt_length_err + "P")
 				}
 			case 'Q':
 				result.WriteString(strconv.Itoa(int(t.Month()+2) / 3))
 			case 'R':
 				fi++
-				if 'M' == format[fi] {
-					result.WriteString(ToRoman(int(t.Month())).String())
+				if fi < flen {
+					if 'M' == format[fi] {
+						result.WriteString(ToRoman(int(t.Month())).String())
+					} else if 'R' == format[fi] {
+						fi++
+						start := fi
+						fi += 2
+						if fi <= flen && format[start:fi] == "RR" {
+							// DCH RRRR
+							result.WriteString(strconv.Itoa(t.Year()))
+						} else {
+							// DCH RR
+							result.WriteString(strconv.Itoa(t.Year())[2:])
+							fi -= 2
+						}
+					} else {
+						return empty_str, errors.New(dch_fmt_mismatch_err + "R")
+					}
 				} else {
-					panic(errors.New(dch_fmt_part_err + "R"))
+					return empty_str, errors.New(dch_fmt_length_err + "R")
 				}
-
-				// DCH RRRR
-				result.WriteString(strconv.Itoa(t.Year()))
-				// DCH RR
-				result.WriteString(strconv.Itoa(t.Year())[2:])
 			case 'S':
-				// DCH SYEAR 正负号+基数词
-				//if 公元前 {result.WriteByte('-')}
-				result.WriteString(ntw.NumToCardinalWord(t.Year()))
-
-				// DCH SYYYY 正负号+数字
-				//if 公元前 {result.WriteByte('-')}
-				result.WriteString(strconv.Itoa(t.Year()))
-
-				// DCH SP TODO 最后处理
-				start := fi
-				fi += 4
-				followingFourChars := format[start:fi]
-				if "SSSS" == followingFourChars {
-					// DCH SSSSS
-					result.WriteString(strconv.Itoa((t.Hour()*60+t.Minute())*60 + t.Second()))
-				} else if "S" == followingFourChars[0:3] {
-					// DCH SS
-					result.WriteString(strconv.Itoa(t.Second()))
+				fi++
+				if fi < flen {
+					switch format[fi] {
+					case 'P':
+						// DCH SP TODO 最后处理
+						aux_flag_sp = true
+					case 'S':
+						fi++
+						start := fi
+						fi += 3
+						if fi <= flen && format[start:fi] == "SSS" {
+							// DCH SSSSS 午夜过后的秒
+							result.WriteString(strconv.Itoa((t.Hour()*60+t.Minute())*60 + t.Second()))
+						} else {
+							// DCH SS
+							result.WriteString(strconv.Itoa(t.Second()))
+							fi -= 3
+						}
+					case 'Y':
+						fi++
+						start := fi
+						fi += 3
+						if fi <= flen {
+							if format[start:fi] == "YYY" {
+								// TODO golang 好像不支持公元前
+								// DCH SYYYY 正负号+数字
+								//if 公元前 {result.WriteByte('-')}
+								result.WriteString(strconv.Itoa(t.Year()))
+							} else if format[start:fi] == "EAR" {
+								// FIXME oracle中将4位的年分成了 2个2位数
+								// DCH SYEAR 正负号+基数词
+								//if 公元前 {result.WriteByte('-')}
+								result.WriteString(ntw.NumToCardinalWord(t.Year() / 100))
+								result.WriteString(SPACE)
+								result.WriteString(ntw.NumToCardinalWord(t.Year() % 100))
+							} else {
+								return empty_str, errors.New(dch_fmt_mismatch_err + "SY")
+							}
+						} else {
+							return empty_str, errors.New(dch_fmt_length_err + "S")
+						}
+					default:
+						return empty_str, errors.New(dch_fmt_mismatch_err + "S")
+					}
 				} else {
-					panic(errors.New(dch_fmt_part_err + "S"))
+					return empty_str, errors.New(dch_fmt_length_err + "S")
 				}
 			case 'T':
-				// DCH TS 下午 9:30:00
-				{
-					tsFormat := "15:04:05"
-
-					if t.Hour() > 12 {
-						result.WriteString(NLS_AM)
-						result.WriteByte(ASSIC_SPACE)
+				// TODO 更换类型后更改时区
+				fi++
+				if fi < flen {
+					if format[fi] == 'S' {
+						// DCH TS 下午 9:30:00
+						tsFormat := "15:04:05"
+						if t.Hour() > 12 {
+							result.WriteString(NLS_AM)
+							result.WriteByte(ASSIC_SPACE)
+						} else {
+							result.WriteString(NLS_AM)
+							result.WriteByte(ASSIC_SPACE)
+						}
+						result.WriteString(t.Format(tsFormat))
+					} else if format[fi] == 'Z' {
+						fi++
+						if fi < flen && format[fi] == 'D' {
+							// DCH TZD PDT 时区
+							zone, _ := t.Local().Zone()
+							result.WriteString(zone)
+						} else if fi < flen && format[fi] == 'H' {
+							// DCH TZH -07 时区小时
+							result.WriteString(t.Format("-07"))
+						} else if fi < flen && format[fi] == 'M' {
+							// DCH TZM 00 时区分
+							result.WriteString(t.Format("-0700")[3:])
+						} else if fi < flen && format[fi] == 'R' {
+							// DCH TZR US/PACIFIC 时区区域
+							result.WriteString(t.Location().String())
+						} else {
+							return empty_str, errors.New("格式错误")
+						}
+					} else if format[fi] == 'H' {
+						// DCH TH TODO 最后处理
+						aux_flag_th = true
 					} else {
-						result.WriteString(NLS_AM)
-						result.WriteByte(ASSIC_SPACE)
+						return empty_str, errors.New("格式错误")
 					}
-					result.WriteString(t.Format(tsFormat))
+				} else {
+					return empty_str, errors.New("格式错误")
 				}
-
-				// DCH TZD PDT 时区
-				{
-					zone, _ := t.Local().Zone()
-					result.WriteString(zone)
-				}
-
-				// DCH TZH -07 时区小时
-				{
-					result.WriteString(t.Format("-07"))
-				}
-
-				// DCH TZM 00 时区分
-				{
-					result.WriteString(t.Format("-0700")[3:])
-				}
-
-				// DCH TZR US/PACIFIC 时区区域
-				{
-					result.WriteString(t.Location().String())
-				}
-				// DCH TH TODO 最后处理
 			case 'W':
 				fi++
-				if format[fi] == 'W' {
-					fi++
+				if fi < flen && format[fi] == 'W' {
 					// DCH WW
 					result.WriteString(strconv.Itoa((t.YearDay() + 6) / 7))
 				} else {
 					// DCH W
 					result.WriteString(strconv.Itoa((t.Day() + 6) / 7))
+					fi--
 				}
 			case 'X':
 				result.WriteString(NLS_X)
 			case 'Y':
 				fi++
 
-				year := strconv.Itoa(t.Year())
-
-				// DCH Y,YYY
-				result.WriteString(year[:1] + "," + year[1:])
-				// DCH YEAR 基数词
-				result.WriteString(ntw.NumToCardinalWord(t.Year()))
-				// DCH YYYY
-				result.WriteString(year)
-				// DCH YYY
-				result.WriteString(year[1:])
-				// DCH YY
-				result.WriteString(year[2:])
-				// DCH Y
-				result.WriteString(year[3:])
-
+				if fi < flen {
+					if format[fi] == ',' {
+						fi++
+						year := strconv.Itoa(t.Year())
+						start := fi
+						fi += 3
+						if fi <= flen {
+							if format[start:fi] == "YYY" {
+								// DCH Y,YYY
+								result.WriteString(year[:1] + "," + year[1:])
+							} else {
+								return empty_str, errors.New(dch_fmt_mismatch_err + "Y,")
+							}
+						} else {
+							return empty_str, errors.New(dch_fmt_length_err + "Y,")
+						}
+					} else if format[fi] == 'Y' {
+						year := strconv.Itoa(t.Year())
+						fi++
+						if fi < flen && format[fi] == 'Y' {
+							fi++
+							if fi < flen && format[fi] == 'Y' {
+								// DCH YYYY
+								result.WriteString(year)
+							} else {
+								// DCH YYY
+								result.WriteString(year[1:])
+								fi--
+							}
+						} else {
+							// DCH YY
+							result.WriteString(year[2:])
+						}
+					} else if format[fi] == 'E' {
+						fi++
+						start := fi
+						fi += 2
+						if fi <= flen && format[start:fi] == "AR" {
+							// DCH YEAR 基数词
+							result.WriteString(ntw.NumToCardinalWord(t.Year()))
+						} else {
+							return empty_str, errors.New(dch_fmt_mismatch_err + "YE")
+						}
+					}
+				} else {
+					// DCH Y
+					result.WriteString(strconv.Itoa(t.Year())[3:])
+				}
 			default:
-				panic(errors.New(out_keyword_range_err))
+				return empty_str, errors.New(out_keyword_range_err)
 			}
 		} else {
-			panic(errors.New(out_ascii_range_err))
+			return empty_str, errors.New(out_ascii_range_err + string(c))
 		}
 	}
 
-	return result.String()
+	if aux_flag_fm {
+
+	}
+	if aux_flag_fx {
+
+	}
+	if aux_flag_sp {
+
+	}
+	if aux_flag_th {
+
+	}
+
+	return result.String(), nil
 }
 
 func ToUpper(c *byte) {
