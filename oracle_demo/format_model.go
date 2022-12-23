@@ -16,6 +16,7 @@ const skipCharSize = 32
 const dch_fmt_mismatch_err = "Date Format error, some formats do not match near "
 const dch_fmt_length_err = "Date Format error, incorrect format length near "
 const num_fmt_part_err = "Datetime Format error, some formats do not match near "
+const not_support_err = "not support"
 
 // 非法字符,超出格式关键词范围
 const out_keyword_range_err = "Illegal character, not in the range of Format Model keyword"
@@ -24,8 +25,6 @@ const out_keyword_range_err = "Illegal character, not in the range of Format Mod
 const out_ascii_range_err = "Illegal character, not in ASCII [32-126] character range"
 
 const invalid_num_err = "invalid number"
-
-const ()
 
 // ASCII 32-126
 var formatChar = [utf8.RuneSelf]byte{
@@ -126,121 +125,118 @@ var formatChar = [utf8.RuneSelf]byte{
 	'~',
 }
 
-type FMKeyword string
-
 const (
 	// Format Model关键词
 	// Number Format Model Keyword
-	NUM_COMMA  FMKeyword = ","
-	NUM_DEC    FMKeyword = "."
-	NUM_DOLLAR FMKeyword = "$"
-	NUM_0      FMKeyword = "0"
-	NUM_9      FMKeyword = "9"
-	NUM_B      FMKeyword = "B"
-	NUM_C      FMKeyword = "C"
-	NUM_D      FMKeyword = "D"
-	NUM_E      FMKeyword = "EEEE"
-	NUM_FM     FMKeyword = "FM"
-	NUM_G      FMKeyword = "G"
-	NUM_L      FMKeyword = "L"
-	NUM_MI     FMKeyword = "MI"
-	NUM_PR     FMKeyword = "PR"
-	NUM_RN     FMKeyword = "RN"
-	NUM_S      FMKeyword = "S"
-	NUM_TM     FMKeyword = "TM"
-	NUM_TM9    FMKeyword = "TM9"
-	NUM_TME    FMKeyword = "TME"
-	NUM_U      FMKeyword = "U"
-	NUM_V      FMKeyword = "V"
-	NUM_X      FMKeyword = "X"
+	NUM_COMMA = iota
+	NUM_DEC
+	NUM_DOLLAR
+	NUM_0
+	NUM_9
+	NUM_B
+	NUM_C
+	NUM_D
+	NUM_E
+	NUM_FM
+	NUM_G
+	NUM_L
+	NUM_MI
+	NUM_PR
+	NUM_RN
+	NUM_S
+	NUM_TM
+	NUM_TM9
+	NUM_TME
+	NUM_U
+	NUM_V
+	NUM_X
 
 	// Datetime Format Model Keyword
-	DCH_MINUS        FMKeyword = "-"
-	DCH_SLASH        FMKeyword = "/"
-	DCH_COMMA        FMKeyword = ","
-	DCH_DEC          FMKeyword = "."
-	DCH_SEMICOLON    FMKeyword = ";"
-	DCH_COLON        FMKeyword = ":"
-	DCH_SPACE        FMKeyword = " "
-	DCH_DOUBLE_QUOTE FMKeyword = "\""
-	DCH_AD           FMKeyword = "AD"
-	DCH_A_D_         FMKeyword = "A.D."
-	DCH_AM           FMKeyword = "AM"
-	DCH_A_M_         FMKeyword = "A.M."
-	DCH_BC           FMKeyword = "BC"
-	DCH_B_C_         FMKeyword = "B.C."
-	DCH_CC           FMKeyword = "CC"
-	DCH_SCC          FMKeyword = "SCC"
-	DCH_DAY          FMKeyword = "DAY"
-	DCH_DDD          FMKeyword = "DDD"
-	DCH_DD           FMKeyword = "DD"
-	DCH_DL           FMKeyword = "DL"
-	DCH_DS           FMKeyword = "DS"
-	DCH_DY           FMKeyword = "DY"
-	DCH_D            FMKeyword = "D"
-	DCH_E            FMKeyword = "E"
-	DCH_EE           FMKeyword = "EE"
-	DCH_FF1          FMKeyword = "FF1"
-	DCH_FF2          FMKeyword = "FF2"
-	DCH_FF3          FMKeyword = "FF3"
-	DCH_FF4          FMKeyword = "FF4"
-	DCH_FF5          FMKeyword = "FF5"
-	DCH_FF6          FMKeyword = "FF6"
-	DCH_FF7          FMKeyword = "FF7"
-	DCH_FF8          FMKeyword = "FF8"
-	DCH_FF9          FMKeyword = "FF9"
-	DCH_FF           FMKeyword = "FF"
-	DCH_FM           FMKeyword = "FM"
-	DCH_FX           FMKeyword = "FX"
-	DCH_HH24         FMKeyword = "HH24"
-	DCH_HH12         FMKeyword = "HH12"
-	DCH_HH           FMKeyword = "HH"
-	DCH_IW           FMKeyword = "IW"
-	DCH_IYYY         FMKeyword = "IYYY"
-	DCH_IYY          FMKeyword = "IYY"
-	DCH_IY           FMKeyword = "IY"
-	DCH_I            FMKeyword = "I"
-	DCH_J            FMKeyword = "J"
-	DCH_MI           FMKeyword = "MI"
-	DCH_MM           FMKeyword = "MM"
-	DCH_MONTH        FMKeyword = "MONTH"
-	DCH_MON          FMKeyword = "MON"
-	DCH_P_M_         FMKeyword = "P.M."
-	DCH_PM           FMKeyword = "PM"
-	DCH_Q            FMKeyword = "Q"
-	DCH_RM           FMKeyword = "RM"
-	DCH_RR           FMKeyword = "RR"
-	DCH_RRRR         FMKeyword = "RRRR"
-	DCH_SP           FMKeyword = "SP"
-	DCH_SSSSS        FMKeyword = "SSSSS"
-	DCH_SS           FMKeyword = "SS"
-	DCH_TZH          FMKeyword = "TZH"
-	DCH_TZM          FMKeyword = "TZM"
-	DCH_TZD          FMKeyword = "TZD"
-	DCH_TZR          FMKeyword = "TZR"
-	DCH_TS           FMKeyword = "TS"
-	DCH_TH           FMKeyword = "TH"
-	DCH_WW           FMKeyword = "WW"
-	DCH_W            FMKeyword = "W"
-	DCH_X            FMKeyword = "X"
-	DCH_Y_YYY        FMKeyword = "Y,YYY"
-	DCH_YEAR         FMKeyword = "YEAR"
-	DCH_SYEAR        FMKeyword = "SYEAR"
-	DCH_YYYY         FMKeyword = "YYYY"
-	DCH_SYYYY        FMKeyword = "SYYYY"
-	DCH_YYY          FMKeyword = "YYY"
-	DCH_YY           FMKeyword = "YY"
-	DCH_Y            FMKeyword = "Y"
+	DCH_COPY = iota
+	DCH_MINUS
+	DCH_SLASH
+	DCH_COMMA
+	DCH_DEC
+	DCH_SEMICOLON
+	DCH_COLON
+	DCH_SPACE
+	DCH_DOUBLE_QUOTE
+	DCH_AD
+	DCH_A_D_
+	DCH_AM
+	DCH_A_M_
+	DCH_BC
+	DCH_B_C_
+	DCH_CC
+	DCH_SCC
+	DCH_DAY
+	DCH_DDD
+	DCH_DD
+	DCH_DL
+	DCH_DS
+	DCH_DY
+	DCH_D
+	DCH_E
+	DCH_EE
+	DCH_FF1
+	DCH_FF2
+	DCH_FF3
+	DCH_FF4
+	DCH_FF5
+	DCH_FF6
+	DCH_FF7
+	DCH_FF8
+	DCH_FF9
+	DCH_FF
+	DCH_FM
+	DCH_FX
+	DCH_HH24
+	DCH_HH12
+	DCH_HH
+	DCH_IW
+	DCH_IYYY
+	DCH_IYY
+	DCH_IY
+	DCH_I
+	DCH_J
+	DCH_MI
+	DCH_MM
+	DCH_MONTH
+	DCH_MON
+	DCH_P_M_
+	DCH_PM
+	DCH_Q
+	DCH_RM
+	DCH_RR
+	DCH_RRRR
+	DCH_SP
+	DCH_SSSSS
+	DCH_SS
+	DCH_TZH
+	DCH_TZM
+	DCH_TZD
+	DCH_TZR
+	DCH_TS
+	DCH_TH
+	DCH_WW
+	DCH_W
+	DCH_X
+	DCH_Y_YYY
+	DCH_YEAR
+	DCH_SYEAR
+	DCH_YYYY
+	DCH_SYYYY
+	DCH_YYY
+	DCH_YY
+	DCH_Y
 )
 
-var dchSkip = [...]uint8{'-', '/', ',', '.', ';', ':', '"'}
-
 type keyword struct {
-	key        FMKeyword
+	key        int
 	replaceLen int
 }
 
-var dchKeywords map[FMKeyword]int
+var dchKeywords map[int]int
 
 var NLS_WEEKS = map[time.Weekday]string{}
 var NLS_MONTHS = map[time.Month]string{}
@@ -272,7 +268,7 @@ func init() {
 		time.December:  "12月",
 	}
 
-	dchKeywords = map[FMKeyword]int{
+	dchKeywords = map[int]int{
 		DCH_A_D_:  len(NLS_A_D_),
 		DCH_AD:    len(NLS_AD),
 		DCH_AM:    len(NLS_AM),
@@ -803,8 +799,8 @@ func parseNumParam(num string) (NumParamDesc, error) {
 	return paramDesc, nil
 }
 
-func parseNum(f string, num string) (string, error) {
-	numFmtDesc, err := parseNumFormat(f)
+func toNumber(num string, format string) (string, error) {
+	numFmtDesc, err := parseNumFormat(format)
 	if err != nil {
 		return empty_str, err
 	}
@@ -925,14 +921,125 @@ const (
 const (
 	empty_str = ""
 	tsFormat  = "15:04:05"
+	//dateFormat = "YYYY-MM-DD HH24:MI:SS"
+	dateLayout = "2006-01-02 15:04:05"
 )
 
-func toChar(t time.Time, fmKeywords []FMKeyword) (string, error) {
+func toDate(dch string, format string) (*time.Time, error) {
+	fmKeywords, quoted, err := ParseDchByTime(format)
+	if err != nil {
+		return nil, nil
+	}
+
+	year, month, day := 0, time.Month(0), 0
+	hour, min, sec, nsec := 0, 0, 0, 0
+
+	di := 0
+	qi := 0
+	for ki := 0; ki < len(fmKeywords); ki++ {
+		switch fmKeywords[ki] {
+		case DCH_DOUBLE_QUOTE:
+			di += len(quoted[qi])
+			qi++
+		case DCH_MINUS, DCH_SLASH, DCH_COMMA, DCH_SEMICOLON, DCH_COLON:
+			di++
+		case DCH_AD:
+			di += 2
+		case DCH_A_D_:
+			di += 4
+		case DCH_AM:
+			di += 2
+		case DCH_A_M_:
+			di += 4
+		case DCH_BC:
+			di += 2
+		case DCH_B_C_:
+			di += 4
+		case DCH_CC:
+			return nil, errors.New(not_support_err)
+		case DCH_SCC:
+			return nil, errors.New(not_support_err)
+		case DCH_DAY:
+			return nil, errors.New(not_support_err)
+		case DCH_DDD:
+			return nil, errors.New(not_support_err)
+		case DCH_DD:
+			start := di
+			di += 2
+			day, err = strconv.Atoi(dch[start:di])
+			if err != nil {
+				return nil, err
+			}
+		case DCH_FM:
+			//TODO
+		case DCH_FX:
+			//TODO
+		case DCH_HH24, DCH_HH12, DCH_HH:
+			start := di
+			di += 2
+			day, err = strconv.Atoi(dch[start:di])
+			if err != nil {
+				return nil, err
+			}
+		case DCH_MI:
+		case DCH_MM:
+		case DCH_MONTH, DCH_MON:
+		case DCH_RR:
+		case DCH_RRRR:
+		case DCH_TZH:
+		case DCH_TZM:
+		case DCH_TZD:
+		case DCH_TZR:
+		case DCH_TS:
+		case DCH_Y_YYY:
+		case DCH_YYYY:
+		case DCH_YYY:
+		case DCH_YY:
+		case DCH_Y:
+		default:
+			return nil, errors.New(not_support_err)
+		}
+	}
+
+	if di != len(quoted) {
+		panic("引号内容未遍历完，不匹配")
+	}
+	if qi != len(dch) {
+		panic("参数未遍历完,不匹配")
+	}
+
+	now := time.Now()
+
+	if year == 0 {
+		year = now.Year()
+	}
+	if month == 0 {
+		month = now.Month()
+	}
+	if day == 0 {
+		day = 1
+	}
+	t := time.Date(year, month, day, hour, min, sec, nsec, time.Local)
+	fmt.Println(t.Format(dateLayout))
+
+	return &t, nil
+}
+
+func toChar(t time.Time, format string) (string, error) {
+	fmKeywords, quoted, err := ParseDchByTime(format)
+	if err != nil {
+		return empty_str, nil
+	}
+
 	result := bytes.Buffer{}
 
+	qi := 0
 	for i := 0; i < len(fmKeywords); i++ {
 		switch fmKeywords[i] {
-		case DCH_MINUS, DCH_SLASH, DCH_COMMA, DCH_SEMICOLON, DCH_COLON, DCH_DOUBLE_QUOTE:
+		case DCH_DOUBLE_QUOTE:
+			result.WriteString(quoted[qi])
+			qi++
+		case DCH_MINUS, DCH_SLASH, DCH_COMMA, DCH_SEMICOLON, DCH_COLON:
 			result.WriteString(string(fmKeywords[i]))
 		case DCH_AD, DCH_A_D_:
 			result.WriteString(NLS_AD)
@@ -945,7 +1052,7 @@ func toChar(t time.Time, fmKeywords []FMKeyword) (string, error) {
 		case DCH_CC:
 			result.WriteString(strconv.Itoa((t.Year() + 99) / 100))
 		case DCH_SCC:
-			//TODO
+			//TODO 公元前 正负号
 		case DCH_DAY:
 			result.WriteString(NLS_WEEKS[t.Weekday()])
 		case DCH_DDD:
@@ -953,21 +1060,13 @@ func toChar(t time.Time, fmKeywords []FMKeyword) (string, error) {
 		case DCH_DD:
 			result.WriteString(strconv.Itoa(t.Day()))
 		case DCH_DL:
-			tmpKeyword, err := ParseDchByTime(NLS_DL)
-			if err != nil {
-				return empty_str, nil
-			}
-			tmp, err := toChar(t, tmpKeyword)
+			tmp, err := toChar(t, NLS_DL)
 			if err != nil {
 				return empty_str, nil
 			}
 			result.WriteString(tmp)
 		case DCH_DS:
-			tmpKeyword, err := ParseDchByTime(NLS_DS)
-			if err != nil {
-				return empty_str, nil
-			}
-			tmp, err := toChar(t, tmpKeyword)
+			tmp, err := toChar(t, NLS_DS)
 			if err != nil {
 				return empty_str, nil
 			}
@@ -1110,10 +1209,11 @@ func toChar(t time.Time, fmKeywords []FMKeyword) (string, error) {
 	return result.String(), nil
 }
 
+type FMKeyword int
+
 // 解析日期格式
-func ParseDchByTime(format string) ([]FMKeyword, error) {
-	fmKeywords := []FMKeyword{}
-	fmKeywords = append(fmKeywords, DCH_Y)
+func ParseDchByTime(format string) ([]int, []string, error) {
+	fmKeywords := []int{}
 
 	flen := len(format)
 
@@ -1123,6 +1223,8 @@ func ParseDchByTime(format string) ([]FMKeyword, error) {
 	//aux_flag_fx := false
 	//aux_flag_sp := false
 	//aux_flag_th := false
+
+	quoted := []string{}
 
 	var keyword FMKeyword
 	var err error
@@ -1150,14 +1252,20 @@ func ParseDchByTime(format string) ([]FMKeyword, error) {
 			case ' ':
 				keyword = DCH_SPACE
 				fi++
+			// DCH 左双引号
 			case '"':
+				keyword = DCH_DOUBLE_QUOTE
+
+				tmp := bytes.Buffer{}
 				fi++
 				for ; fi < flen; fi++ {
 					if '"' == format[fi] {
+						// DCH 右双引号
+						quoted = append(quoted, tmp.String())
 						break
 					} else {
-						// DCH "
-						keyword = DCH_DOUBLE_QUOTE
+						// DCH 双引号中的内容
+						tmp.WriteByte(format[fi])
 					}
 				}
 			case 'A':
@@ -1170,7 +1278,7 @@ func ParseDchByTime(format string) ([]FMKeyword, error) {
 				keyword, err = parsePrefixD(&fi, flen, format)
 			case 'E':
 				// TODO EE E
-				return nil, errors.New("not support")
+				return nil, nil, errors.New("not support")
 			case 'F':
 				keyword, err = parsePrefixF(&fi, flen, format)
 			case 'H':
@@ -1209,15 +1317,15 @@ func ParseDchByTime(format string) ([]FMKeyword, error) {
 			case 'Y':
 				keyword, err = parsePrefixY(&fi, flen, format)
 			default:
-				return nil, errors.New(out_keyword_range_err)
+				return nil, nil, errors.New(out_keyword_range_err)
 			}
 
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			fmKeywords = append(fmKeywords, keyword)
 		} else {
-			return nil, errors.New(out_ascii_range_err + string(c))
+			return nil, nil, errors.New(out_ascii_range_err + string(c))
 		}
 	}
 
@@ -1234,7 +1342,7 @@ func ParseDchByTime(format string) ([]FMKeyword, error) {
 	//
 	//}
 
-	return fmKeywords, nil
+	return fmKeywords, quoted, nil
 }
 
 func parsePrefixA(fi *int, flen int, format string) (FMKeyword, error) {
@@ -1567,7 +1675,7 @@ func parsePrefixP(fi *int, flen int, format string) (FMKeyword, error) {
 }
 
 func parsePrefixR(fi *int, flen int, format string) (FMKeyword, error) {
-	var keyword FMKeyword
+	var keyword int
 	*fi++
 	if *fi < flen {
 		if 'M' == format[*fi] {

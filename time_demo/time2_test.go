@@ -288,3 +288,24 @@ func TestParseTime2(txx *testing.T) {
 	fmt.Println(t)
 	fmt.Println(t.Format(layout))
 }
+
+func TestCreateTime(txx *testing.T) {
+	dateLayout := "2006-01-02 15:04:05"
+	//offset:=8*3600
+	//var zone = time.FixedZone("CST",offset)
+	now := time.Now()
+
+	year, month, day := 0, time.Month(0), 0
+	hour, min, sec, nsec := 0, 0, 0, 0
+	if year == 0 {
+		year = now.Year()
+	}
+	if month == 0 {
+		month = now.Month()
+	}
+	if day == 0 {
+		day = 1
+	}
+	t := time.Date(year, month, day, hour, min, sec, nsec, time.Local)
+	fmt.Println(t.Format(dateLayout))
+}

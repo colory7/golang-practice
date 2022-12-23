@@ -116,7 +116,7 @@ package oracle_demo
 //	f := "99"
 //	num := "-36.25"
 //
-//	result, err := parseNum(f, num)
+//	result, err := toNumber(f, num)
 //	assert.NoError(t, err)
 //	assert.Equal(t, "-36", result)
 //	fmt.Println(result)
@@ -126,7 +126,7 @@ package oracle_demo
 //	f := "99999999999999999999"
 //	num := "-36.25e+3"
 //
-//	result, err := parseNum(f, num)
+//	result, err := toNumber(f, num)
 //	assert.NoError(t, err)
 //	fmt.Println(result)
 //}
@@ -135,7 +135,7 @@ package oracle_demo
 //	f := "9"
 //	num := "-36.25e+3"
 //
-//	result, err := parseNum(f, num)
+//	result, err := toNumber(f, num)
 //	assert.NoError(t, err)
 //	fmt.Println(result)
 //}
@@ -144,7 +144,7 @@ package oracle_demo
 //	f := "99EEEE"
 //	num := "-36.25e+3"
 //
-//	result, err := parseNum(f, num)
+//	result, err := toNumber(f, num)
 //	assert.NoError(t, err)
 //	fmt.Println(result)
 //}
