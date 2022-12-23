@@ -158,23 +158,25 @@ const (
 	DCH_MINUS        FMKeyword = "-"
 	DCH_SLASH        FMKeyword = "/"
 	DCH_COMMA        FMKeyword = ","
+	DCH_DEC          FMKeyword = "."
 	DCH_SEMICOLON    FMKeyword = ";"
 	DCH_COLON        FMKeyword = ":"
+	DCH_SPACE        FMKeyword = " "
 	DCH_DOUBLE_QUOTE FMKeyword = "\""
 	DCH_AD           FMKeyword = "AD"
-	DCH_A_D          FMKeyword = "A.D."
+	DCH_A_D_         FMKeyword = "A.D."
 	DCH_AM           FMKeyword = "AM"
-	DCH_A_M          FMKeyword = "A.M."
+	DCH_A_M_         FMKeyword = "A.M."
 	DCH_BC           FMKeyword = "BC"
-	DCH_B_C          FMKeyword = "B.C."
+	DCH_B_C_         FMKeyword = "B.C."
 	DCH_CC           FMKeyword = "CC"
 	DCH_SCC          FMKeyword = "SCC"
 	DCH_DAY          FMKeyword = "DAY"
 	DCH_DDD          FMKeyword = "DDD"
 	DCH_DD           FMKeyword = "DD"
-	DCH_DY           FMKeyword = "DY"
 	DCH_DL           FMKeyword = "DL"
 	DCH_DS           FMKeyword = "DS"
+	DCH_DY           FMKeyword = "DY"
 	DCH_D            FMKeyword = "D"
 	DCH_E            FMKeyword = "E"
 	DCH_EE           FMKeyword = "EE"
@@ -187,6 +189,7 @@ const (
 	DCH_FF7          FMKeyword = "FF7"
 	DCH_FF8          FMKeyword = "FF8"
 	DCH_FF9          FMKeyword = "FF9"
+	DCH_FF           FMKeyword = "FF"
 	DCH_FM           FMKeyword = "FM"
 	DCH_FX           FMKeyword = "FX"
 	DCH_HH24         FMKeyword = "HH24"
@@ -202,13 +205,13 @@ const (
 	DCH_MM           FMKeyword = "MM"
 	DCH_MONTH        FMKeyword = "MONTH"
 	DCH_MON          FMKeyword = "MON"
-	DCH_P_M          FMKeyword = "P.M."
+	DCH_P_M_         FMKeyword = "P.M."
 	DCH_PM           FMKeyword = "PM"
 	DCH_Q            FMKeyword = "Q"
 	DCH_RM           FMKeyword = "RM"
 	DCH_RR           FMKeyword = "RR"
+	DCH_RRRR         FMKeyword = "RRRR"
 	DCH_SSSSS        FMKeyword = "SSSSS"
-	DCH_SSSS         FMKeyword = "SSSS"
 	DCH_SS           FMKeyword = "SS"
 	DCH_TZH          FMKeyword = "TZH"
 	DCH_TZM          FMKeyword = "TZM"
@@ -268,12 +271,12 @@ func init() {
 	}
 
 	dchKeywords = map[FMKeyword]int{
-		DCH_A_D:   len(NLS_A_D_),
+		DCH_A_D_:  len(NLS_A_D_),
 		DCH_AD:    len(NLS_AD),
 		DCH_AM:    len(NLS_AM),
-		DCH_A_M:   len(NLS_A_M_),
+		DCH_A_M_:  len(NLS_A_M_),
 		DCH_BC:    len(NLS_BC),
-		DCH_B_C:   len(NLS_B_C_),
+		DCH_B_C_:  len(NLS_B_C_),
 		DCH_CC:    2,
 		DCH_DAY:   3,
 		DCH_DDD:   3,
@@ -303,12 +306,11 @@ func init() {
 		DCH_MM:    2,
 		DCH_MONTH: 5,
 		DCH_MON:   3,
-		DCH_P_M:   4,
+		DCH_P_M_:  4,
 		DCH_PM:    2,
 		DCH_Q:     1,
 		DCH_RM:    2,
 		DCH_SSSSS: 5,
-		DCH_SSSS:  4,
 		DCH_SS:    2,
 		DCH_TZH:   3,
 		DCH_TZM:   3,
@@ -448,10 +450,10 @@ func parseNumFormat(format string) (NumFmtDesc, error) {
 	var fmtDesc NumFmtDesc
 
 	// 格式字节长度
-	formatLen := len(format)
+	flen := len(format)
 
 	// 最后一个关键词的索引
-	lastFormatIndex := formatLen - 1
+	lastFormatIndex := flen - 1
 
 	isRerun := false
 	var c byte
@@ -459,7 +461,7 @@ func parseNumFormat(format string) (NumFmtDesc, error) {
 	readDec := false
 	//var preDec = bytes.Buffer{}
 	//var postDec = bytes.Buffer{}
-	for i := 0; i < formatLen; {
+	for i := 0; i < flen; {
 		// 截取一个字符
 		if !isRerun {
 			c = format[i]
@@ -614,9 +616,9 @@ func parseNumFormat(format string) (NumFmtDesc, error) {
 				case 'N':
 					if fmtDesc.suffix == NUM_FMT_SUFFIX_EMPTY {
 						return fmtDesc, errors.New("只能有1个 RN")
-					} else if fmtDesc.auxPrefix == NUM_FMT_AUX_PREFIX_FM && formatLen == 4 {
+					} else if fmtDesc.auxPrefix == NUM_FMT_AUX_PREFIX_FM && flen == 4 {
 						return fmtDesc, errors.New("包含RN的格式,除了 FM 和 RN 不能有其他格式字符")
-					} else if fmtDesc.auxPrefix == NUM_FMT_AUX_PREFIX_EMPTY && formatLen == 2 {
+					} else if fmtDesc.auxPrefix == NUM_FMT_AUX_PREFIX_EMPTY && flen == 2 {
 						return fmtDesc, errors.New("包含RN的格式,除了 FM 和 RN 不能有其他格式字符")
 					}
 
@@ -918,417 +920,202 @@ const (
 	NLS_X       = "."
 )
 
-// 解析日期格式
-// 可以适当考虑使用字典树实现
-func parseDchByStr(param string, format string) (string, error) {
-	//var keywordGroup = make([]keyword, 4)
+const (
+	empty_str = ""
+	tsFormat  = "15:04:05"
+)
 
+func toChar(t time.Time, fmKeywords []FMKeyword) (string, error) {
 	result := bytes.Buffer{}
-	flen := len(format)
 
-	pi := 0
-	for fi := 0; fi < flen; {
-		// 截取一个字符
-		c := format[fi]
-		if c >= 32 && c <= 127 {
-			fmt.Println("c: " + (string)(c))
-
-			frest := flen - fi
-
-			// 不区分大小写 FIXME
-			ToUpper(&c)
-
-			// 匹配关键词并存储
-			switch c {
-			// 跳过字符
-			case '-', '/', ',', '.', ';', ':', ' ':
-				fmt.Println("skip: " + string(c))
-				fmt.Println(fi)
-				pc := param[pi]
-				switch pc {
-				case '-', '/', ',', '.', ';', ':', ' ':
-					fmt.Println("TODO: skip char " + string(pc))
-					fi++
-					pi++
-				default:
-					return empty_str, errors.New("不匹配的字符: " + string(pc))
-				}
-			case '"':
-				var skipWord bytes.Buffer
-				for ; fi < flen; fi++ {
-					if '"' == format[fi] {
-						break
-					} else {
-						skipWord.WriteByte(format[fi])
-					}
-				}
-				result.Write(skipWord.Bytes())
-				// 日期类型参数 输出
-				// 字符串类型参数 只做匹配
-			case 'A':
-				fi++
-				followingOneChar := format[fi]
-				switch followingOneChar {
-				case '.':
-					fi++
-					j := fi + 2
-					if j <= len(format) {
-						followingChars := format[fi:j]
-						if "D." == followingChars {
-							// DCH A.D.
-							pe := pi + len(NLS_AD)
-							v := param[pi:pe]
-							if v == NLS_AD {
-								fmt.Println("TODO: " + NLS_AD)
-								result.WriteString(NLS_AD)
-								fi = j
-								pi = pe
-							} else {
-								return empty_str, errors.New("语法错误,参数与 A.D. 格式不匹配")
-							}
-						} else if "M." == followingChars {
-							// DCH A.M.
-							pe := pi + len(NLS_AD)
-							v := param[pi:pe]
-							if v == NLS_AM {
-								fmt.Println("TODO: " + NLS_AM)
-								result.WriteString(NLS_AM)
-								fi = j
-								pi = pe
-
-							} else {
-								return empty_str, errors.New("语法错误,参数与 A.M. 格式不匹配")
-							}
-						} else {
-							return empty_str, errors.New(dch_fmt_mismatch_err + "A.")
-						}
-					} else {
-						return empty_str, errors.New(dch_fmt_mismatch_err + "A.")
-					}
-				case 'D':
-					// DCH AD
-					fi++
-					pe := pi + len(NLS_AD)
-					v := param[pi:pe]
-					if v == NLS_AD {
-						fmt.Println("TODO: " + NLS_AD)
-						result.WriteString(NLS_AD)
-						pi = pe
-					} else {
-						return empty_str, errors.New("语法错误,参数与 AD 格式不匹配")
-					}
-				case 'M':
-					// DCH AM
-					fi++
-					pe := pi + len(NLS_AD)
-					v := param[pi:pe]
-					if v == NLS_AM {
-						fmt.Println("TODO: " + NLS_AM)
-						result.WriteString(NLS_AM)
-						pi = pe
-					} else {
-						return empty_str, errors.New("语法错误,参数与 AM 格式不匹配")
-					}
-				default:
-					return empty_str, errors.New(dch_fmt_mismatch_err + "A")
-				}
-				// 同上
-			case 'B':
-				fi++
-				followingOneChar := format[fi]
-				switch followingOneChar {
-				case 'C':
-					result.WriteString(NLS_BC)
-				case '.':
-					fe := fi + 4
-					followingChars := format[fi:fe]
-					if ".C." == followingChars {
-						result.WriteString(NLS_BC)
-					}
-					fi = fe
-				default:
-					return empty_str, errors.New(dch_fmt_mismatch_err + "B")
-				}
-				// 只适用于时间类型参数
-			case 'C':
-				fi++
-				followingOneChar := format[fi]
-				switch followingOneChar {
-				case 'C':
-					year := time.Now().Year()
-					result.WriteString(strconv.Itoa((year + 99) / 100))
-				default:
-					return empty_str, errors.New(dch_fmt_mismatch_err + "C")
-				}
-				// 字符串类型参数的 D 周中的日和julia 冲突
-				// 时间类型参数的 D
-			case 'D':
-				fi++
-
-				// DAY 同 DY
-				if frest >= 2 && format[fi:fi+2] == "AY" || frest >= 1 && format[fi] == 'Y' {
-					weekDay := time.Now().Weekday()
-					result.WriteString(NLS_WEEKS[weekDay])
-				} else if frest >= 1 && format[fi] == 'D' {
-					day := time.Now().Day()
-					result.WriteString(strconv.Itoa(day))
-				} else if frest >= 1 && format[fi] == 'L' {
-					// TODO 插入格式 continue
-					//result.WriteString(parseDchByStr("???", NLS_DL))
-
-				} else if frest >= 1 && format[fi] == 'S' {
-					// TODO 插入格式 continue
-					//result.WriteString(parseDchByStr("???", NLS_DS))
-
-				} else {
-					weekDay := time.Now().Weekday()
-					result.WriteString(strconv.Itoa(int(weekDay)))
-				}
-
-			case 'F':
-				fi++
-				followingOneChar := format[fi]
-				switch followingOneChar {
-				case 'X':
-					//keywordGroup = append(keywordGroup, DCH_FX)
-				case 'M':
-					//FIXME
-				default:
-					followingTwoChars := format[fi : fi+3]
-					fi = fi + 3
-					switch followingTwoChars {
-					case "F1":
-						//keywordGroup = append(keywordGroup, DCH_FF1)
-					case "F2":
-						//keywordGroup = append(keywordGroup, DCH_FF2)
-					case "F3":
-						//keywordGroup = append(keywordGroup, DCH_FF3)
-					case "F4":
-						//keywordGroup = append(keywordGroup, DCH_FF4)
-					case "F5":
-						//keywordGroup = append(keywordGroup, DCH_FF5)
-					case "F6":
-						//keywordGroup = append(keywordGroup, DCH_FF6)
-					case "F7":
-						//keywordGroup = append(keywordGroup, DCH_FF7)
-					case "F8":
-						//keywordGroup = append(keywordGroup, DCH_FF8)
-					case "F9":
-						//keywordGroup = append(keywordGroup, DCH_FF9)
-					default:
-						return empty_str, errors.New(dch_fmt_mismatch_err + "F")
-					}
-				}
-			case 'H':
-				fi++
-				followingOneChar := format[fi]
-				switch followingOneChar {
-				case 'H':
-					//keywordGroup = append(keywordGroup, DCH_HH)
-				default:
-					followingThreeChars := format[fi : fi+4]
-					fi = fi + 4
-
-					switch followingThreeChars {
-					case "H24":
-						//keywordGroup = append(keywordGroup, DCH_HH24)
-					case "H12":
-						//keywordGroup = append(keywordGroup, DCH_HH12)
-					default:
-						return empty_str, errors.New(dch_fmt_mismatch_err + "H")
-					}
-				}
-			case 'I':
-				fi++
-				followingOneChar := format[fi]
-				switch followingOneChar {
-				case 'W':
-					//keywordGroup = append(keywordGroup, DCH_IW)
-				case 'Y':
-					followingTwoChars := format[fi : fi+3]
-					if "YY" == followingTwoChars {
-						//keywordGroup = append(keywordGroup, DCH_IYYY)
-						fi = fi + 3
-					}
-
-					followingOneChar = followingTwoChars[0]
-					if 'Y' == followingOneChar {
-						//keywordGroup = append(keywordGroup, DCH_IYY)
-						fi = fi + 2
-					}
-					//keywordGroup = append(keywordGroup, DCH_IY)
-				default:
-					return empty_str, errors.New(dch_fmt_mismatch_err + "I")
-				}
-				// 匹配单个字符
-				//keywordGroup = append(keywordGroup, DCH_I)
-			case 'J':
-				t := time.Now()
-				result.WriteString(strconv.Itoa(ToJulian(t.Year(), int(t.Month()), t.Day())))
-			case 'M':
-				t := time.Now()
-				fi++
-				if fi <= flen && format[fi] == 'I' {
-					// DCH MI
-					result.WriteString(strconv.Itoa(t.Minute()))
-				} else if fi <= flen && format[fi] == 'M' {
-					// DCH MM
-					if t.Month() < 10 {
-						result.WriteString("0")
-					}
-					result.WriteString(strconv.Itoa(int(t.Month())))
-				} else if fi <= flen && format[fi] == 'O' {
-					fi++
-					if fi <= flen && format[fi] == 'N' {
-						fe := fi + 2
-						if fi <= flen && format[fi:fe] == "TH" {
-							// DCH MONTH
-							fi = fe
-						} else {
-							// DCH MON
-						}
-						result.WriteString(NLS_MONTHS[t.Month()])
-					} else {
-						return empty_str, errors.New(dch_fmt_mismatch_err + "MO")
-					}
-				} else {
-					return empty_str, errors.New(dch_fmt_mismatch_err + "M")
-				}
-			case 'P':
-				fi++
-				if fi < flen {
-					if 'M' == format[fi] {
-						//keywordGroup = append(keywordGroup, DCH_PM)
-					} else {
-						start := fi
-						fi += 3
-						if fi < flen {
-							followingThreeChars := format[start:fi]
-							if ".M." == followingThreeChars {
-								//keywordGroup = append(keywordGroup, DCH_P_M)
-							} else {
-								return empty_str, errors.New(dch_fmt_mismatch_err + "P")
-							}
-						} else {
-							return empty_str, errors.New(dch_fmt_mismatch_err + "P")
-						}
-					}
-				} else {
-					return empty_str, errors.New(dch_fmt_mismatch_err + "P")
-				}
-			case 'Q':
-				t := time.Now()
-				result.WriteString(strconv.Itoa(int(t.Month()+2) / 3))
-			case 'R':
-				fi++
-				if 'M' == format[fi] {
-					//keywordGroup = append(keywordGroup, DCH_RM)
-				} else {
-					return empty_str, errors.New(dch_fmt_mismatch_err + "R")
-				}
-			case 'S':
-				start := fi
-				fi += 4
-				followingFourChars := format[start:fi]
-				if "SSSS" == followingFourChars {
-					//keywordGroup = append(keywordGroup, DCH_SSSSS)
-				} else if "SSS" == followingFourChars[0:3] {
-					//keywordGroup = append(keywordGroup, DCH_SSSS)
-				} else if "S" == followingFourChars[0:3] {
-					//keywordGroup = append(keywordGroup, DCH_SS)
-				} else {
-					return empty_str, errors.New(dch_fmt_mismatch_err + "S")
-				}
-			case 'T':
-				start := fi
-				fi += 2
-				followingTwoChars := format[start:fi]
-				if "ZH" == followingTwoChars {
-					//keywordGroup = append(keywordGroup, DCH_TZH)
-				} else if "ZM" == followingTwoChars {
-					//keywordGroup = append(keywordGroup, DCH_TZM)
-				} else if 'Z' == followingTwoChars[0] {
-					//keywordGroup = append(keywordGroup, DCH_TZM)
-				} else {
-					return empty_str, errors.New(dch_fmt_mismatch_err + "T")
-				}
-			case 'W':
-				fi++
-				if format[fi] == 'W' {
-					fi++
-
-				} else {
-
-				}
-			case 'Y':
-				fi++
-				start := fi
-				frest--
-				if frest >= 4 {
-					fi += 4
-				} else {
-					fi += frest
-				}
-				followingNChars := format[start:fi]
-				missed := true
-
-				if frest >= 4 && (",YYY" == followingNChars[0:4] || ",yyy" == followingNChars[0:4]) {
-					// DCH Y,YYY
-					pe := pi + 5
-					v := param[pi:pe]
-					result.WriteString(v)
-					missed = false
-				}
-				if missed && frest >= 3 && ("YYY" == followingNChars[0:3] || "yyy" == followingNChars[0:3]) {
-					// DCH YYYY
-					pe := pi + 4
-					v := param[pi:pe]
-					result.WriteString(v)
-					missed = false
-				}
-				if missed && frest >= 2 && ("YY" == followingNChars[0:2] || "yy" == followingNChars[0:4]) {
-					// DCH YYY
-					pe := pi + 3
-					v := param[pi:pe]
-					result.WriteString(v)
-					missed = false
-				}
-				if missed && frest >= 1 && ("Y" == followingNChars[0:1] || "y" == followingNChars[0:4]) {
-					// DCH YY
-					pe := pi + 2
-					v := param[pi:pe]
-					result.WriteString(v)
-					missed = false
-				}
-
-				if missed {
-					// DCH Y
-					pe := pi + 1
-					v := param[pi:pe]
-					result.WriteString(v)
-				}
-
-			default:
-				return empty_str, errors.New(out_keyword_range_err)
+	for i := 0; i < len(fmKeywords); i++ {
+		switch fmKeywords[i] {
+		case DCH_MINUS, DCH_SLASH, DCH_COMMA, DCH_SEMICOLON, DCH_COLON, DCH_DOUBLE_QUOTE:
+			result.WriteString(string(fmKeywords[i]))
+		case DCH_AD, DCH_A_D_:
+			result.WriteString(NLS_AD)
+		case DCH_AM, DCH_A_M_:
+			result.WriteString(NLS_AM)
+		case DCH_BC:
+			result.WriteString(NLS_BC)
+		case DCH_B_C_:
+			result.WriteString(NLS_B_C_)
+		case DCH_CC:
+			result.WriteString(strconv.Itoa((t.Year() + 99) / 100))
+		case DCH_SCC:
+			//TODO
+		case DCH_DAY:
+			result.WriteString(NLS_WEEKS[t.Weekday()])
+		case DCH_DDD:
+			result.WriteString(strconv.Itoa(t.YearDay()))
+		case DCH_DD:
+			result.WriteString(strconv.Itoa(t.Day()))
+		case DCH_DL:
+			tmpKeyword, err := ParseDchByTime(NLS_DL)
+			if err != nil {
+				return empty_str, nil
 			}
-		} else {
-			return empty_str, errors.New(out_ascii_range_err)
+			tmp, err := toChar(t, tmpKeyword)
+			if err != nil {
+				return empty_str, nil
+			}
+			result.WriteString(tmp)
+		case DCH_DS:
+			tmpKeyword, err := ParseDchByTime(NLS_DS)
+			if err != nil {
+				return empty_str, nil
+			}
+			tmp, err := toChar(t, tmpKeyword)
+			if err != nil {
+				return empty_str, nil
+			}
+			result.WriteString(tmp)
+		case DCH_DY:
+			result.WriteString(NLS_WEEKS[t.Weekday()])
+		case DCH_D:
+			result.WriteString(strconv.Itoa(int(t.Weekday())))
+		case DCH_E:
+			return empty_str, errors.New("not support")
+		case DCH_EE:
+			return empty_str, errors.New("not support")
+		case DCH_FF1:
+			result.WriteString(strconv.Itoa(t.Nanosecond() / 1e8))
+		case DCH_FF2:
+			result.WriteString(strconv.Itoa(t.Nanosecond() / 1e7))
+		case DCH_FF3:
+			result.WriteString(strconv.Itoa(t.Nanosecond() / 1e6))
+		case DCH_FF4:
+			result.WriteString(strconv.Itoa(t.Nanosecond() / 1e5))
+		case DCH_FF5:
+			result.WriteString(strconv.Itoa(t.Nanosecond() / 1e4))
+		case DCH_FF6:
+			result.WriteString(strconv.Itoa(t.Nanosecond() / 1e3))
+		case DCH_FF7:
+			result.WriteString(strconv.Itoa(t.Nanosecond() / 1e2))
+		case DCH_FF8:
+			result.WriteString(strconv.Itoa(t.Nanosecond() / 1e1))
+		case DCH_FF9, DCH_FF:
+			result.WriteString(strconv.Itoa(t.Nanosecond()))
+		case DCH_FM:
+		case DCH_FX:
+		case DCH_HH24:
+			if t.Hour() < 10 {
+				result.WriteByte('0')
+			}
+			result.WriteString(strconv.Itoa(t.Hour()))
+		case DCH_HH12, DCH_HH:
+			hour := t.Hour()
+			if hour > 12 {
+				hour = hour - 12
+			}
+			if hour < 10 {
+				result.WriteByte('0')
+			}
+			result.WriteString(strconv.Itoa(hour))
+		case DCH_IW:
+			_, w := t.ISOWeek()
+			result.WriteString(strconv.Itoa(w))
+		case DCH_IYYY:
+			y, _ := t.ISOWeek()
+			result.WriteString(strconv.Itoa(y))
+		case DCH_IYY:
+			y, _ := t.ISOWeek()
+			result.WriteString(strconv.Itoa(y)[1:])
+		case DCH_IY:
+			y, _ := t.ISOWeek()
+			result.WriteString(strconv.Itoa(y)[2:])
+		case DCH_I:
+			y, _ := t.ISOWeek()
+			result.WriteString(strconv.Itoa(y)[3:])
+		case DCH_J:
+			result.WriteString(strconv.Itoa(ToJulian(t.Year(), int(t.Month()), t.Day())))
+		case DCH_MI:
+			result.WriteString(strconv.Itoa(t.Minute()))
+		case DCH_MM:
+			if t.Month() < 10 {
+				result.WriteByte('0')
+			}
+			result.WriteString(strconv.Itoa(int(t.Month())))
+		case DCH_MONTH, DCH_MON:
+			result.WriteString(NLS_MONTHS[t.Month()])
+		case DCH_P_M_:
+			result.WriteString(NLS_P_M_)
+		case DCH_PM:
+			result.WriteString(NLS_PM)
+		case DCH_Q:
+			result.WriteString(strconv.Itoa(int(t.Month()+2) / 3))
+		case DCH_RM:
+			result.WriteString(ToRoman(int(t.Month())).String())
+		case DCH_RR:
+			result.WriteString(strconv.Itoa(t.Year())[2:])
+		case DCH_RRRR:
+			result.WriteString(strconv.Itoa(t.Year()))
+		case DCH_SSSSS:
+			result.WriteString(strconv.Itoa((t.Hour()*60+t.Minute())*60 + t.Second()))
+		case DCH_SS:
+			result.WriteString(strconv.Itoa(t.Second()))
+		case DCH_TZH:
+			result.WriteString(t.Format("-07"))
+		case DCH_TZM:
+			result.WriteString(t.Format("-0700")[3:])
+		case DCH_TZD:
+			zone, _ := t.Local().Zone()
+			result.WriteString(zone)
+		case DCH_TZR:
+			result.WriteString(t.Location().String())
+		case DCH_TS:
+			if t.Hour() > 12 {
+				result.WriteString(NLS_AM)
+				result.WriteByte(ASSIC_SPACE)
+			} else {
+				result.WriteString(NLS_AM)
+				result.WriteByte(ASSIC_SPACE)
+			}
+			result.WriteString(t.Format(tsFormat))
+		case DCH_WW:
+			result.WriteString(strconv.Itoa((t.YearDay() + 6) / 7))
+		case DCH_W:
+			result.WriteString(strconv.Itoa((t.Day() + 6) / 7))
+		case DCH_X:
+			result.WriteString(NLS_X)
+		case DCH_Y_YYY:
+			year := strconv.Itoa(t.Year())
+			result.WriteString(year[:1] + "," + year[1:])
+		case DCH_YEAR:
+			result.WriteString(ntw.NumToCardinalWord(t.Year()))
+		case DCH_SYEAR:
+			result.WriteString(ntw.NumToCardinalWord(t.Year() / 100))
+			result.WriteString(SPACE)
+			result.WriteString(ntw.NumToCardinalWord(t.Year() % 100))
+		case DCH_YYYY:
+			year := strconv.Itoa(t.Year())
+			result.WriteString(year)
+		case DCH_SYYYY:
+			result.WriteString(strconv.Itoa(t.Year()))
+		case DCH_YYY:
+			year := strconv.Itoa(t.Year())
+			result.WriteString(year[1:])
+		case DCH_YY:
+			year := strconv.Itoa(t.Year())
+			result.WriteString(year[2:])
+		case DCH_Y:
+			result.WriteString(strconv.Itoa(t.Year())[3:])
+		default:
+			return empty_str, errors.New("unrechable")
 		}
 	}
 
 	return result.String(), nil
 }
 
-const (
-	empty_str = ""
-)
-
 // 解析日期格式
-func ParseDchByTime(t time.Time, format string) (string, error) {
-	result := bytes.Buffer{}
+func ParseDchByTime(format string) ([]FMKeyword, error) {
+	fmKeywords := []FMKeyword{}
+	fmKeywords = append(fmKeywords, DCH_Y)
+
 	flen := len(format)
 
-	println(format)
+	//println(format)
 
 	aux_flag_fm := false
 	aux_flag_fx := false
@@ -1344,8 +1131,20 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 			//frest := flen - fi
 			switch c {
 			// DCH 跳过字符
-			case '-', '/', ',', '.', ';', ':', ' ':
-				result.WriteByte(c)
+			case '-':
+				fmKeywords = append(fmKeywords, DCH_MINUS)
+			case '/':
+				fmKeywords = append(fmKeywords, DCH_SLASH)
+			case ',':
+				fmKeywords = append(fmKeywords, DCH_COMMA)
+			case '.':
+				fmKeywords = append(fmKeywords, DCH_DEC)
+			case ';':
+				fmKeywords = append(fmKeywords, DCH_SEMICOLON)
+			case ':':
+				fmKeywords = append(fmKeywords, DCH_COLON)
+			case ' ':
+				fmKeywords = append(fmKeywords, DCH_SPACE)
 				fi++
 			case '"':
 				fi++
@@ -1354,46 +1153,11 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 						break
 					} else {
 						// DCH "
-						result.WriteByte(format[fi])
+						fmKeywords = append(fmKeywords, DCH_DOUBLE_QUOTE)
 					}
 				}
 			case 'A':
-				fi++
-				if fi < flen {
-					followingOneChar := format[fi]
-					switch followingOneChar {
-					case '.':
-						fi++
-						start := fi
-						fi += 2
-						if fi <= flen {
-							followingChars := format[start:fi]
-							if "D." == followingChars {
-								// DCH A.D.
-								result.WriteString(NLS_AD)
-							} else if "M." == followingChars {
-								// DCH A.M.
-								result.WriteString(NLS_AM)
-							} else {
-								return empty_str, errors.New(dch_fmt_mismatch_err + "A.")
-							}
-						} else {
-							return empty_str, errors.New(dch_fmt_length_err + "A.")
-						}
-					case 'D':
-						// DCH AD
-						result.WriteString(NLS_AD)
-						fi++
-					case 'M':
-						// DCH AM
-						result.WriteString(NLS_AM)
-						fi++
-					default:
-						return empty_str, errors.New(dch_fmt_mismatch_err + "A")
-					}
-				} else {
-					return empty_str, errors.New(dch_fmt_length_err + "A")
-				}
+				parsePrefixA()
 			case 'B':
 				fi++
 				if fi < flen {
@@ -1401,7 +1165,7 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 					switch followingOneChar {
 					case 'C':
 						// DCH BC
-						result.WriteString(NLS_BC)
+						fmKeywords = append(fmKeywords, DCH_BC)
 						fi++
 					case '.':
 						fi++
@@ -1409,15 +1173,15 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 						fi += 2
 						if fi <= flen && "C." == format[start:fi] {
 							// DCH B.C.
-							result.WriteString(NLS_BC)
+							fmKeywords = append(fmKeywords, DCH_B_C_)
 						} else {
-							return empty_str, errors.New(dch_fmt_mismatch_err + "B.")
+							return nil, errors.New(dch_fmt_mismatch_err + "B.")
 						}
 					default:
-						return empty_str, errors.New(dch_fmt_mismatch_err + "B")
+						return nil, errors.New(dch_fmt_mismatch_err + "B")
 					}
 				} else {
-					return empty_str, errors.New(dch_fmt_mismatch_err + "B")
+					return nil, errors.New(dch_fmt_mismatch_err + "B")
 				}
 			case 'C':
 				fi++
@@ -1426,13 +1190,13 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 					switch followingOneChar {
 					case 'C':
 						// DCH CC
-						result.WriteString(strconv.Itoa((t.Year() + 99) / 100))
+						fmKeywords = append(fmKeywords, DCH_CC)
 						fi++
 					default:
-						return empty_str, errors.New(dch_fmt_mismatch_err + "C")
+						return nil, errors.New(dch_fmt_mismatch_err + "C")
 					}
 				} else {
-					return empty_str, errors.New(dch_fmt_length_err + "C")
+					return nil, errors.New(dch_fmt_length_err + "C")
 				}
 			case 'D':
 				fi++
@@ -1441,50 +1205,42 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 						fi++
 						if fi < flen && format[fi] == 'Y' {
 							// DCH DAY 同 DY
-							result.WriteString(NLS_WEEKS[t.Weekday()])
+							fmKeywords = append(fmKeywords, DCH_DAY)
 							fi++
 						} else {
-							return empty_str, errors.New(dch_fmt_mismatch_err + "DA")
+							return nil, errors.New(dch_fmt_mismatch_err + "DA")
 						}
 					} else if format[fi] == 'D' {
 						fi++
 						if fi < flen && format[fi] == 'D' {
 							// DCH DDD
-							result.WriteString(strconv.Itoa(t.YearDay()))
+							fmKeywords = append(fmKeywords, DCH_DDD)
 							fi++
 						} else {
 							// DCH DD
-							result.WriteString(strconv.Itoa(t.Day()))
+							fmKeywords = append(fmKeywords, DCH_DD)
 						}
 					} else if format[fi] == 'L' {
-						tmp, err := ParseDchByTime(t, NLS_DL)
-						if err != nil {
-							return empty_str, nil
-						}
-						result.WriteString(tmp)
+						fmKeywords = append(fmKeywords, DCH_DL)
 						fi++
 					} else if format[fi] == 'S' {
-						tmp, err := ParseDchByTime(t, NLS_DS)
-						if err != nil {
-							return empty_str, nil
-						}
-						result.WriteString(tmp)
+						fmKeywords = append(fmKeywords, DCH_DS)
 						fi++
 					} else if format[fi] == 'Y' {
 						// DCH DY
-						result.WriteString(NLS_WEEKS[t.Weekday()])
+						fmKeywords = append(fmKeywords, DCH_DY)
 						fi++
 					} else {
 						// DCH D
-						result.WriteString(strconv.Itoa(int(t.Weekday())))
+						fmKeywords = append(fmKeywords, DCH_D)
 					}
 				} else {
 					// DCH D
-					result.WriteString(strconv.Itoa(int(t.Weekday())))
+					fmKeywords = append(fmKeywords, DCH_D)
 				}
 			case 'E':
 				// TODO EE E
-				return empty_str, errors.New("not support")
+				return nil, errors.New("not support")
 			case 'F':
 				fi++
 				if fi < flen {
@@ -1501,99 +1257,87 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 						if fi < flen {
 							switch format[fi] {
 							case '1':
-								result.WriteString(strconv.Itoa(t.Nanosecond() / 1e8))
+								fmKeywords = append(fmKeywords, DCH_FF1)
+								fi++
 							case '2':
-								result.WriteString(strconv.Itoa(t.Nanosecond() / 1e7))
+								fmKeywords = append(fmKeywords, DCH_FF2)
+								fi++
 							case '3':
-								result.WriteString(strconv.Itoa(t.Nanosecond() / 1e6))
+								fmKeywords = append(fmKeywords, DCH_FF3)
+								fi++
 							case '4':
-								result.WriteString(strconv.Itoa(t.Nanosecond() / 1e5))
+								fmKeywords = append(fmKeywords, DCH_FF4)
+								fi++
 							case '5':
-								result.WriteString(strconv.Itoa(t.Nanosecond() / 1e4))
+								fmKeywords = append(fmKeywords, DCH_FF5)
+								fi++
 							case '6':
-								result.WriteString(strconv.Itoa(t.Nanosecond() / 1e3))
+								fmKeywords = append(fmKeywords, DCH_FF6)
+								fi++
 							case '7':
-								result.WriteString(strconv.Itoa(t.Nanosecond() / 1e2))
+								fmKeywords = append(fmKeywords, DCH_FF7)
+								fi++
 							case '8':
-								result.WriteString(strconv.Itoa(t.Nanosecond() / 1e1))
+								fmKeywords = append(fmKeywords, DCH_FF8)
+								fi++
 							case '9':
-								result.WriteString(strconv.Itoa(t.Nanosecond()))
+								fmKeywords = append(fmKeywords, DCH_FF9)
+								fi++
 							default:
-								return empty_str, errors.New(dch_fmt_mismatch_err + "FF")
+								fmKeywords = append(fmKeywords, DCH_FF)
 							}
 						} else {
-							return empty_str, errors.New(dch_fmt_length_err + "FF")
+							fmKeywords = append(fmKeywords, DCH_FF)
 						}
 					default:
-						return empty_str, errors.New(dch_fmt_length_err + "F")
+						return nil, errors.New(dch_fmt_length_err + "F")
 					}
 				} else {
-					return empty_str, errors.New(dch_fmt_length_err + "F")
+					return nil, errors.New(dch_fmt_length_err + "F")
 				}
-
-				fi++
 			case 'H':
 				fi++
 				if fi < flen {
 					switch format[fi] {
 					case 'H':
 						// DCH HH 同 HH12
-						hour := t.Hour()
-						if hour > 12 {
-							hour = hour - 12
-						}
-						if hour < 10 {
-							result.WriteByte('0')
-						}
-						result.WriteString(strconv.Itoa(hour))
+						fmKeywords = append(fmKeywords, DCH_HH)
 					case '2':
 						fi++
 						if fi < flen {
 							// DCH HH24
 							if format[fi] == '4' {
-								if t.Hour() < 10 {
-									result.WriteByte('0')
-								}
-								result.WriteString(strconv.Itoa(t.Hour()))
+								fmKeywords = append(fmKeywords, DCH_HH24)
 							} else {
-								return empty_str, errors.New(dch_fmt_mismatch_err + "H2")
+								return nil, errors.New(dch_fmt_mismatch_err + "H2")
 							}
 						} else {
-							return empty_str, errors.New(dch_fmt_length_err + "H2")
+							return nil, errors.New(dch_fmt_length_err + "H2")
 						}
 					case '1':
 						fi++
 						if fi < flen {
 							// DCH HH12
 							if format[fi] == '2' {
-								hour := t.Hour()
-								if hour > 12 {
-									hour = hour - 12
-								}
-								if hour < 10 {
-									result.WriteByte('0')
-								}
-								result.WriteString(strconv.Itoa(hour))
+								fmKeywords = append(fmKeywords, DCH_HH12)
 							} else {
-								return empty_str, errors.New(dch_fmt_mismatch_err + "H2")
+								return nil, errors.New(dch_fmt_mismatch_err + "H2")
 							}
 						} else {
-							return empty_str, errors.New(dch_fmt_length_err + "H1")
+							return nil, errors.New(dch_fmt_length_err + "H1")
 						}
 					}
 				} else {
-					return empty_str, errors.New(dch_fmt_length_err + "H")
+					return nil, errors.New(dch_fmt_length_err + "H")
 				}
 				fi++
 			case 'I':
 				fi++
-				y, w := t.ISOWeek()
-
 				if fi < flen {
 					switch format[fi] {
 					case 'W':
 						// DCH IW
-						result.WriteString(strconv.Itoa(w))
+						fmKeywords = append(fmKeywords, DCH_IW)
 						fi++
 					case 'Y':
 						fi++
@@ -1601,36 +1345,33 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 							fi++
 							if fi < flen && format[fi] == 'Y' {
 								// DCH IYYY
-								result.WriteString(strconv.Itoa(y))
+								fmKeywords = append(fmKeywords, DCH_IYYY)
 								fi++
 							} else {
 								// DCH IYY
-								result.WriteString(strconv.Itoa(y)[1:])
+								fmKeywords = append(fmKeywords, DCH_IYY)
 							}
 						} else {
 							// DCH IY
-							result.WriteString(strconv.Itoa(y)[2:])
+							fmKeywords = append(fmKeywords, DCH_IY)
 						}
 					}
 				} else {
 					// DCH I
-					result.WriteString(strconv.Itoa(y)[3:])
+					fmKeywords = append(fmKeywords, DCH_I)
 				}
 			case 'J':
-				result.WriteString(strconv.Itoa(ToJulian(t.Year(), int(t.Month()), t.Day())))
+				fmKeywords = append(fmKeywords, DCH_J)
 				fi++
 			case 'M':
 				fi++
 				if fi < flen && format[fi] == 'I' {
 					// DCH MI
-					result.WriteString(strconv.Itoa(t.Minute()))
+					fmKeywords = append(fmKeywords, DCH_MI)
 					fi++
 				} else if fi < flen && format[fi] == 'M' {
 					// DCH MM
-					if t.Month() < 10 {
-						result.WriteByte('0')
-					}
-					result.WriteString(strconv.Itoa(int(t.Month())))
+					fmKeywords = append(fmKeywords, DCH_MM)
 					fi++
 				} else if fi < flen && format[fi] == 'O' {
 					fi++
@@ -1640,22 +1381,23 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 						fi += 2
 						if fi <= flen && format[start:fi] == "TH" {
 							// DCH MONTH
+							fmKeywords = append(fmKeywords, DCH_MONTH)
 						} else {
 							// DCH MON
+							fmKeywords = append(fmKeywords, DCH_MON)
 							fi -= 2
 						}
-						result.WriteString(NLS_MONTHS[t.Month()])
 					} else {
-						return empty_str, errors.New(dch_fmt_mismatch_err + "MO")
+						return nil, errors.New(dch_fmt_mismatch_err + "MO")
 					}
 				} else {
-					return empty_str, errors.New(dch_fmt_mismatch_err + "M")
+					return nil, errors.New(dch_fmt_mismatch_err + "M")
 				}
 			case 'P':
 				fi++
 				if fi < flen {
 					if 'M' == format[fi] {
-						result.WriteString(NLS_PM)
+						fmKeywords = append(fmKeywords, DCH_PM)
 						fi++
 					} else if '.' == format[fi] {
 						fi++
@@ -1663,27 +1405,27 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 						fi += 2
 						if fi <= flen {
 							if "M." == format[start:fi] {
-								result.WriteString(NLS_P_M_)
+								fmKeywords = append(fmKeywords, DCH_P_M_)
 							} else {
-								return empty_str, errors.New(dch_fmt_mismatch_err + "P")
+								return nil, errors.New(dch_fmt_mismatch_err + "P")
 							}
 						} else {
-							return empty_str, errors.New(dch_fmt_length_err + "P")
+							return nil, errors.New(dch_fmt_length_err + "P")
 						}
 					} else {
-						return empty_str, errors.New(dch_fmt_length_err + "P")
+						return nil, errors.New(dch_fmt_length_err + "P")
 					}
 				} else {
-					return empty_str, errors.New(dch_fmt_length_err + "P")
+					return nil, errors.New(dch_fmt_length_err + "P")
 				}
 			case 'Q':
-				result.WriteString(strconv.Itoa(int(t.Month()+2) / 3))
+				fmKeywords = append(fmKeywords, DCH_Q)
 				fi++
 			case 'R':
 				fi++
 				if fi < flen {
 					if 'M' == format[fi] {
-						result.WriteString(ToRoman(int(t.Month())).String())
+						fmKeywords = append(fmKeywords, DCH_RM)
 						fi++
 					} else if 'R' == format[fi] {
 						fi++
@@ -1691,17 +1433,17 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 						fi += 2
 						if fi <= flen && format[start:fi] == "RR" {
 							// DCH RRRR
-							result.WriteString(strconv.Itoa(t.Year()))
+							fmKeywords = append(fmKeywords, DCH_RRRR)
 						} else {
 							// DCH RR
-							result.WriteString(strconv.Itoa(t.Year())[2:])
+							fmKeywords = append(fmKeywords, DCH_RR)
 							fi -= 2
 						}
 					} else {
-						return empty_str, errors.New(dch_fmt_mismatch_err + "R")
+						return nil, errors.New(dch_fmt_mismatch_err + "R")
 					}
 				} else {
-					return empty_str, errors.New(dch_fmt_length_err + "R")
+					return nil, errors.New(dch_fmt_length_err + "R")
 				}
 			case 'S':
 				fi++
@@ -1717,10 +1459,10 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 						fi += 3
 						if fi <= flen && format[start:fi] == "SSS" {
 							// DCH SSSSS 午夜过后的秒
-							result.WriteString(strconv.Itoa((t.Hour()*60+t.Minute())*60 + t.Second()))
+							fmKeywords = append(fmKeywords, DCH_SSSSS)
 						} else {
 							// DCH SS
-							result.WriteString(strconv.Itoa(t.Second()))
+							fmKeywords = append(fmKeywords, DCH_SS)
 							fi -= 3
 						}
 					case 'Y':
@@ -1732,25 +1474,23 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 								// TODO golang 好像不支持公元前
 								// DCH SYYYY 正负号+数字
 								//if 公元前 {result.WriteByte('-')}
-								result.WriteString(strconv.Itoa(t.Year()))
+								fmKeywords = append(fmKeywords, DCH_SYYYY)
 							} else if format[start:fi] == "EAR" {
 								// FIXME oracle中将4位的年分成了 2个2位数
 								// DCH SYEAR 正负号+基数词
 								//if 公元前 {result.WriteByte('-')}
-								result.WriteString(ntw.NumToCardinalWord(t.Year() / 100))
-								result.WriteString(SPACE)
-								result.WriteString(ntw.NumToCardinalWord(t.Year() % 100))
+								fmKeywords = append(fmKeywords, DCH_SYEAR)
 							} else {
-								return empty_str, errors.New(dch_fmt_mismatch_err + "SY")
+								return nil, errors.New(dch_fmt_mismatch_err + "SY")
 							}
 						} else {
-							return empty_str, errors.New(dch_fmt_length_err + "S")
+							return nil, errors.New(dch_fmt_length_err + "S")
 						}
 					default:
-						return empty_str, errors.New(dch_fmt_mismatch_err + "S")
+						return nil, errors.New(dch_fmt_mismatch_err + "S")
 					}
 				} else {
-					return empty_str, errors.New(dch_fmt_length_err + "S")
+					return nil, errors.New(dch_fmt_length_err + "S")
 				}
 			case 'T':
 				// TODO 更换类型后更改时区
@@ -1758,55 +1498,46 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 				if fi < flen {
 					if format[fi] == 'S' {
 						// DCH TS 下午 9:30:00
-						tsFormat := "15:04:05"
-						if t.Hour() > 12 {
-							result.WriteString(NLS_AM)
-							result.WriteByte(ASSIC_SPACE)
-						} else {
-							result.WriteString(NLS_AM)
-							result.WriteByte(ASSIC_SPACE)
-						}
-						result.WriteString(t.Format(tsFormat))
+						fmKeywords = append(fmKeywords, DCH_TS)
 					} else if format[fi] == 'Z' {
 						fi++
 						if fi < flen && format[fi] == 'D' {
 							// DCH TZD PDT 时区
-							zone, _ := t.Local().Zone()
-							result.WriteString(zone)
+							fmKeywords = append(fmKeywords, DCH_TZD)
 						} else if fi < flen && format[fi] == 'H' {
 							// DCH TZH -07 时区小时
-							result.WriteString(t.Format("-07"))
+							fmKeywords = append(fmKeywords, DCH_TZH)
 						} else if fi < flen && format[fi] == 'M' {
 							// DCH TZM 00 时区分
-							result.WriteString(t.Format("-0700")[3:])
+							fmKeywords = append(fmKeywords, DCH_TZM)
 						} else if fi < flen && format[fi] == 'R' {
 							// DCH TZR US/PACIFIC 时区区域
-							result.WriteString(t.Location().String())
+							fmKeywords = append(fmKeywords, DCH_TZR)
 						} else {
-							return empty_str, errors.New("格式错误")
+							return nil, errors.New("格式错误")
 						}
 					} else if format[fi] == 'H' {
 						// DCH TH TODO 最后处理
 						aux_flag_th = true
 					} else {
-						return empty_str, errors.New("格式错误")
+						return nil, errors.New("格式错误")
 					}
 				} else {
-					return empty_str, errors.New("格式错误")
+					return nil, errors.New("格式错误")
 				}
 				fi++
 			case 'W':
 				fi++
 				if fi < flen && format[fi] == 'W' {
 					// DCH WW
-					result.WriteString(strconv.Itoa((t.YearDay() + 6) / 7))
+					fmKeywords = append(fmKeywords, DCH_WW)
 					fi++
 				} else {
 					// DCH W
-					result.WriteString(strconv.Itoa((t.Day() + 6) / 7))
+					fmKeywords = append(fmKeywords, DCH_W)
 				}
 			case 'X':
-				result.WriteString(NLS_X)
+				fmKeywords = append(fmKeywords, DCH_X)
 				fi++
 			case 'Y':
 				fi++
@@ -1818,30 +1549,29 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 						if fi <= flen {
 							if format[start:fi] == "YYY" {
 								// DCH Y,YYY
-								year := strconv.Itoa(t.Year())
-								result.WriteString(year[:1] + "," + year[1:])
+								fmKeywords = append(fmKeywords, DCH_Y_YYY)
 							} else {
-								return empty_str, errors.New(dch_fmt_mismatch_err + "Y,")
+								return nil, errors.New(dch_fmt_mismatch_err + "Y,")
 							}
 						} else {
-							return empty_str, errors.New(dch_fmt_length_err + "Y,")
+							return nil, errors.New(dch_fmt_length_err + "Y,")
 						}
 					} else if format[fi] == 'Y' {
 						fi++
-						year := strconv.Itoa(t.Year())
+
 						if fi < flen && format[fi] == 'Y' {
 							fi++
 							if fi < flen && format[fi] == 'Y' {
 								// DCH YYYY
-								result.WriteString(year)
+								fmKeywords = append(fmKeywords, DCH_YYYY)
 								fi++
 							} else {
 								// DCH YYY
-								result.WriteString(year[1:])
+								fmKeywords = append(fmKeywords, DCH_YYY)
 							}
 						} else {
 							// DCH YY
-							result.WriteString(year[2:])
+							fmKeywords = append(fmKeywords, DCH_YY)
 						}
 					} else if format[fi] == 'E' {
 						fi++
@@ -1849,20 +1579,20 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 						fi += 2
 						if fi <= flen && format[start:fi] == "AR" {
 							// DCH YEAR 基数词
-							result.WriteString(ntw.NumToCardinalWord(t.Year()))
+							fmKeywords = append(fmKeywords, DCH_YEAR)
 						} else {
-							return empty_str, errors.New(dch_fmt_mismatch_err + "YE")
+							return nil, errors.New(dch_fmt_mismatch_err + "YE")
 						}
 					}
 				} else {
 					// DCH Y
-					result.WriteString(strconv.Itoa(t.Year())[3:])
+					fmKeywords = append(fmKeywords, DCH_Y)
 				}
 			default:
-				return empty_str, errors.New(out_keyword_range_err)
+				return nil, errors.New(out_keyword_range_err)
 			}
 		} else {
-			return empty_str, errors.New(out_ascii_range_err + string(c))
+			return nil, errors.New(out_ascii_range_err + string(c))
 		}
 	}
 
@@ -1879,7 +1609,47 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 
 	}
 
-	return result.String(), nil
+	return fmKeywords, nil
+}
+
+func parsePrefixA(fi int, flen int, format string, fmKeywords []FMKeyword) {
+	var result FMKeyword
+	fi++
+	if fi < flen {
+		followingOneChar := format[fi]
+		switch followingOneChar {
+		case '.':
+			fi++
+			start := fi
+			fi += 2
+			if fi <= flen {
+				followingChars := format[start:fi]
+				if "D." == followingChars {
+					// DCH A.D.
+					fmKeywords = append(fmKeywords, DCH_A_D_)
+				} else if "M." == followingChars {
+					// DCH A.M.
+					fmKeywords = append(fmKeywords, DCH_A_M_)
+				} else {
+					return nil, errors.New(dch_fmt_mismatch_err + "A.")
+				}
+			} else {
+				return nil, errors.New(dch_fmt_length_err + "A.")
+			}
+		case 'D':
+			// DCH AD
+			fmKeywords = append(fmKeywords, DCH_AD)
+			fi++
+		case 'M':
+			// DCH AM
+			fmKeywords = append(fmKeywords, DCH_AM)
+			fi++
+		default:
+			return nil, errors.New(dch_fmt_mismatch_err + "A")
+		}
+	} else {
+		return nil, errors.New(dch_fmt_length_err + "A")
+	}
 }
 
 func ToUpper(c *byte) {
