@@ -639,6 +639,10 @@ func TestParseDchByTimeM(t *testing.T) {
 
 	format = "MONTH"
 	fmt.Println(ParseDchByTime(ti, format))
+
+	format = "MONTHMON"
+	fmt.Println(ParseDchByTime(ti, format))
+
 }
 
 func TestParseDchByTimeM2(t *testing.T) {
@@ -688,7 +692,7 @@ func TestParseDchByTimeQ(t *testing.T) {
 	fmt.Println(ParseDchByTime(ti, format))
 }
 
-func TestParseDchByTimeR(t *testing.T) { // FIXME TODO
+func TestParseDchByTimeR(t *testing.T) {
 	layout := "2006-01-02 15:04:05"
 	ti, _ := time.Parse(layout, "2031-04-01 15:01:02")
 
@@ -718,24 +722,24 @@ func TestParseDchByTimeR(t *testing.T) { // FIXME TODO
 	expected = empty_str
 	assert.Equal(t, expected, actual)
 	assert.Error(t, err)
-	//
-	//format = "RRR."
-	//actual, err = ParseDchByTime(ti, format)
-	//expected = empty_str
-	//assert.Equal(t, expected, actual)
-	//assert.Error(t, err)
-	//
-	//format = "RRR-"
-	//actual, err = ParseDchByTime(ti, format)
-	//expected = empty_str
-	//assert.Equal(t, expected, actual)
-	//assert.Error(t, err)
-	//
-	//format = "RRRU"
-	//actual, err = ParseDchByTime(ti, format)
-	//expected = empty_str
-	//assert.Equal(t, expected, actual)
-	//assert.Error(t, err)
+
+	format = "RRR."
+	actual, err = ParseDchByTime(ti, format)
+	expected = empty_str
+	assert.Equal(t, expected, actual)
+	assert.Error(t, err)
+
+	format = "RRR-"
+	actual, err = ParseDchByTime(ti, format)
+	expected = empty_str
+	assert.Equal(t, expected, actual)
+	assert.Error(t, err)
+
+	format = "RRRU"
+	actual, err = ParseDchByTime(ti, format)
+	expected = empty_str
+	assert.Equal(t, expected, actual)
+	assert.Error(t, err)
 
 }
 
@@ -757,6 +761,10 @@ func TestParseDchByTimeS(t *testing.T) {
 
 	format = "SYYYY"
 	fmt.Println(ParseDchByTime(ti, format))
+
+	format = "SSSSSSSSS"
+	fmt.Println(ParseDchByTime(ti, format))
+
 }
 
 func TestParseDchByTimeT(t *testing.T) {
@@ -819,6 +827,10 @@ func TestParseDchByTimeY(t *testing.T) {
 
 	format = "YEAR"
 	fmt.Println(ParseDchByTime(ti, format))
+
+	format = "YEARYYYY"
+	fmt.Println(ParseDchByTime(ti, format))
+
 }
 
 func TestParseDchByTimeYYYYMMDD(t *testing.T) {

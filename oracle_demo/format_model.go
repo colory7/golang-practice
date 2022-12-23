@@ -1335,7 +1335,7 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 	aux_flag_sp := false
 	aux_flag_th := false
 
-	for fi := 0; fi < flen; fi++ {
+	for fi := 0; fi < flen; {
 		// 截取一个字符
 		c := format[fi]
 		if c >= 32 && c <= 127 {
@@ -1346,6 +1346,7 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 			// DCH 跳过字符
 			case '-', '/', ',', '.', ';', ':', ' ':
 				result.WriteByte(c)
+				fi++
 			case '"':
 				fi++
 				for ; fi < flen; fi++ {
@@ -1382,9 +1383,11 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 					case 'D':
 						// DCH AD
 						result.WriteString(NLS_AD)
+						fi++
 					case 'M':
 						// DCH AM
 						result.WriteString(NLS_AM)
+						fi++
 					default:
 						return empty_str, errors.New(dch_fmt_mismatch_err + "A")
 					}
@@ -1399,6 +1402,7 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 					case 'C':
 						// DCH BC
 						result.WriteString(NLS_BC)
+						fi++
 					case '.':
 						fi++
 						start := fi
@@ -1423,6 +1427,7 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 					case 'C':
 						// DCH CC
 						result.WriteString(strconv.Itoa((t.Year() + 99) / 100))
+						fi++
 					default:
 						return empty_str, errors.New(dch_fmt_mismatch_err + "C")
 					}
@@ -1437,6 +1442,7 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 						if fi < flen && format[fi] == 'Y' {
 							// DCH DAY 同 DY
 							result.WriteString(NLS_WEEKS[t.Weekday()])
+							fi++
 						} else {
 							return empty_str, errors.New(dch_fmt_mismatch_err + "DA")
 						}
@@ -1445,10 +1451,10 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 						if fi < flen && format[fi] == 'D' {
 							// DCH DDD
 							result.WriteString(strconv.Itoa(t.YearDay()))
+							fi++
 						} else {
 							// DCH DD
 							result.WriteString(strconv.Itoa(t.Day()))
-							fi--
 						}
 					} else if format[fi] == 'L' {
 						tmp, err := ParseDchByTime(t, NLS_DL)
@@ -1456,27 +1462,29 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 							return empty_str, nil
 						}
 						result.WriteString(tmp)
+						fi++
 					} else if format[fi] == 'S' {
 						tmp, err := ParseDchByTime(t, NLS_DS)
 						if err != nil {
 							return empty_str, nil
 						}
 						result.WriteString(tmp)
+						fi++
 					} else if format[fi] == 'Y' {
 						// DCH DY
 						result.WriteString(NLS_WEEKS[t.Weekday()])
+						fi++
 					} else {
 						// DCH D
 						result.WriteString(strconv.Itoa(int(t.Weekday())))
-						fi--
 					}
 				} else {
 					// DCH D
 					result.WriteString(strconv.Itoa(int(t.Weekday())))
-					fi--
 				}
 			case 'E':
 				// TODO EE E
+				return empty_str, errors.New("not support")
 			case 'F':
 				fi++
 				if fi < flen {
@@ -1522,6 +1530,8 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 				} else {
 					return empty_str, errors.New(dch_fmt_length_err + "F")
 				}
+
+				fi++
 			case 'H':
 				fi++
 				if fi < flen {
@@ -1574,6 +1584,7 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 				} else {
 					return empty_str, errors.New(dch_fmt_length_err + "H")
 				}
+				fi++
 			case 'I':
 				fi++
 				y, w := t.ISOWeek()
@@ -1583,6 +1594,7 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 					case 'W':
 						// DCH IW
 						result.WriteString(strconv.Itoa(w))
+						fi++
 					case 'Y':
 						fi++
 						if fi < flen && format[fi] == 'Y' {
@@ -1590,35 +1602,36 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 							if fi < flen && format[fi] == 'Y' {
 								// DCH IYYY
 								result.WriteString(strconv.Itoa(y))
+								fi++
 							} else {
 								// DCH IYY
 								result.WriteString(strconv.Itoa(y)[1:])
-								fi--
 							}
 						} else {
 							// DCH IY
 							result.WriteString(strconv.Itoa(y)[2:])
-							fi--
 						}
 					}
 				} else {
 					// DCH I
 					result.WriteString(strconv.Itoa(y)[3:])
-					fi--
 				}
 			case 'J':
 				result.WriteString(strconv.Itoa(ToJulian(t.Year(), int(t.Month()), t.Day())))
+				fi++
 			case 'M':
 				fi++
 				if fi < flen && format[fi] == 'I' {
 					// DCH MI
 					result.WriteString(strconv.Itoa(t.Minute()))
+					fi++
 				} else if fi < flen && format[fi] == 'M' {
 					// DCH MM
 					if t.Month() < 10 {
 						result.WriteByte('0')
 					}
 					result.WriteString(strconv.Itoa(int(t.Month())))
+					fi++
 				} else if fi < flen && format[fi] == 'O' {
 					fi++
 					if fi < flen && format[fi] == 'N' {
@@ -1643,6 +1656,7 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 				if fi < flen {
 					if 'M' == format[fi] {
 						result.WriteString(NLS_PM)
+						fi++
 					} else if '.' == format[fi] {
 						fi++
 						start := fi
@@ -1664,11 +1678,13 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 				}
 			case 'Q':
 				result.WriteString(strconv.Itoa(int(t.Month()+2) / 3))
+				fi++
 			case 'R':
 				fi++
 				if fi < flen {
 					if 'M' == format[fi] {
 						result.WriteString(ToRoman(int(t.Month())).String())
+						fi++
 					} else if 'R' == format[fi] {
 						fi++
 						start := fi
@@ -1694,6 +1710,7 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 					case 'P':
 						// DCH SP TODO 最后处理
 						aux_flag_sp = true
+						fi++
 					case 'S':
 						fi++
 						start := fi
@@ -1777,30 +1794,31 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 				} else {
 					return empty_str, errors.New("格式错误")
 				}
+				fi++
 			case 'W':
 				fi++
 				if fi < flen && format[fi] == 'W' {
 					// DCH WW
 					result.WriteString(strconv.Itoa((t.YearDay() + 6) / 7))
+					fi++
 				} else {
 					// DCH W
 					result.WriteString(strconv.Itoa((t.Day() + 6) / 7))
-					fi--
 				}
 			case 'X':
 				result.WriteString(NLS_X)
+				fi++
 			case 'Y':
 				fi++
-
 				if fi < flen {
 					if format[fi] == ',' {
 						fi++
-						year := strconv.Itoa(t.Year())
 						start := fi
 						fi += 3
 						if fi <= flen {
 							if format[start:fi] == "YYY" {
 								// DCH Y,YYY
+								year := strconv.Itoa(t.Year())
 								result.WriteString(year[:1] + "," + year[1:])
 							} else {
 								return empty_str, errors.New(dch_fmt_mismatch_err + "Y,")
@@ -1809,17 +1827,17 @@ func ParseDchByTime(t time.Time, format string) (string, error) {
 							return empty_str, errors.New(dch_fmt_length_err + "Y,")
 						}
 					} else if format[fi] == 'Y' {
-						year := strconv.Itoa(t.Year())
 						fi++
+						year := strconv.Itoa(t.Year())
 						if fi < flen && format[fi] == 'Y' {
 							fi++
 							if fi < flen && format[fi] == 'Y' {
 								// DCH YYYY
 								result.WriteString(year)
+								fi++
 							} else {
 								// DCH YYY
 								result.WriteString(year[1:])
-								fi--
 							}
 						} else {
 							// DCH YY
