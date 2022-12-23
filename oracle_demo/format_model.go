@@ -211,6 +211,7 @@ const (
 	DCH_RM           FMKeyword = "RM"
 	DCH_RR           FMKeyword = "RR"
 	DCH_RRRR         FMKeyword = "RRRR"
+	DCH_SP           FMKeyword = "SP"
 	DCH_SSSSS        FMKeyword = "SSSSS"
 	DCH_SS           FMKeyword = "SS"
 	DCH_TZH          FMKeyword = "TZH"
@@ -218,6 +219,7 @@ const (
 	DCH_TZD          FMKeyword = "TZD"
 	DCH_TZR          FMKeyword = "TZR"
 	DCH_TS           FMKeyword = "TS"
+	DCH_TH           FMKeyword = "TH"
 	DCH_WW           FMKeyword = "WW"
 	DCH_W            FMKeyword = "W"
 	DCH_X            FMKeyword = "X"
@@ -1117,11 +1119,13 @@ func ParseDchByTime(format string) ([]FMKeyword, error) {
 
 	//println(format)
 
-	aux_flag_fm := false
-	aux_flag_fx := false
-	aux_flag_sp := false
-	aux_flag_th := false
+	//aux_flag_fm := false
+	//aux_flag_fx := false
+	//aux_flag_sp := false
+	//aux_flag_th := false
 
+	var keyword FMKeyword
+	var err error
 	for fi := 0; fi < flen; {
 		// 截取一个字符
 		c := format[fi]
@@ -1130,21 +1134,21 @@ func ParseDchByTime(format string) ([]FMKeyword, error) {
 			//log.Println(result.String())
 			//frest := flen - fi
 			switch c {
-			// DCH 跳过字符
+			// DCH reproduced
 			case '-':
-				fmKeywords = append(fmKeywords, DCH_MINUS)
+				keyword = DCH_MINUS
 			case '/':
-				fmKeywords = append(fmKeywords, DCH_SLASH)
+				keyword = DCH_SLASH
 			case ',':
-				fmKeywords = append(fmKeywords, DCH_COMMA)
+				keyword = DCH_COMMA
 			case '.':
-				fmKeywords = append(fmKeywords, DCH_DEC)
+				keyword = DCH_DEC
 			case ';':
-				fmKeywords = append(fmKeywords, DCH_SEMICOLON)
+				keyword = DCH_SEMICOLON
 			case ':':
-				fmKeywords = append(fmKeywords, DCH_COLON)
+				keyword = DCH_COLON
 			case ' ':
-				fmKeywords = append(fmKeywords, DCH_SPACE)
+				keyword = DCH_SPACE
 				fi++
 			case '"':
 				fi++
@@ -1153,505 +1157,583 @@ func ParseDchByTime(format string) ([]FMKeyword, error) {
 						break
 					} else {
 						// DCH "
-						fmKeywords = append(fmKeywords, DCH_DOUBLE_QUOTE)
+						keyword = DCH_DOUBLE_QUOTE
 					}
 				}
 			case 'A':
-				parsePrefixA()
+				keyword, err = parsePrefixA(&fi, flen, format)
 			case 'B':
-				fi++
-				if fi < flen {
-					followingOneChar := format[fi]
-					switch followingOneChar {
-					case 'C':
-						// DCH BC
-						fmKeywords = append(fmKeywords, DCH_BC)
-						fi++
-					case '.':
-						fi++
-						start := fi
-						fi += 2
-						if fi <= flen && "C." == format[start:fi] {
-							// DCH B.C.
-							fmKeywords = append(fmKeywords, DCH_B_C_)
-						} else {
-							return nil, errors.New(dch_fmt_mismatch_err + "B.")
-						}
-					default:
-						return nil, errors.New(dch_fmt_mismatch_err + "B")
-					}
-				} else {
-					return nil, errors.New(dch_fmt_mismatch_err + "B")
-				}
+				keyword, err = parsePrefixB(&fi, flen, format)
 			case 'C':
-				fi++
-				if fi < flen {
-					followingOneChar := format[fi]
-					switch followingOneChar {
-					case 'C':
-						// DCH CC
-						fmKeywords = append(fmKeywords, DCH_CC)
-						fi++
-					default:
-						return nil, errors.New(dch_fmt_mismatch_err + "C")
-					}
-				} else {
-					return nil, errors.New(dch_fmt_length_err + "C")
-				}
+				keyword, err = parsePrefixC(&fi, flen, format)
 			case 'D':
-				fi++
-				if fi < flen {
-					if format[fi] == 'A' {
-						fi++
-						if fi < flen && format[fi] == 'Y' {
-							// DCH DAY 同 DY
-							fmKeywords = append(fmKeywords, DCH_DAY)
-							fi++
-						} else {
-							return nil, errors.New(dch_fmt_mismatch_err + "DA")
-						}
-					} else if format[fi] == 'D' {
-						fi++
-						if fi < flen && format[fi] == 'D' {
-							// DCH DDD
-							fmKeywords = append(fmKeywords, DCH_DDD)
-							fi++
-						} else {
-							// DCH DD
-							fmKeywords = append(fmKeywords, DCH_DD)
-						}
-					} else if format[fi] == 'L' {
-						fmKeywords = append(fmKeywords, DCH_DL)
-						fi++
-					} else if format[fi] == 'S' {
-						fmKeywords = append(fmKeywords, DCH_DS)
-						fi++
-					} else if format[fi] == 'Y' {
-						// DCH DY
-						fmKeywords = append(fmKeywords, DCH_DY)
-						fi++
-					} else {
-						// DCH D
-						fmKeywords = append(fmKeywords, DCH_D)
-					}
-				} else {
-					// DCH D
-					fmKeywords = append(fmKeywords, DCH_D)
-				}
+				keyword, err = parsePrefixD(&fi, flen, format)
 			case 'E':
 				// TODO EE E
 				return nil, errors.New("not support")
 			case 'F':
-				fi++
-				if fi < flen {
-					followingOneChar := format[fi]
-					switch followingOneChar {
-					case 'X':
-						// TODO 最后处理
-						aux_flag_fx = true
-					case 'M':
-						// TODO 最后处理
-						aux_flag_fm = true
-					case 'F':
-						fi++
-						if fi < flen {
-							switch format[fi] {
-							case '1':
-								fmKeywords = append(fmKeywords, DCH_FF1)
-								fi++
-							case '2':
-								fmKeywords = append(fmKeywords, DCH_FF2)
-								fi++
-							case '3':
-								fmKeywords = append(fmKeywords, DCH_FF3)
-								fi++
-							case '4':
-								fmKeywords = append(fmKeywords, DCH_FF4)
-								fi++
-							case '5':
-								fmKeywords = append(fmKeywords, DCH_FF5)
-								fi++
-							case '6':
-								fmKeywords = append(fmKeywords, DCH_FF6)
-								fi++
-							case '7':
-								fmKeywords = append(fmKeywords, DCH_FF7)
-								fi++
-							case '8':
-								fmKeywords = append(fmKeywords, DCH_FF8)
-								fi++
-							case '9':
-								fmKeywords = append(fmKeywords, DCH_FF9)
-								fi++
-							default:
-								fmKeywords = append(fmKeywords, DCH_FF)
-							}
-						} else {
-							fmKeywords = append(fmKeywords, DCH_FF)
-						}
-					default:
-						return nil, errors.New(dch_fmt_length_err + "F")
-					}
-				} else {
-					return nil, errors.New(dch_fmt_length_err + "F")
-				}
+				keyword, err = parsePrefixF(&fi, flen, format)
 			case 'H':
-				fi++
-				if fi < flen {
-					switch format[fi] {
-					case 'H':
-						// DCH HH 同 HH12
-						fmKeywords = append(fmKeywords, DCH_HH)
-					case '2':
-						fi++
-						if fi < flen {
-							// DCH HH24
-							if format[fi] == '4' {
-								fmKeywords = append(fmKeywords, DCH_HH24)
-							} else {
-								return nil, errors.New(dch_fmt_mismatch_err + "H2")
-							}
-						} else {
-							return nil, errors.New(dch_fmt_length_err + "H2")
-						}
-					case '1':
-						fi++
-						if fi < flen {
-							// DCH HH12
-							if format[fi] == '2' {
-								fmKeywords = append(fmKeywords, DCH_HH12)
-							} else {
-								return nil, errors.New(dch_fmt_mismatch_err + "H2")
-							}
-						} else {
-							return nil, errors.New(dch_fmt_length_err + "H1")
-						}
-					}
-				} else {
-					return nil, errors.New(dch_fmt_length_err + "H")
-				}
-				fi++
+				keyword, err = parsePrefixH(&fi, flen, format)
 			case 'I':
-				fi++
-				if fi < flen {
-					switch format[fi] {
-					case 'W':
-						// DCH IW
-						fmKeywords = append(fmKeywords, DCH_IW)
-						fi++
-					case 'Y':
-						fi++
-						if fi < flen && format[fi] == 'Y' {
-							fi++
-							if fi < flen && format[fi] == 'Y' {
-								// DCH IYYY
-								fmKeywords = append(fmKeywords, DCH_IYYY)
-								fi++
-							} else {
-								// DCH IYY
-								fmKeywords = append(fmKeywords, DCH_IYY)
-							}
-						} else {
-							// DCH IY
-							fmKeywords = append(fmKeywords, DCH_IY)
-						}
-					}
-				} else {
-					// DCH I
-					fmKeywords = append(fmKeywords, DCH_I)
-				}
+				keyword, err = parsePrefixI(&fi, flen, format)
 			case 'J':
-				fmKeywords = append(fmKeywords, DCH_J)
+				keyword = DCH_J
 				fi++
 			case 'M':
-				fi++
-				if fi < flen && format[fi] == 'I' {
-					// DCH MI
-					fmKeywords = append(fmKeywords, DCH_MI)
-					fi++
-				} else if fi < flen && format[fi] == 'M' {
-					// DCH MM
-					fmKeywords = append(fmKeywords, DCH_MM)
-					fi++
-				} else if fi < flen && format[fi] == 'O' {
-					fi++
-					if fi < flen && format[fi] == 'N' {
-						fi++
-						start := fi
-						fi += 2
-						if fi <= flen && format[start:fi] == "TH" {
-							// DCH MONTH
-							fmKeywords = append(fmKeywords, DCH_MONTH)
-						} else {
-							// DCH MON
-							fmKeywords = append(fmKeywords, DCH_MON)
-							fi -= 2
-						}
-					} else {
-						return nil, errors.New(dch_fmt_mismatch_err + "MO")
-					}
-				} else {
-					return nil, errors.New(dch_fmt_mismatch_err + "M")
-				}
+				keyword, err = parsePrefixM(&fi, flen, format)
 			case 'P':
-				fi++
-				if fi < flen {
-					if 'M' == format[fi] {
-						fmKeywords = append(fmKeywords, DCH_PM)
-						fi++
-					} else if '.' == format[fi] {
-						fi++
-						start := fi
-						fi += 2
-						if fi <= flen {
-							if "M." == format[start:fi] {
-								fmKeywords = append(fmKeywords, DCH_P_M_)
-							} else {
-								return nil, errors.New(dch_fmt_mismatch_err + "P")
-							}
-						} else {
-							return nil, errors.New(dch_fmt_length_err + "P")
-						}
-					} else {
-						return nil, errors.New(dch_fmt_length_err + "P")
-					}
-				} else {
-					return nil, errors.New(dch_fmt_length_err + "P")
-				}
+				keyword, err = parsePrefixP(&fi, flen, format)
 			case 'Q':
-				fmKeywords = append(fmKeywords, DCH_Q)
+				keyword = DCH_Q
 				fi++
 			case 'R':
-				fi++
-				if fi < flen {
-					if 'M' == format[fi] {
-						fmKeywords = append(fmKeywords, DCH_RM)
-						fi++
-					} else if 'R' == format[fi] {
-						fi++
-						start := fi
-						fi += 2
-						if fi <= flen && format[start:fi] == "RR" {
-							// DCH RRRR
-							fmKeywords = append(fmKeywords, DCH_RRRR)
-						} else {
-							// DCH RR
-							fmKeywords = append(fmKeywords, DCH_RR)
-							fi -= 2
-						}
-					} else {
-						return nil, errors.New(dch_fmt_mismatch_err + "R")
-					}
-				} else {
-					return nil, errors.New(dch_fmt_length_err + "R")
-				}
+				keyword, err = parsePrefixR(&fi, flen, format)
 			case 'S':
-				fi++
-				if fi < flen {
-					switch format[fi] {
-					case 'P':
-						// DCH SP TODO 最后处理
-						aux_flag_sp = true
-						fi++
-					case 'S':
-						fi++
-						start := fi
-						fi += 3
-						if fi <= flen && format[start:fi] == "SSS" {
-							// DCH SSSSS 午夜过后的秒
-							fmKeywords = append(fmKeywords, DCH_SSSSS)
-						} else {
-							// DCH SS
-							fmKeywords = append(fmKeywords, DCH_SS)
-							fi -= 3
-						}
-					case 'Y':
-						fi++
-						start := fi
-						fi += 3
-						if fi <= flen {
-							if format[start:fi] == "YYY" {
-								// TODO golang 好像不支持公元前
-								// DCH SYYYY 正负号+数字
-								//if 公元前 {result.WriteByte('-')}
-								fmKeywords = append(fmKeywords, DCH_SYYYY)
-							} else if format[start:fi] == "EAR" {
-								// FIXME oracle中将4位的年分成了 2个2位数
-								// DCH SYEAR 正负号+基数词
-								//if 公元前 {result.WriteByte('-')}
-								fmKeywords = append(fmKeywords, DCH_SYEAR)
-							} else {
-								return nil, errors.New(dch_fmt_mismatch_err + "SY")
-							}
-						} else {
-							return nil, errors.New(dch_fmt_length_err + "S")
-						}
-					default:
-						return nil, errors.New(dch_fmt_mismatch_err + "S")
-					}
-				} else {
-					return nil, errors.New(dch_fmt_length_err + "S")
-				}
+				keyword, err = parsePrefixS(&fi, flen, format)
 			case 'T':
-				// TODO 更换类型后更改时区
-				fi++
-				if fi < flen {
-					if format[fi] == 'S' {
-						// DCH TS 下午 9:30:00
-						fmKeywords = append(fmKeywords, DCH_TS)
-					} else if format[fi] == 'Z' {
-						fi++
-						if fi < flen && format[fi] == 'D' {
-							// DCH TZD PDT 时区
-							fmKeywords = append(fmKeywords, DCH_TZD)
-						} else if fi < flen && format[fi] == 'H' {
-							// DCH TZH -07 时区小时
-							fmKeywords = append(fmKeywords, DCH_TZH)
-						} else if fi < flen && format[fi] == 'M' {
-							// DCH TZM 00 时区分
-							fmKeywords = append(fmKeywords, DCH_TZM)
-						} else if fi < flen && format[fi] == 'R' {
-							// DCH TZR US/PACIFIC 时区区域
-							fmKeywords = append(fmKeywords, DCH_TZR)
-						} else {
-							return nil, errors.New("格式错误")
-						}
-					} else if format[fi] == 'H' {
-						// DCH TH TODO 最后处理
-						aux_flag_th = true
-					} else {
-						return nil, errors.New("格式错误")
-					}
-				} else {
-					return nil, errors.New("格式错误")
-				}
-				fi++
+				keyword, err = parsePrefixT(&fi, flen, format)
 			case 'W':
 				fi++
 				if fi < flen && format[fi] == 'W' {
 					// DCH WW
-					fmKeywords = append(fmKeywords, DCH_WW)
+					keyword = DCH_WW
 					fi++
 				} else {
 					// DCH W
-					fmKeywords = append(fmKeywords, DCH_W)
+					keyword = DCH_W
 				}
 			case 'X':
-				fmKeywords = append(fmKeywords, DCH_X)
+				keyword = DCH_X
 				fi++
 			case 'Y':
-				fi++
-				if fi < flen {
-					if format[fi] == ',' {
-						fi++
-						start := fi
-						fi += 3
-						if fi <= flen {
-							if format[start:fi] == "YYY" {
-								// DCH Y,YYY
-								fmKeywords = append(fmKeywords, DCH_Y_YYY)
-							} else {
-								return nil, errors.New(dch_fmt_mismatch_err + "Y,")
-							}
-						} else {
-							return nil, errors.New(dch_fmt_length_err + "Y,")
-						}
-					} else if format[fi] == 'Y' {
-						fi++
-
-						if fi < flen && format[fi] == 'Y' {
-							fi++
-							if fi < flen && format[fi] == 'Y' {
-								// DCH YYYY
-								fmKeywords = append(fmKeywords, DCH_YYYY)
-								fi++
-							} else {
-								// DCH YYY
-								fmKeywords = append(fmKeywords, DCH_YYY)
-							}
-						} else {
-							// DCH YY
-							fmKeywords = append(fmKeywords, DCH_YY)
-						}
-					} else if format[fi] == 'E' {
-						fi++
-						start := fi
-						fi += 2
-						if fi <= flen && format[start:fi] == "AR" {
-							// DCH YEAR 基数词
-							fmKeywords = append(fmKeywords, DCH_YEAR)
-						} else {
-							return nil, errors.New(dch_fmt_mismatch_err + "YE")
-						}
-					}
-				} else {
-					// DCH Y
-					fmKeywords = append(fmKeywords, DCH_Y)
-				}
+				keyword, err = parsePrefixY(&fi, flen, format)
 			default:
 				return nil, errors.New(out_keyword_range_err)
 			}
+
+			if err != nil {
+				return nil, err
+			}
+			fmKeywords = append(fmKeywords, keyword)
 		} else {
 			return nil, errors.New(out_ascii_range_err + string(c))
 		}
 	}
 
-	if aux_flag_fm {
-
-	}
-	if aux_flag_fx {
-
-	}
-	if aux_flag_sp {
-
-	}
-	if aux_flag_th {
-
-	}
+	//if aux_flag_fm {
+	//
+	//}
+	//if aux_flag_fx {
+	//
+	//}
+	//if aux_flag_sp {
+	//
+	//}
+	//if aux_flag_th {
+	//
+	//}
 
 	return fmKeywords, nil
 }
 
-func parsePrefixA(fi int, flen int, format string, fmKeywords []FMKeyword) {
-	var result FMKeyword
-	fi++
-	if fi < flen {
-		followingOneChar := format[fi]
+func parsePrefixA(fi *int, flen int, format string) (FMKeyword, error) {
+	var keyword FMKeyword
+	*fi++
+	if *fi < flen {
+		followingOneChar := format[*fi]
 		switch followingOneChar {
 		case '.':
-			fi++
-			start := fi
-			fi += 2
-			if fi <= flen {
-				followingChars := format[start:fi]
+			*fi++
+			start := *fi
+			*fi += 2
+			if *fi <= flen {
+				followingChars := format[start:*fi]
 				if "D." == followingChars {
 					// DCH A.D.
-					fmKeywords = append(fmKeywords, DCH_A_D_)
+					keyword = DCH_A_D_
 				} else if "M." == followingChars {
 					// DCH A.M.
-					fmKeywords = append(fmKeywords, DCH_A_M_)
+					keyword = DCH_A_M_
 				} else {
-					return nil, errors.New(dch_fmt_mismatch_err + "A.")
+					return empty_str, errors.New(dch_fmt_mismatch_err + "A.")
 				}
 			} else {
-				return nil, errors.New(dch_fmt_length_err + "A.")
+				return empty_str, errors.New(dch_fmt_length_err + "A.")
 			}
 		case 'D':
 			// DCH AD
-			fmKeywords = append(fmKeywords, DCH_AD)
-			fi++
+			keyword = DCH_AD
+			*fi++
 		case 'M':
 			// DCH AM
-			fmKeywords = append(fmKeywords, DCH_AM)
-			fi++
+			keyword = DCH_AM
+			*fi++
 		default:
-			return nil, errors.New(dch_fmt_mismatch_err + "A")
+			return empty_str, errors.New(dch_fmt_mismatch_err + "A")
 		}
 	} else {
-		return nil, errors.New(dch_fmt_length_err + "A")
+		return empty_str, errors.New(dch_fmt_length_err + "A")
 	}
+	return keyword, nil
 }
 
+func parsePrefixB(fi *int, flen int, format string) (FMKeyword, error) {
+	var keyword FMKeyword
+	*fi++
+	if *fi < flen {
+		followingOneChar := format[*fi]
+		switch followingOneChar {
+		case 'C':
+			// DCH BC
+			keyword = DCH_BC
+			*fi++
+		case '.':
+			*fi++
+			start := *fi
+			*fi += 2
+			if *fi <= flen && "C." == format[start:*fi] {
+				// DCH B.C.
+				keyword = DCH_B_C_
+			} else {
+				return empty_str, errors.New(dch_fmt_mismatch_err + "B.")
+			}
+		default:
+			return empty_str, errors.New(dch_fmt_mismatch_err + "B")
+		}
+	} else {
+		return empty_str, errors.New(dch_fmt_mismatch_err + "B")
+	}
+
+	return keyword, nil
+}
+
+func parsePrefixC(fi *int, flen int, format string) (FMKeyword, error) {
+	var keyword FMKeyword
+	*fi++
+	if *fi < flen {
+		followingOneChar := format[*fi]
+		switch followingOneChar {
+		case 'C':
+			// DCH CC
+			keyword = DCH_CC
+			*fi++
+		default:
+			return empty_str, errors.New(dch_fmt_mismatch_err + "C")
+		}
+	} else {
+		return empty_str, errors.New(dch_fmt_length_err + "C")
+	}
+
+	return keyword, nil
+}
+
+func parsePrefixD(fi *int, flen int, format string) (FMKeyword, error) {
+	var keyword FMKeyword
+	*fi++
+	if *fi < flen {
+		if format[*fi] == 'A' {
+			*fi++
+			if *fi < flen && format[*fi] == 'Y' {
+				// DCH DAY 同 DY
+				keyword = DCH_DAY
+				*fi++
+			} else {
+				return empty_str, errors.New(dch_fmt_mismatch_err + "DA")
+			}
+		} else if format[*fi] == 'D' {
+			*fi++
+			if *fi < flen && format[*fi] == 'D' {
+				// DCH DDD
+				keyword = DCH_DDD
+				*fi++
+			} else {
+				// DCH DD
+				keyword = DCH_DD
+			}
+		} else if format[*fi] == 'L' {
+			keyword = DCH_DL
+			*fi++
+		} else if format[*fi] == 'S' {
+			keyword = DCH_DS
+			*fi++
+		} else if format[*fi] == 'Y' {
+			// DCH DY
+			keyword = DCH_DY
+			*fi++
+		} else {
+			// DCH D
+			keyword = DCH_D
+		}
+	} else {
+		// DCH D
+		keyword = DCH_D
+	}
+	return keyword, nil
+}
+
+func parsePrefixF(fi *int, flen int, format string) (FMKeyword, error) {
+	var keyword FMKeyword
+	*fi++
+	if *fi < flen {
+		followingOneChar := format[*fi]
+		switch followingOneChar {
+		case 'X':
+			// TODO 最后处理
+			keyword = DCH_FX
+		case 'M':
+			// TODO 最后处理
+			keyword = DCH_FM
+		case 'F':
+			*fi++
+			if *fi < flen {
+				switch format[*fi] {
+				case '1':
+					keyword = DCH_FF1
+					*fi++
+				case '2':
+					keyword = DCH_FF2
+					*fi++
+				case '3':
+					keyword = DCH_FF3
+					*fi++
+				case '4':
+					keyword = DCH_FF4
+					*fi++
+				case '5':
+					keyword = DCH_FF5
+					*fi++
+				case '6':
+					keyword = DCH_FF6
+					*fi++
+				case '7':
+					keyword = DCH_FF7
+					*fi++
+				case '8':
+					keyword = DCH_FF8
+					*fi++
+				case '9':
+					keyword = DCH_FF9
+					*fi++
+				default:
+					keyword = DCH_FF
+				}
+			} else {
+				keyword = DCH_FF
+			}
+		default:
+			return empty_str, errors.New(dch_fmt_length_err + "F")
+		}
+	} else {
+		return empty_str, errors.New(dch_fmt_length_err + "F")
+	}
+	return keyword, nil
+}
+
+func parsePrefixH(fi *int, flen int, format string) (FMKeyword, error) {
+	var keyword FMKeyword
+	*fi++
+	if *fi < flen {
+		switch format[*fi] {
+		case 'H':
+			// DCH HH 同 HH12
+			keyword = DCH_HH
+		case '2':
+			*fi++
+			if *fi < flen {
+				// DCH HH24
+				if format[*fi] == '4' {
+					keyword = DCH_HH24
+				} else {
+					return empty_str, errors.New(dch_fmt_mismatch_err + "H2")
+				}
+			} else {
+				return empty_str, errors.New(dch_fmt_length_err + "H2")
+			}
+		case '1':
+			*fi++
+			if *fi < flen {
+				// DCH HH12
+				if format[*fi] == '2' {
+					keyword = DCH_HH12
+				} else {
+					return empty_str, errors.New(dch_fmt_mismatch_err + "H2")
+				}
+			} else {
+				return empty_str, errors.New(dch_fmt_length_err + "H1")
+			}
+		}
+	} else {
+		return empty_str, errors.New(dch_fmt_length_err + "H")
+	}
+	*fi++
+	return keyword, nil
+}
+
+func parsePrefixI(fi *int, flen int, format string) (FMKeyword, error) {
+	var keyword FMKeyword
+	*fi++
+	if *fi < flen {
+		switch format[*fi] {
+		case 'W':
+			// DCH IW
+			keyword = DCH_IW
+			*fi++
+		case 'Y':
+			*fi++
+			if *fi < flen && format[*fi] == 'Y' {
+				*fi++
+				if *fi < flen && format[*fi] == 'Y' {
+					// DCH IYYY
+					keyword = DCH_IYYY
+					*fi++
+				} else {
+					// DCH IYY
+					keyword = DCH_IYY
+				}
+			} else {
+				// DCH IY
+				keyword = DCH_IY
+			}
+		}
+	} else {
+		// DCH I
+		keyword = DCH_I
+	}
+	return keyword, nil
+}
+
+func parsePrefixM(fi *int, flen int, format string) (FMKeyword, error) {
+	var keyword FMKeyword
+	*fi++
+	if *fi < flen && format[*fi] == 'I' {
+		// DCH MI
+		keyword = DCH_MI
+		*fi++
+	} else if *fi < flen && format[*fi] == 'M' {
+		// DCH MM
+		keyword = DCH_MM
+		*fi++
+	} else if *fi < flen && format[*fi] == 'O' {
+		*fi++
+		if *fi < flen && format[*fi] == 'N' {
+			*fi++
+			start := *fi
+			*fi += 2
+			if *fi <= flen && format[start:*fi] == "TH" {
+				// DCH MONTH
+				keyword = DCH_MONTH
+			} else {
+				// DCH MON
+				keyword = DCH_MON
+				*fi -= 2
+			}
+		} else {
+			return empty_str, errors.New(dch_fmt_mismatch_err + "MO")
+		}
+	} else {
+		return empty_str, errors.New(dch_fmt_mismatch_err + "M")
+	}
+	return keyword, nil
+}
+
+func parsePrefixP(fi *int, flen int, format string) (FMKeyword, error) {
+	var keyword FMKeyword
+	*fi++
+	if *fi < flen {
+		if 'M' == format[*fi] {
+			keyword = DCH_PM
+			*fi++
+		} else if '.' == format[*fi] {
+			*fi++
+			start := *fi
+			*fi += 2
+			if *fi <= flen {
+				if "M." == format[start:*fi] {
+					keyword = DCH_P_M_
+				} else {
+					return empty_str, errors.New(dch_fmt_mismatch_err + "P")
+				}
+			} else {
+				return empty_str, errors.New(dch_fmt_length_err + "P")
+			}
+		} else {
+			return empty_str, errors.New(dch_fmt_length_err + "P")
+		}
+	} else {
+		return empty_str, errors.New(dch_fmt_length_err + "P")
+	}
+	return keyword, nil
+}
+
+func parsePrefixR(fi *int, flen int, format string) (FMKeyword, error) {
+	var keyword FMKeyword
+	*fi++
+	if *fi < flen {
+		if 'M' == format[*fi] {
+			keyword = DCH_RM
+			*fi++
+		} else if 'R' == format[*fi] {
+			*fi++
+			start := *fi
+			*fi += 2
+			if *fi <= flen && format[start:*fi] == "RR" {
+				// DCH RRRR
+				keyword = DCH_RRRR
+			} else {
+				// DCH RR
+				keyword = DCH_RR
+				*fi -= 2
+			}
+		} else {
+			return empty_str, errors.New(dch_fmt_mismatch_err + "R")
+		}
+	} else {
+		return empty_str, errors.New(dch_fmt_length_err + "R")
+	}
+	return keyword, nil
+}
+
+func parsePrefixS(fi *int, flen int, format string) (FMKeyword, error) {
+	var keyword FMKeyword
+	*fi++
+	if *fi < flen {
+		switch format[*fi] {
+		case 'P':
+			// DCH SP TODO 最后处理
+			keyword = DCH_SP
+			*fi++
+		case 'S':
+			*fi++
+			start := *fi
+			*fi += 3
+			if *fi <= flen && format[start:*fi] == "SSS" {
+				// DCH SSSSS 午夜过后的秒
+				keyword = DCH_SSSSS
+			} else {
+				// DCH SS
+				keyword = DCH_SS
+				*fi -= 3
+			}
+		case 'Y':
+			*fi++
+			start := *fi
+			*fi += 3
+			if *fi <= flen {
+				if format[start:*fi] == "YYY" {
+					// TODO golang 好像不支持公元前
+					// DCH SYYYY 正负号+数字
+					//if 公元前 {result.WriteByte('-')}
+					keyword = DCH_SYYYY
+				} else if format[start:*fi] == "EAR" {
+					// FIXME oracle中将4位的年分成了 2个2位数
+					// DCH SYEAR 正负号+基数词
+					//if 公元前 {result.WriteByte('-')}
+					keyword = DCH_SYEAR
+				} else {
+					return empty_str, errors.New(dch_fmt_mismatch_err + "SY")
+				}
+			} else {
+				return empty_str, errors.New(dch_fmt_length_err + "S")
+			}
+		default:
+			return empty_str, errors.New(dch_fmt_mismatch_err + "S")
+		}
+	} else {
+		return empty_str, errors.New(dch_fmt_length_err + "S")
+	}
+	return keyword, nil
+}
+
+func parsePrefixT(fi *int, flen int, format string) (FMKeyword, error) {
+	var keyword FMKeyword
+	// TODO 更换类型后更改时区
+	*fi++
+	if *fi < flen {
+		if format[*fi] == 'S' {
+			// DCH TS 下午 9:30:00
+			keyword = DCH_TS
+		} else if format[*fi] == 'Z' {
+			*fi++
+			if *fi < flen && format[*fi] == 'D' {
+				// DCH TZD PDT 时区
+				keyword = DCH_TZD
+			} else if *fi < flen && format[*fi] == 'H' {
+				// DCH TZH -07 时区小时
+				keyword = DCH_TZH
+			} else if *fi < flen && format[*fi] == 'M' {
+				// DCH TZM 00 时区分
+				keyword = DCH_TZM
+			} else if *fi < flen && format[*fi] == 'R' {
+				// DCH TZR US/PACIFIC 时区区域
+				keyword = DCH_TZR
+			} else {
+				return empty_str, errors.New("格式错误")
+			}
+		} else if format[*fi] == 'H' {
+			// DCH TH TODO 最后处理
+			keyword = DCH_TH
+		} else {
+			return empty_str, errors.New("格式错误")
+		}
+	} else {
+		return empty_str, errors.New("格式错误")
+	}
+	*fi++
+	return keyword, nil
+}
+func parsePrefixY(fi *int, flen int, format string) (FMKeyword, error) {
+	var keyword FMKeyword
+	*fi++
+	if *fi < flen {
+		if format[*fi] == ',' {
+			*fi++
+			start := *fi
+			*fi += 3
+			if *fi <= flen {
+				if format[start:*fi] == "YYY" {
+					// DCH Y,YYY
+					keyword = DCH_Y_YYY
+				} else {
+					return empty_str, errors.New(dch_fmt_mismatch_err + "Y,")
+				}
+			} else {
+				return empty_str, errors.New(dch_fmt_length_err + "Y,")
+			}
+		} else if format[*fi] == 'Y' {
+			*fi++
+
+			if *fi < flen && format[*fi] == 'Y' {
+				*fi++
+				if *fi < flen && format[*fi] == 'Y' {
+					// DCH YYYY
+					keyword = DCH_YYYY
+					*fi++
+				} else {
+					// DCH YYY
+					keyword = DCH_YYY
+				}
+			} else {
+				// DCH YY
+				keyword = DCH_YY
+			}
+		} else if format[*fi] == 'E' {
+			*fi++
+			start := *fi
+			*fi += 2
+			if *fi <= flen && format[start:*fi] == "AR" {
+				// DCH YEAR 基数词
+				keyword = DCH_YEAR
+			} else {
+				return empty_str, errors.New(dch_fmt_mismatch_err + "YE")
+			}
+		}
+	} else {
+		// DCH Y
+		keyword = DCH_Y
+	}
+	return keyword, nil
+}
 func ToUpper(c *byte) {
 	if 'a' <= *c && *c <= 'z' {
 		*c -= 32
