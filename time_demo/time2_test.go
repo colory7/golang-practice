@@ -1,9 +1,7 @@
 package time_demo
 
 import (
-	"bytes"
 	"fmt"
-	"golang_practice/oracle_demo"
 	"math"
 	"strconv"
 	"testing"
@@ -226,28 +224,28 @@ func TestTimeZone(txx *testing.T) {
 func TestTimeZone2(t *testing.T) {
 	layout := "2006-01-02 15:04:05"
 
-	var cstZone = time.FixedZone("CST", 8*3600+120)
+	var cstZone = time.FixedZone("aa", 8*3600+120)
 	time.Local = cstZone
 	fmt.Println("SH: ", time.Now().In(cstZone).Format(layout))
 
 }
 
-func TestOracleTS(txx *testing.T) {
-	result := bytes.Buffer{}
-	tsFormat := "15:04:05"
-
-	t := time.Now()
-	if t.Hour() > 12 {
-		result.WriteString(oracle_demo.NLS_AM)
-		result.WriteByte(oracle_demo.ASSIC_SPACE)
-	} else {
-		result.WriteString(oracle_demo.NLS_AM)
-		result.WriteByte(oracle_demo.ASSIC_SPACE)
-	}
-	result.WriteString(t.Format(tsFormat))
-
-	fmt.Println(result.String())
-}
+//func TestOracleTS(txx *testing.T) {
+//	result := bytes.Buffer{}
+//	tsFormat := "15:04:05"
+//
+//	t := time.Now()
+//	if t.Hour() > 12 {
+//		result.WriteString(oracle_demo.NLS_AM)
+//		result.WriteByte(oracle_demo.ASSIC_SPACE)
+//	} else {
+//		result.WriteString(oracle_demo.NLS_AM)
+//		result.WriteByte(oracle_demo.ASSIC_SPACE)
+//	}
+//	result.WriteString(t.Format(tsFormat))
+//
+//	fmt.Println(result.String())
+//}
 
 func TestOracleTZD(txx *testing.T) {
 	t := time.Now()
@@ -308,4 +306,14 @@ func TestCreateTime(txx *testing.T) {
 	}
 	t := time.Date(year, month, day, hour, min, sec, nsec, time.Local)
 	fmt.Println(t.Format(dateLayout))
+}
+
+func TestFixedZone(t *testing.T) {
+	var cstSh, _ = time.LoadLocation("Asia/Shanghai") //上海
+	fmt.Println("SH : ", time.Now().In(cstSh).Format("2006-01-02 15:04:05"))
+}
+
+func TestAppendInt(t *testing.T) {
+	println(string(strconv.Itoa(time.Now().Year())[0]) + "023")
+	println(fmt.Sprintf("%d", time.Now().Year()))
 }

@@ -152,7 +152,8 @@ const (
 	NUM_X
 
 	// Datetime Format Model Keyword
-	DCH_COPY = iota
+	DCH_EMPTY = iota
+	DCH_COPY
 	DCH_MINUS
 	DCH_SLASH
 	DCH_COMMA
@@ -240,6 +241,7 @@ var dchKeywords map[int]int
 
 var NLS_WEEKS = map[time.Weekday]string{}
 var NLS_MONTHS = map[time.Month]string{}
+var NLS_MONTHS_REVERSE = map[string]time.Month{}
 
 func init() {
 
@@ -266,6 +268,20 @@ func init() {
 		time.October:   "10月",
 		time.November:  "11月",
 		time.December:  "12月",
+	}
+	NLS_MONTHS_REVERSE = map[string]time.Month{
+		"1月":  time.January,
+		"2月":  time.February,
+		"3月":  time.March,
+		"4月":  time.April,
+		"5月":  time.May,
+		"6月":  time.June,
+		"7月":  time.July,
+		"8月":  time.August,
+		"9月":  time.September,
+		"10月": time.October,
+		"11月": time.November,
+		"12月": time.December,
 	}
 
 	dchKeywords = map[int]int{
@@ -926,89 +942,171 @@ const (
 )
 
 func toDate(dch string, format string) (*time.Time, error) {
-	fmKeywords, quoted, err := ParseDchByTime(format)
+	fmKeywords, quoted, flag, err := ParseDchFmtByTime(format)
 	if err != nil {
 		return nil, nil
 	}
 
 	year, month, day := 0, time.Month(0), 0
 	hour, min, sec, nsec := 0, 0, 0, 0
+	tzr := time.Local
+	tzh := ""
+	tzm := ""
 
-	di := 0
 	qi := 0
+	dItems := ParseDchByTime(dch, flag)
+
+	if len(fmKeywords) != len(dItems) {
+		return nil, errors.New("格式长度与参数长度不匹配")
+	}
+
+	now := time.Now()
+
 	for ki := 0; ki < len(fmKeywords); ki++ {
 		switch fmKeywords[ki] {
 		case DCH_DOUBLE_QUOTE:
-			di += len(quoted[qi])
+			if quoted[qi] != dItems[ki] {
+				return nil, errors.New("引号内格式字符不匹配")
+			}
 			qi++
-		case DCH_MINUS, DCH_SLASH, DCH_COMMA, DCH_SEMICOLON, DCH_COLON:
-			di++
-		case DCH_AD:
-			di += 2
-		case DCH_A_D_:
-			di += 4
-		case DCH_AM:
-			di += 2
-		case DCH_A_M_:
-			di += 4
-		case DCH_BC:
-			di += 2
-		case DCH_B_C_:
-			di += 4
-		case DCH_CC:
-			return nil, errors.New(not_support_err)
-		case DCH_SCC:
-			return nil, errors.New(not_support_err)
-		case DCH_DAY:
-			return nil, errors.New(not_support_err)
-		case DCH_DDD:
-			return nil, errors.New(not_support_err)
+		case DCH_SPACE:
+			if (flag & flag_fx) == 1 {
+				if dItems[ki] != " " {
+					return nil, errors.New("严格模式下,` `不匹配")
+				}
+			}
+		case DCH_MINUS:
+			if (flag & flag_fx) == 1 {
+				if dItems[ki] != "-" {
+					return nil, errors.New("严格模式下,`-`不匹配")
+				}
+			}
+		case DCH_SLASH:
+			if (flag & flag_fx) == 1 {
+				if dItems[ki] != "/" {
+					return nil, errors.New("严格模式下,`/`不匹配")
+				}
+			}
+		case DCH_COMMA:
+			if (flag & flag_fx) == 1 {
+				if dItems[ki] != "," {
+					return nil, errors.New("严格模式下,`,`不匹配")
+				}
+			}
+		case DCH_DEC:
+			if (flag & flag_fx) == 1 {
+				if dItems[ki] != "." {
+					return nil, errors.New("严格模式下,`,`不匹配")
+				}
+			}
+		case DCH_COLON:
+			if (flag & flag_fx) == 1 {
+				if dItems[ki] != ":" {
+					return nil, errors.New("严格模式下,`:`不匹配")
+				}
+			}
+		case DCH_SEMICOLON:
+			if (flag & flag_fx) == 1 {
+				if dItems[ki] != ";" {
+					return nil, errors.New("严格模式下,`;`不匹配")
+				}
+			}
 		case DCH_DD:
-			start := di
-			di += 2
-			day, err = strconv.Atoi(dch[start:di])
+			day, err = strconv.Atoi(dItems[ki])
 			if err != nil {
 				return nil, err
 			}
-		case DCH_FM:
-			//TODO
-		case DCH_FX:
-			//TODO
 		case DCH_HH24, DCH_HH12, DCH_HH:
-			start := di
-			di += 2
-			day, err = strconv.Atoi(dch[start:di])
+			day, err = strconv.Atoi(dItems[ki])
 			if err != nil {
 				return nil, err
 			}
 		case DCH_MI:
+			min, err = strconv.Atoi(dItems[ki])
+			if err != nil {
+				return nil, err
+			}
 		case DCH_MM:
+			mon, err := strconv.Atoi(dItems[ki])
+			month = time.Month(mon)
+			if err != nil {
+				return nil, err
+			}
 		case DCH_MONTH, DCH_MON:
+			month = NLS_MONTHS_REVERSE[dItems[ki]]
+			if err != nil {
+				return nil, err
+			}
 		case DCH_RR:
 		case DCH_RRRR:
+			year, err = strconv.Atoi(dItems[ki])
+			if err != nil {
+				return nil, err
+			}
 		case DCH_TZH:
+			tzh = dItems[ki]
 		case DCH_TZM:
-		case DCH_TZD:
+			tzm = dItems[ki]
 		case DCH_TZR:
-		case DCH_TS:
+			tzr, err = time.LoadLocation(dItems[ki])
+			if err != nil {
+				return nil, err
+			}
 		case DCH_Y_YYY:
+
 		case DCH_YYYY:
+			year, err = strconv.Atoi(dItems[ki])
+			if err != nil {
+				return nil, err
+			}
 		case DCH_YYY:
+			year, err = strconv.Atoi(strconv.Itoa(now.Year())[0:1] + dItems[ki])
+			if err != nil {
+				return nil, err
+			}
 		case DCH_YY:
+			year, err = strconv.Atoi(strconv.Itoa(now.Year())[0:2] + dItems[ki])
+			if err != nil {
+				return nil, err
+			}
 		case DCH_Y:
+			year, err = strconv.Atoi(strconv.Itoa(now.Year())[0:3] + dItems[ki])
+			if err != nil {
+				return nil, err
+			}
+		// FIXME 暂时不支持
+		//case DCH_AD:
+		//	if dItems[ki] != NLS_AD {
+		//		return nil, errors.New("格式字符不匹配")
+		//	}
+		//case DCH_A_D_:
+		//	if dItems[ki] != NLS_A_D_ {
+		//		return nil, errors.New("格式字符不匹配")
+		//	}
+		//case DCH_AM:
+		//	if dItems[ki] != NLS_AM {
+		//		return nil, errors.New("格式字符不匹配")
+		//	}
+		//case DCH_A_M_:
+		//	if dItems[ki] != NLS_A_M_ {
+		//		return nil, errors.New("格式字符不匹配")
+		//	}
+		//case DCH_BC:
+		//	if dItems[ki] != NLS_BC {
+		//		return nil, errors.New("格式字符不匹配")
+		//	}
+		//case DCH_B_C_:
+		//	if dItems[ki] != NLS_B_C_ {
+		//		return nil, errors.New("格式字符不匹配")
+		//	}
 		default:
 			return nil, errors.New(not_support_err)
 		}
 	}
 
-	if di != len(quoted) {
-		panic("引号内容未遍历完，不匹配")
+	if qi != len(quoted) {
+		return nil, errors.New("引号内容未遍历完，不匹配")
 	}
-	if qi != len(dch) {
-		panic("参数未遍历完,不匹配")
-	}
-
-	now := time.Now()
 
 	if year == 0 {
 		year = now.Year()
@@ -1019,14 +1117,46 @@ func toDate(dch string, format string) (*time.Time, error) {
 	if day == 0 {
 		day = 1
 	}
-	t := time.Date(year, month, day, hour, min, sec, nsec, time.Local)
+	t := time.Date(year, month, day, hour, min, sec, nsec, tzr)
 	fmt.Println(t.Format(dateLayout))
 
 	return &t, nil
 }
 
+func ParseDchByTime(dch string, flag int) []string {
+	dItems := make([]string, 4, 4)
+
+	if (flag & flag_fx) == 0 {
+		tmp := bytes.Buffer{}
+
+		for i := 0; i < len(dch); i++ {
+			if dch[i] == ' ' ||
+				dch[i] == '-' ||
+				dch[i] == ':' ||
+				dch[i] == ',' ||
+				dch[i] == '.' ||
+				dch[i] == '/' ||
+				dch[i] == ';' {
+				if tmp.Len() > 0 {
+					dItems = append(dItems, tmp.String())
+					tmp.Reset()
+				}
+			} else {
+				tmp.WriteByte(dch[i])
+			}
+		}
+		dItems = append(dItems, tmp.String())
+	} else {
+		for i := 0; i < len(dch); i++ {
+			dItems = append(dItems, string(dch[i]))
+		}
+	}
+
+	return dItems
+}
+
 func toChar(t time.Time, format string) (string, error) {
-	fmKeywords, quoted, err := ParseDchByTime(format)
+	fmKeywords, quoted, flag, err := ParseDchFmtByTime(format)
 	if err != nil {
 		return empty_str, nil
 	}
@@ -1053,6 +1183,7 @@ func toChar(t time.Time, format string) (string, error) {
 			result.WriteString(strconv.Itoa((t.Year() + 99) / 100))
 		case DCH_SCC:
 			//TODO 公元前 正负号
+			return empty_str, errors.New("not supported")
 		case DCH_DAY:
 			result.WriteString(NLS_WEEKS[t.Weekday()])
 		case DCH_DDD:
@@ -1211,20 +1342,26 @@ func toChar(t time.Time, format string) (string, error) {
 
 type FMKeyword int
 
+type DateFmtDesc struct {
+}
+
+const (
+	flag_fm = 1
+	flag_fx = 1 << 1
+	flag_th = 1 << 2
+	flag_sp = 1 << 3
+)
+
 // 解析日期格式
-func ParseDchByTime(format string) ([]int, []string, error) {
+func ParseDchFmtByTime(format string) ([]int, []string, int, error) {
 	fmKeywords := []int{}
 
 	flen := len(format)
 
 	//println(format)
 
-	//aux_flag_fm := false
-	//aux_flag_fx := false
-	//aux_flag_sp := false
-	//aux_flag_th := false
-
 	quoted := []string{}
+	flag := 0
 
 	var keyword FMKeyword
 	var err error
@@ -1278,9 +1415,9 @@ func ParseDchByTime(format string) ([]int, []string, error) {
 				keyword, err = parsePrefixD(&fi, flen, format)
 			case 'E':
 				// TODO EE E
-				return nil, nil, errors.New("not support")
+				return nil, nil, flag, errors.New("not support")
 			case 'F':
-				keyword, err = parsePrefixF(&fi, flen, format)
+				keyword, err = parsePrefixF(&fi, flen, format, &flag)
 			case 'H':
 				keyword, err = parsePrefixH(&fi, flen, format)
 			case 'I':
@@ -1300,7 +1437,7 @@ func ParseDchByTime(format string) ([]int, []string, error) {
 			case 'S':
 				keyword, err = parsePrefixS(&fi, flen, format)
 			case 'T':
-				keyword, err = parsePrefixT(&fi, flen, format)
+				keyword, err = parsePrefixT(&fi, flen, format, &flag)
 			case 'W':
 				fi++
 				if fi < flen && format[fi] == 'W' {
@@ -1317,32 +1454,19 @@ func ParseDchByTime(format string) ([]int, []string, error) {
 			case 'Y':
 				keyword, err = parsePrefixY(&fi, flen, format)
 			default:
-				return nil, nil, errors.New(out_keyword_range_err)
+				return nil, nil, flag, errors.New(out_keyword_range_err)
 			}
 
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, flag, err
 			}
-			fmKeywords = append(fmKeywords, keyword)
+			fmKeywords = append(fmKeywords, int(keyword))
 		} else {
-			return nil, nil, errors.New(out_ascii_range_err + string(c))
+			return nil, nil, flag, errors.New(out_ascii_range_err + string(c))
 		}
 	}
 
-	//if aux_flag_fm {
-	//
-	//}
-	//if aux_flag_fx {
-	//
-	//}
-	//if aux_flag_sp {
-	//
-	//}
-	//if aux_flag_th {
-	//
-	//}
-
-	return fmKeywords, quoted, nil
+	return fmKeywords, quoted, flag, nil
 }
 
 func parsePrefixA(fi *int, flen int, format string) (FMKeyword, error) {
@@ -1480,7 +1604,7 @@ func parsePrefixD(fi *int, flen int, format string) (FMKeyword, error) {
 	return keyword, nil
 }
 
-func parsePrefixF(fi *int, flen int, format string) (FMKeyword, error) {
+func parsePrefixF(fi *int, flen int, format string, flag *int) (FMKeyword, error) {
 	var keyword FMKeyword
 	*fi++
 	if *fi < flen {
@@ -1488,10 +1612,10 @@ func parsePrefixF(fi *int, flen int, format string) (FMKeyword, error) {
 		switch followingOneChar {
 		case 'X':
 			// TODO 最后处理
-			keyword = DCH_FX
+			*flag |= flag_fx
 		case 'M':
 			// TODO 最后处理
-			keyword = DCH_FM
+			*flag |= flag_fm
 		case 'F':
 			*fi++
 			if *fi < flen {
@@ -1530,10 +1654,10 @@ func parsePrefixF(fi *int, flen int, format string) (FMKeyword, error) {
 				keyword = DCH_FF
 			}
 		default:
-			return empty_str, errors.New(dch_fmt_length_err + "F")
+			return DCH_EMPTY, errors.New(dch_fmt_length_err + "F")
 		}
 	} else {
-		return empty_str, errors.New(dch_fmt_length_err + "F")
+		return DCH_EMPTY, errors.New(dch_fmt_length_err + "F")
 	}
 	return keyword, nil
 }
@@ -1753,7 +1877,7 @@ func parsePrefixS(fi *int, flen int, format string) (FMKeyword, error) {
 	return keyword, nil
 }
 
-func parsePrefixT(fi *int, flen int, format string) (FMKeyword, error) {
+func parsePrefixT(fi *int, flen int, format string, flag *int) (FMKeyword, error) {
 	var keyword FMKeyword
 	// TODO 更换类型后更改时区
 	*fi++
@@ -1776,16 +1900,17 @@ func parsePrefixT(fi *int, flen int, format string) (FMKeyword, error) {
 				// DCH TZR US/PACIFIC 时区区域
 				keyword = DCH_TZR
 			} else {
-				return empty_str, errors.New("格式错误")
+				return DCH_EMPTY, errors.New("格式错误")
 			}
 		} else if format[*fi] == 'H' {
 			// DCH TH TODO 最后处理
-			keyword = DCH_TH
+			//keyword = DCH_TH
+			*flag |= flag_th
 		} else {
-			return empty_str, errors.New("格式错误")
+			return DCH_EMPTY, errors.New("格式错误")
 		}
 	} else {
-		return empty_str, errors.New("格式错误")
+		return DCH_EMPTY, errors.New("格式错误")
 	}
 	*fi++
 	return keyword, nil
