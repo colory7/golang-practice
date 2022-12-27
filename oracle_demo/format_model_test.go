@@ -280,12 +280,12 @@ package oracle_demo
 //}
 //
 //func TestJulian(t *testing.T) {
-//	fmt.Println(ToJulian(2022, 12, 19))
-//	fmt.Println(ToJulian(2023, 10, 29))
+//	fmt.Println(toJulian(2022, 12, 19))
+//	fmt.Println(toJulian(2023, 10, 29))
 //}
 //
 //func TestToRoman(t *testing.T) {
-//	b := ToRoman(4278)
+//	b := toRoman(4278)
 //	fmt.Println(b.String())
 //}
 //
@@ -860,7 +860,7 @@ package oracle_demo
 //			frest := flen - fi
 //
 //			// 不区分大小写 FIXME
-//			ToUpper(&c)
+//			toUpper(&c)
 //
 //			// 匹配关键词并存储
 //			switch c {
@@ -1088,7 +1088,7 @@ package oracle_demo
 //				//keywordGroup = append(keywordGroup, DCH_I)
 //			case 'J':
 //				t := time.Now()
-//				result.WriteString(strconv.Itoa(ToJulian(t.Year(), int(t.Month()), t.Day())))
+//				result.WriteString(strconv.Itoa(toJulian(t.Year(), int(t.Month()), t.Day())))
 //			case 'M':
 //				t := time.Now()
 //				fi++

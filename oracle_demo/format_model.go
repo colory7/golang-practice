@@ -174,6 +174,7 @@ const (
 
 const (
 	empty_str = ""
+	empty_int = 0
 	tsFormat  = "15:04:05"
 	//dateFormat = "YYYY-MM-DD HH24:MI:SS"
 	dateLayout = "2006-01-02 15:04:05"
@@ -368,10 +369,8 @@ func parseNumFormat(format string) (NumFmtDesc, error) {
 		}
 
 		if c >= 32 && c <= 127 {
-			fmt.Println((string)(c))
-
 			// 这里设置为不区分大小写。NB: Oracle和Postgresql中为区分大小写
-			ToUpper(&c)
+			toUpper(&c)
 
 			// 匹配关键词并存储
 			switch c {
@@ -601,7 +600,6 @@ func parseNumParam(num string) (NumParamDesc, error) {
 	var postBuf = bytes.Buffer{}
 	for i := 0; i < len(num); i++ {
 		c := num[i]
-		fmt.Println(string(c))
 		switch c {
 		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 			if readDec {
@@ -644,7 +642,6 @@ func parseNumParam(num string) (NumParamDesc, error) {
 				return paramDesc, err
 			}
 			paramDesc.eExponent = exponentNum
-			fmt.Println(exponent.String())
 		case '-':
 			if i == 0 {
 				paramDesc.sign = minus
@@ -680,13 +677,13 @@ func parseNumParam(num string) (NumParamDesc, error) {
 			paramDesc.postDec = postBuf.String()
 		}
 		ff := paramDesc.preDec + "." + paramDesc.postDec
-		fmt.Println(ff)
 		d, err := strconv.ParseFloat(ff, 64)
 		if err != nil {
 			return paramDesc, err
 		}
 		fff := "%" + paramDesc.preDec + "." + paramDesc.postDec + "f"
 		v := fmt.Sprintf(fff, d)
+		//FIXME
 		fmt.Println(v)
 
 	} else {
@@ -702,6 +699,8 @@ func ToNumber(num string, format string) (string, error) {
 	if err != nil {
 		return empty_str, err
 	}
+
+	//FIXME
 	numFmtDescStr := fmt.Sprintf("%#v\n", numFmtDesc)
 	fmt.Println(numFmtDescStr)
 
@@ -709,6 +708,8 @@ func ToNumber(num string, format string) (string, error) {
 	if err != nil {
 		return empty_str, err
 	}
+
+	//FIXME
 	numParamStr := fmt.Sprintf("%#v\n", numParamDesc)
 	fmt.Println(numParamStr)
 
@@ -970,7 +971,7 @@ func ToDate(dch string, format string) (*time.Time, error) {
 				if err != nil {
 					return nil, err
 				}
-				year = ToRRRR(now.Year(), RR)
+				year = toRRRR(now.Year(), RR)
 				dt_flag |= dt_flag_year
 			} else {
 				return nil, errors.New("格式 年 已经重复")
@@ -1122,7 +1123,6 @@ func ToDate(dch string, format string) (*time.Time, error) {
 	}
 
 	t := time.Date(year, month, day, hour, min, sec, nsec, tzr)
-	fmt.Println(t.Format(dateLayout))
 	return &t, nil
 }
 
@@ -1158,13 +1158,19 @@ func parseDchNotFX(dch *string, dlen *int, di *int, size int) (string, error) {
 	return empty_str, errors.New("未找到格式对应的匹配项")
 }
 
+func ToCharByStr(num string, format string) (string, error) {
+	return ToNumber(num, format)
+}
+
 func ToChar(t time.Time, format string) (string, error) {
 	fmKeywords, quoted, aux_flag, err := parseFmt(format)
 	if err != nil {
 		return empty_str, nil
 	}
 
+	//fixme
 	println(aux_flag)
+
 	result := bytes.Buffer{}
 
 	qi := 0
@@ -1173,8 +1179,20 @@ func ToChar(t time.Time, format string) (string, error) {
 		case DCH_DOUBLE_QUOTE:
 			result.WriteString(quoted[qi])
 			qi++
-		case DCH_MINUS, DCH_SLASH, DCH_COMMA, DCH_SEMICOLON, DCH_COLON:
-			result.WriteString(fmt.Sprint((fmKeywords[i])))
+		case DCH_SPACE:
+			result.WriteByte(' ')
+		case DCH_MINUS:
+			result.WriteByte('-')
+		case DCH_SLASH:
+			result.WriteByte('/')
+		case DCH_COMMA:
+			result.WriteByte(',')
+		case DCH_DEC:
+			result.WriteByte('.')
+		case DCH_SEMICOLON:
+			result.WriteByte(';')
+		case DCH_COLON:
+			result.WriteByte(':')
 		case DCH_AD, DCH_A_D_:
 			result.WriteString(NLS_AD)
 		case DCH_AM, DCH_A_M_:
@@ -1262,7 +1280,7 @@ func ToChar(t time.Time, format string) (string, error) {
 			y, _ := t.ISOWeek()
 			result.WriteString(strconv.Itoa(y)[3:])
 		case DCH_J:
-			result.WriteString(strconv.Itoa(ToJulian(t.Year(), int(t.Month()), t.Day())))
+			result.WriteString(strconv.Itoa(toJulian(t.Year(), int(t.Month()), t.Day())))
 		case DCH_MI:
 			result.WriteString(strconv.Itoa(t.Minute()))
 		case DCH_MM:
@@ -1279,7 +1297,7 @@ func ToChar(t time.Time, format string) (string, error) {
 		case DCH_Q:
 			result.WriteString(strconv.Itoa(int(t.Month()+2) / 3))
 		case DCH_RM:
-			result.WriteString(ToRoman(int(t.Month())).String())
+			result.WriteString(toRoman(int(t.Month())).String())
 		case DCH_RR:
 			result.WriteString(strconv.Itoa(t.Year())[2:])
 		case DCH_RRRR:
@@ -1348,8 +1366,6 @@ func parseFmt(format string) ([]int, []string, int, error) {
 
 	flen := len(format)
 
-	//println(format)
-
 	quoted := []string{}
 	aux_flag := 0
 
@@ -1359,30 +1375,32 @@ func parseFmt(format string) ([]int, []string, int, error) {
 		// 截取一个字符
 		c := format[fi]
 		if c >= 32 && c <= 127 {
-			//log.Println("debug: c-> " + (string)(c))
-			//log.Println(result.String())
-			//frest := flen - fi
 			switch c {
 			// DCH reproduced
 			case '-':
 				keyword = DCH_MINUS
+				fi++
 			case '/':
 				keyword = DCH_SLASH
+				fi++
 			case ',':
 				keyword = DCH_COMMA
+				fi++
 			case '.':
 				keyword = DCH_DEC
+				fi++
 			case ';':
 				keyword = DCH_SEMICOLON
+				fi++
 			case ':':
 				keyword = DCH_COLON
+				fi++
 			case ' ':
 				keyword = DCH_SPACE
 				fi++
 			// DCH 左双引号
 			case '"':
 				keyword = DCH_DOUBLE_QUOTE
-
 				tmp := bytes.Buffer{}
 				fi++
 				for ; fi < flen; fi++ {
@@ -1405,7 +1423,7 @@ func parseFmt(format string) ([]int, []string, int, error) {
 				keyword, err = parsePrefixD(&fi, flen, format)
 			case 'E':
 				// TODO EE E
-				return nil, nil, aux_flag, errors.New(not_support_err)
+				return nil, nil, empty_int, errors.New(not_support_err)
 			case 'F':
 				keyword, err = parsePrefixF(&fi, flen, format, &aux_flag)
 			case 'H':
@@ -1448,11 +1466,11 @@ func parseFmt(format string) ([]int, []string, int, error) {
 			}
 
 			if err != nil {
-				return nil, nil, aux_flag, err
+				return nil, nil, empty_int, err
 			}
 			fmKeywords = append(fmKeywords, int(keyword))
 		} else {
-			return nil, nil, aux_flag, errors.New(out_ascii_range_err + string(c))
+			return nil, nil, empty_int, errors.New(out_ascii_range_err + string(c))
 		}
 	}
 
@@ -1957,13 +1975,13 @@ func parsePrefixY(fi *int, flen int, format string) (FMKeyword, error) {
 	}
 	return keyword, nil
 }
-func ToUpper(c *byte) {
+func toUpper(c *byte) {
 	if 'a' <= *c && *c <= 'z' {
 		*c -= 32
 	}
 }
 
-func ToRoman(num int) *bytes.Buffer {
+func toRoman(num int) *bytes.Buffer {
 	romes := []string{"M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"}
 	numbers := []int{1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1}
 
@@ -1977,14 +1995,14 @@ func ToRoman(num int) *bytes.Buffer {
 	return rm
 }
 
-func ToJulian(year int, month int, day int) int {
+func toJulian(year int, month int, day int) int {
 	adj := (14 - month) / 12
 	y := year + 4800 - adj
 	m := month + 12*adj - 3
 	return day + (153*m+2)/5 + y*365 + y/4 - y/100 + y/400 - 32045
 }
 
-func ToRRRR(thisYear int, RR int) int {
+func toRRRR(thisYear int, RR int) int {
 	year := 0
 	firstTwo := thisYear / 100
 	lastTwo := thisYear % 100
