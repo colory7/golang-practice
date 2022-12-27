@@ -1,4 +1,4 @@
-package ntw
+package oracle_demo
 
 import (
 	"bytes"
