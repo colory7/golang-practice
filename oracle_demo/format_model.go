@@ -34,7 +34,13 @@ const (
 	mode_flag_sp = 1 << 3
 )
 
+type dtType int
+
 const (
+	dt_type_date         dtType = 1
+	dt_type_timestamp    dtType = 2
+	dt_type_timestamp_tz dtType = 3
+
 	dt_flag_year   = 1
 	dt_flag_month  = 1 << 1
 	dt_flag_day    = 1 << 2
@@ -42,9 +48,11 @@ const (
 	dt_flag_minute = 1 << 4
 	dt_flag_second = 1 << 5
 	dt_flag_nansec = 1 << 6
-	dt_flag_tz     = 1 << 7
-	dt_flag_adbc   = 1 << 8
-	dt_flag_ampm   = 1 << 9
+	dt_flag_tzr    = 1 << 7
+	dt_flag_tzh    = 1 << 8
+	dt_flag_tzm    = 1 << 9
+	dt_flag_adbc   = 1 << 10
+	dt_flag_ampm   = 1 << 11
 )
 
 const (
@@ -801,7 +809,19 @@ func ToNumber(num string, format string) (string, error) {
 	return result.String(), nil
 }
 
+func ToTimestamp(dch string, format string) (*time.Time, error) {
+	return toDt(dch, format, dt_type_timestamp)
+}
+
+func ToTimestampTimeZone(dch string, format string) (*time.Time, error) {
+	return toDt(dch, format, dt_type_timestamp_tz)
+}
+
 func ToDate(dch string, format string) (*time.Time, error) {
+	return toDt(dch, format, dt_type_date)
+}
+
+func toDt(dch string, format string, tp dtType) (*time.Time, error) {
 	fmKeywords, quoted, aux_flag, err := parseFmt(format)
 	if err != nil {
 		return nil, nil
@@ -830,6 +850,7 @@ func ToDate(dch string, format string) (*time.Time, error) {
 	di := 0
 	dlen := len(dch)
 	dt_flag := 0
+
 	for ki := 0; ki < len(fmKeywords); ki++ {
 		switch fmKeywords[ki] {
 		case DCH_DOUBLE_QUOTE:
@@ -1075,10 +1096,150 @@ func ToDate(dch string, format string) (*time.Time, error) {
 			} else {
 				return nil, errors.New("格式 年 已经重复")
 			}
+		case DCH_TZH:
+			if tp == dt_type_timestamp_tz {
+				if dt_flag&dt_flag_tzr == 0 && dt_flag&dt_flag_tzh == 0 {
+					// TODO
+					dt_flag |= dt_flag_tzh
+				} else {
+					return nil, errors.New("格式 时区的小时 已经重复")
+				}
+			} else {
+				return nil, errors.New("只有带时区的时间戳类型支持时区")
+			}
+		case DCH_TZM:
+			if tp == dt_type_timestamp_tz {
+				if dt_flag&dt_flag_tzr == 0 && dt_flag&dt_flag_tzh == 0 {
+					// TODO
+					dt_flag |= dt_flag_tzm
+				} else {
+					return nil, errors.New("格式 时区的分钟 已经重复")
+				}
+			} else {
+				return nil, errors.New("只有带时区的时间戳类型支持时区")
+			}
+		case DCH_TZR:
+			if tp == dt_type_timestamp_tz {
+				if dt_flag&dt_flag_tzr == 0 && dt_flag&dt_flag_tzh == 0 && dt_flag&dt_flag_tzm == 0 {
+					// TODO
+					dt_flag |= dt_flag_tzr
+				} else {
+					return nil, errors.New("格式 时区 已经重复")
+				}
+			} else {
+				return nil, errors.New("只有带时区的时间戳类型支持时区")
+			}
+		case DCH_FF1:
+			if tp != dt_type_date {
+				if dt_flag&dt_flag_nansec == 0 {
+					// TODO
+					dt_flag |= dt_flag_nansec
+				} else {
+					return nil, errors.New("格式 纳秒 已经重复")
+				}
+			} else {
+				return nil, errors.New("日期类型不支持小数秒")
+			}
+		case DCH_FF2:
+			if tp != dt_type_date {
+				if dt_flag&dt_flag_nansec == 0 {
+					// TODO
+					dt_flag |= dt_flag_nansec
+				} else {
+					return nil, errors.New("格式 纳秒 已经重复")
+				}
+			} else {
+				return nil, errors.New("日期类型不支持小数秒")
+			}
+		case DCH_FF3:
+			if tp != dt_type_date {
+				if dt_flag&dt_flag_nansec == 0 {
+					// TODO
+					dt_flag |= dt_flag_nansec
+				} else {
+					return nil, errors.New("格式 纳秒 已经重复")
+				}
+			} else {
+				return nil, errors.New("日期类型不支持小数秒")
+			}
+		case DCH_FF4:
+			if tp != dt_type_date {
+				if dt_flag&dt_flag_nansec == 0 {
+					// TODO
+					dt_flag |= dt_flag_nansec
+				} else {
+					return nil, errors.New("格式 纳秒 已经重复")
+				}
+			} else {
+				return nil, errors.New("日期类型不支持小数秒")
+			}
+		case DCH_FF5:
+			if tp != dt_type_date {
+				if dt_flag&dt_flag_nansec == 0 {
+					// TODO
+					dt_flag |= dt_flag_nansec
+				} else {
+					return nil, errors.New("格式 纳秒 已经重复")
+				}
+			} else {
+				return nil, errors.New("日期类型不支持小数秒")
+			}
+		case DCH_FF6:
+			if tp != dt_type_date {
+				if dt_flag&dt_flag_nansec == 0 {
+					// TODO
+					dt_flag |= dt_flag_nansec
+				} else {
+					return nil, errors.New("格式 纳秒 已经重复")
+				}
+			} else {
+				return nil, errors.New("日期类型不支持小数秒")
+			}
+		case DCH_FF7:
+			if tp != dt_type_date {
+				if dt_flag&dt_flag_nansec == 0 {
+					// TODO
+					dt_flag |= dt_flag_nansec
+				} else {
+					return nil, errors.New("格式 纳秒 已经重复")
+				}
+			} else {
+				return nil, errors.New("日期类型不支持小数秒")
+			}
+		case DCH_FF8:
+			if tp != dt_type_date {
+				if dt_flag&dt_flag_nansec == 0 {
+					// TODO
+					dt_flag |= dt_flag_nansec
+				} else {
+					return nil, errors.New("格式 纳秒 已经重复")
+				}
+			} else {
+				return nil, errors.New("日期类型不支持小数秒")
+			}
+		case DCH_FF9:
+			if tp != dt_type_date {
+				if dt_flag&dt_flag_nansec == 0 {
+					// TODO
+					dt_flag |= dt_flag_nansec
+				} else {
+					return nil, errors.New("格式 纳秒 已经重复")
+				}
+			} else {
+				return nil, errors.New("日期类型不支持小数秒")
+			}
+		case DCH_FF:
+			if tp != dt_type_date {
+				if dt_flag&dt_flag_nansec == 0 {
+					// TODO
+					dt_flag |= dt_flag_nansec
+				} else {
+					return nil, errors.New("格式 纳秒 已经重复")
+				}
+			} else {
+				return nil, errors.New("日期类型不支持小数秒")
+			}
 		// FIXME 暂时不支持
-		//case DCH_TZH:
-		//case DCH_TZM:
-		//case DCH_TZR:
 		//case DCH_AD:
 		//	if dItems[ki] != NLS_AD {
 		//		return nil, errors.New("格式字符不匹配")
@@ -1095,6 +1256,8 @@ func ToDate(dch string, format string) (*time.Time, error) {
 		//	if dItems[ki] != NLS_A_M_ {
 		//		return nil, errors.New("格式字符不匹配")
 		//	}
+		//case DCH_PM:
+		//case DCH_P_M_:
 		//case DCH_BC:
 		//	if dItems[ki] != NLS_BC {
 		//		return nil, errors.New("格式字符不匹配")

@@ -1243,10 +1243,3 @@ package oracle_demo
 //	return result.String(), nil
 //}
 //
-//func ToTimestamp() {
-//
-//}
-//
-//func ToTimestampTimeZone() {
-//
-//}
