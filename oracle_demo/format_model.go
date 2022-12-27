@@ -942,7 +942,7 @@ const (
 )
 
 func toDate(dch string, format string) (*time.Time, error) {
-	fmKeywords, quoted, flag, err := ParseDchFmtByTime(format)
+	fmKeywords, quoted, aux_flag, err := ParseDchFmtByTime(format)
 	if err != nil {
 		return nil, nil
 	}
@@ -950,177 +950,224 @@ func toDate(dch string, format string) (*time.Time, error) {
 	year, month, day := 0, time.Month(0), 0
 	hour, min, sec, nsec := 0, 0, 0, 0
 	tzr := time.Local
-	tzh := ""
-	tzm := ""
 
 	qi := 0
-	dItems := ParseDchByTime(dch, flag)
+	di := 0
+	//dItems := ParseDchByTime(dch, flag)
 
-	if len(fmKeywords) != len(dItems) {
-		return nil, errors.New("格式长度与参数长度不匹配")
-	}
+	//if len(fmKeywords) != len(dItems) {
+	//	return nil, errors.New("格式长度与参数长度不匹配")
+	//}
 
 	now := time.Now()
 
-	for ki := 0; ki < len(fmKeywords); ki++ {
-		switch fmKeywords[ki] {
-		case DCH_DOUBLE_QUOTE:
-			if quoted[qi] != dItems[ki] {
-				return nil, errors.New("引号内格式字符不匹配")
-			}
-			qi++
-		case DCH_SPACE:
-			if (flag & flag_fx) == 1 {
-				if dItems[ki] != " " {
-					return nil, errors.New("严格模式下,` `不匹配")
+	if aux_flag&flag_fx == 0 {
+		for ki := 0; ki < len(fmKeywords); ki++ {
+			switch fmKeywords[ki] {
+			case DCH_DOUBLE_QUOTE:
+				field, err := parseDch(&dch, &di, len(quoted[qi]))
+				if err != nil {
+					return nil, err
 				}
-			}
-		case DCH_MINUS:
-			if (flag & flag_fx) == 1 {
-				if dItems[ki] != "-" {
-					return nil, errors.New("严格模式下,`-`不匹配")
+				if field != quoted[qi] {
+					return nil, errors.New("引号内容不匹配")
 				}
-			}
-		case DCH_SLASH:
-			if (flag & flag_fx) == 1 {
-				if dItems[ki] != "/" {
-					return nil, errors.New("严格模式下,`/`不匹配")
+				qi++
+			case DCH_SPACE:
+			case DCH_MINUS:
+			case DCH_SLASH:
+			case DCH_COMMA:
+			case DCH_DEC:
+			case DCH_COLON:
+			case DCH_SEMICOLON:
+			case DCH_DD:
+				field, err := parseDch(&dch, &di, 2)
+				if err != nil {
+					return nil, err
 				}
-			}
-		case DCH_COMMA:
-			if (flag & flag_fx) == 1 {
-				if dItems[ki] != "," {
-					return nil, errors.New("严格模式下,`,`不匹配")
+				day, err = strconv.Atoi(field)
+				if err != nil {
+					return nil, err
 				}
-			}
-		case DCH_DEC:
-			if (flag & flag_fx) == 1 {
-				if dItems[ki] != "." {
-					return nil, errors.New("严格模式下,`,`不匹配")
+			case DCH_HH24, DCH_HH12, DCH_HH:
+				field, err := parseDch(&dch, &di, 2)
+				if err != nil {
+					return nil, err
 				}
-			}
-		case DCH_COLON:
-			if (flag & flag_fx) == 1 {
-				if dItems[ki] != ":" {
-					return nil, errors.New("严格模式下,`:`不匹配")
+				day, err = strconv.Atoi(field)
+				if err != nil {
+					return nil, err
 				}
-			}
-		case DCH_SEMICOLON:
-			if (flag & flag_fx) == 1 {
-				if dItems[ki] != ";" {
-					return nil, errors.New("严格模式下,`;`不匹配")
+			case DCH_MI:
+				field, err := parseDch(&dch, &di, 2)
+				if err != nil {
+					return nil, err
 				}
-			}
-		case DCH_DD:
-			day, err = strconv.Atoi(dItems[ki])
-			if err != nil {
-				return nil, err
-			}
-		case DCH_HH24, DCH_HH12, DCH_HH:
-			day, err = strconv.Atoi(dItems[ki])
-			if err != nil {
-				return nil, err
-			}
-		case DCH_MI:
-			min, err = strconv.Atoi(dItems[ki])
-			if err != nil {
-				return nil, err
-			}
-		case DCH_MM:
-			mon, err := strconv.Atoi(dItems[ki])
-			month = time.Month(mon)
-			if err != nil {
-				return nil, err
-			}
-		case DCH_MONTH, DCH_MON:
-			month = NLS_MONTHS_REVERSE[dItems[ki]]
-			if err != nil {
-				return nil, err
-			}
-		case DCH_RR:
-		case DCH_RRRR:
-			year, err = strconv.Atoi(dItems[ki])
-			if err != nil {
-				return nil, err
-			}
-		case DCH_TZH:
-			tzh = dItems[ki]
-		case DCH_TZM:
-			tzm = dItems[ki]
-		case DCH_TZR:
-			tzr, err = time.LoadLocation(dItems[ki])
-			if err != nil {
-				return nil, err
-			}
-		case DCH_Y_YYY:
+				min, err = strconv.Atoi(field)
+				if err != nil {
+					return nil, err
+				}
+			case DCH_MM:
+				field, err := parseDch(&dch, &di, 2)
+				if err != nil {
+					return nil, err
+				}
+				mon, err := strconv.Atoi(field)
+				month = time.Month(mon)
+				if err != nil {
+					return nil, err
+				}
+			case DCH_MONTH, DCH_MON:
+				field, err := parseDch(&dch, &di, 2)
+				if err != nil {
+					return nil, err
+				}
+				month = NLS_MONTHS_REVERSE[field]
+				if err != nil {
+					return nil, err
+				}
+			case DCH_RR:
+				field, err := parseDch(&dch, &di, 2)
+				if err != nil {
+					return nil, err
+				}
+				RR, err := strconv.Atoi(field)
+				if err != nil {
+					return nil, err
+				}
 
-		case DCH_YYYY:
-			year, err = strconv.Atoi(dItems[ki])
-			if err != nil {
-				return nil, err
+				year = ToRRRR(now.Year(), RR)
+			case DCH_RRRR:
+				field, err := parseDch(&dch, &di, 4)
+				if err != nil {
+					return nil, err
+				}
+				year, err = strconv.Atoi(field)
+				if err != nil {
+					return nil, err
+				}
+
+			case DCH_Y_YYY:
+				field, err := parseDch(&dch, &di, 5)
+				if err != nil {
+					return nil, err
+				}
+				year, err = strconv.Atoi(field[0:1] + field[2:5])
+				if err != nil {
+					return nil, err
+				}
+			case DCH_YYYY:
+				field, err := parseDch(&dch, &di, 4)
+				if err != nil {
+					return nil, err
+				}
+				year, err = strconv.Atoi(field)
+				if err != nil {
+					return nil, err
+				}
+			case DCH_YYY:
+				field, err := parseDch(&dch, &di, 3)
+				if err != nil {
+					return nil, err
+				}
+				year, err = strconv.Atoi(strconv.Itoa(now.Year())[0:1] + field)
+				if err != nil {
+					return nil, err
+				}
+			case DCH_YY:
+				field, err := parseDch(&dch, &di, 2)
+				if err != nil {
+					return nil, err
+				}
+				year, err = strconv.Atoi(strconv.Itoa(now.Year())[0:2] + field)
+				if err != nil {
+					return nil, err
+				}
+			case DCH_Y:
+				field, err := parseDch(&dch, &di, 1)
+				if err != nil {
+					return nil, err
+				}
+				year, err = strconv.Atoi(strconv.Itoa(now.Year())[0:3] + field)
+				if err != nil {
+					return nil, err
+				}
+			// FIXME 暂时不支持
+			//case DCH_TZH:
+			//case DCH_TZM:
+			//case DCH_TZR:
+			//case DCH_AD:
+			//	if dItems[ki] != NLS_AD {
+			//		return nil, errors.New("格式字符不匹配")
+			//	}
+			//case DCH_A_D_:
+			//	if dItems[ki] != NLS_A_D_ {
+			//		return nil, errors.New("格式字符不匹配")
+			//	}
+			//case DCH_AM:
+			//	if dItems[ki] != NLS_AM {
+			//		return nil, errors.New("格式字符不匹配")
+			//	}
+			//case DCH_A_M_:
+			//	if dItems[ki] != NLS_A_M_ {
+			//		return nil, errors.New("格式字符不匹配")
+			//	}
+			//case DCH_BC:
+			//	if dItems[ki] != NLS_BC {
+			//		return nil, errors.New("格式字符不匹配")
+			//	}
+			//case DCH_B_C_:
+			//	if dItems[ki] != NLS_B_C_ {
+			//		return nil, errors.New("格式字符不匹配")
+			//	}
+			default:
+				return nil, errors.New(not_support_err)
 			}
-		case DCH_YYY:
-			year, err = strconv.Atoi(strconv.Itoa(now.Year())[0:1] + dItems[ki])
-			if err != nil {
-				return nil, err
+		}
+
+		if qi != len(quoted) {
+			return nil, errors.New("引号内容未遍历完，不匹配")
+		}
+
+		if year == 0 {
+			year = now.Year()
+		}
+		if month == 0 {
+			month = now.Month()
+		}
+		if day == 0 {
+			day = 1
+		}
+
+	} else {
+
+	}
+
+	t := time.Date(year, month, day, hour, min, sec, nsec, tzr)
+	fmt.Println(t.Format(dateLayout))
+	return &t, nil
+}
+
+func parseDch(dch *string, di *int, size int) (string, error) {
+	tmp := bytes.Buffer{}
+	for ; *di < len(*dch); *di++ {
+		if (*dch)[*di] == ' ' ||
+			(*dch)[*di] == '-' ||
+			(*dch)[*di] == ':' ||
+			(*dch)[*di] == ',' ||
+			(*dch)[*di] == '.' ||
+			(*dch)[*di] == '/' ||
+			(*dch)[*di] == ';' {
+		} else {
+			for j := 0; j < size; j++ {
+				tmp.WriteByte((*dch)[*di])
+				*di++
 			}
-		case DCH_YY:
-			year, err = strconv.Atoi(strconv.Itoa(now.Year())[0:2] + dItems[ki])
-			if err != nil {
-				return nil, err
-			}
-		case DCH_Y:
-			year, err = strconv.Atoi(strconv.Itoa(now.Year())[0:3] + dItems[ki])
-			if err != nil {
-				return nil, err
-			}
-		// FIXME 暂时不支持
-		//case DCH_AD:
-		//	if dItems[ki] != NLS_AD {
-		//		return nil, errors.New("格式字符不匹配")
-		//	}
-		//case DCH_A_D_:
-		//	if dItems[ki] != NLS_A_D_ {
-		//		return nil, errors.New("格式字符不匹配")
-		//	}
-		//case DCH_AM:
-		//	if dItems[ki] != NLS_AM {
-		//		return nil, errors.New("格式字符不匹配")
-		//	}
-		//case DCH_A_M_:
-		//	if dItems[ki] != NLS_A_M_ {
-		//		return nil, errors.New("格式字符不匹配")
-		//	}
-		//case DCH_BC:
-		//	if dItems[ki] != NLS_BC {
-		//		return nil, errors.New("格式字符不匹配")
-		//	}
-		//case DCH_B_C_:
-		//	if dItems[ki] != NLS_B_C_ {
-		//		return nil, errors.New("格式字符不匹配")
-		//	}
-		default:
-			return nil, errors.New(not_support_err)
+			return tmp.String(), nil
 		}
 	}
 
-	if qi != len(quoted) {
-		return nil, errors.New("引号内容未遍历完，不匹配")
-	}
-
-	if year == 0 {
-		year = now.Year()
-	}
-	if month == 0 {
-		month = now.Month()
-	}
-	if day == 0 {
-		day = 1
-	}
-	t := time.Date(year, month, day, hour, min, sec, nsec, tzr)
-	fmt.Println(t.Format(dateLayout))
-
-	return &t, nil
+	return empty_str, errors.New("未找到格式对应的匹配项")
 }
 
 func ParseDchByTime(dch string, flag int) []string {
@@ -1156,11 +1203,12 @@ func ParseDchByTime(dch string, flag int) []string {
 }
 
 func toChar(t time.Time, format string) (string, error) {
-	fmKeywords, quoted, flag, err := ParseDchFmtByTime(format)
+	fmKeywords, quoted, aux_flag, err := ParseDchFmtByTime(format)
 	if err != nil {
 		return empty_str, nil
 	}
 
+	println(aux_flag)
 	result := bytes.Buffer{}
 
 	qi := 0
@@ -1361,7 +1409,7 @@ func ParseDchFmtByTime(format string) ([]int, []string, int, error) {
 	//println(format)
 
 	quoted := []string{}
-	flag := 0
+	aux_flag := 0
 
 	var keyword FMKeyword
 	var err error
@@ -1415,9 +1463,9 @@ func ParseDchFmtByTime(format string) ([]int, []string, int, error) {
 				keyword, err = parsePrefixD(&fi, flen, format)
 			case 'E':
 				// TODO EE E
-				return nil, nil, flag, errors.New("not support")
+				return nil, nil, aux_flag, errors.New("not support")
 			case 'F':
-				keyword, err = parsePrefixF(&fi, flen, format, &flag)
+				keyword, err = parsePrefixF(&fi, flen, format, &aux_flag)
 			case 'H':
 				keyword, err = parsePrefixH(&fi, flen, format)
 			case 'I':
@@ -1437,7 +1485,7 @@ func ParseDchFmtByTime(format string) ([]int, []string, int, error) {
 			case 'S':
 				keyword, err = parsePrefixS(&fi, flen, format)
 			case 'T':
-				keyword, err = parsePrefixT(&fi, flen, format, &flag)
+				keyword, err = parsePrefixT(&fi, flen, format, &aux_flag)
 			case 'W':
 				fi++
 				if fi < flen && format[fi] == 'W' {
@@ -1454,19 +1502,19 @@ func ParseDchFmtByTime(format string) ([]int, []string, int, error) {
 			case 'Y':
 				keyword, err = parsePrefixY(&fi, flen, format)
 			default:
-				return nil, nil, flag, errors.New(out_keyword_range_err)
+				return nil, nil, aux_flag, errors.New(out_keyword_range_err)
 			}
 
 			if err != nil {
-				return nil, nil, flag, err
+				return nil, nil, aux_flag, err
 			}
 			fmKeywords = append(fmKeywords, int(keyword))
 		} else {
-			return nil, nil, flag, errors.New(out_ascii_range_err + string(c))
+			return nil, nil, aux_flag, errors.New(out_ascii_range_err + string(c))
 		}
 	}
 
-	return fmKeywords, quoted, flag, nil
+	return fmKeywords, quoted, aux_flag, nil
 }
 
 func parsePrefixA(fi *int, flen int, format string) (FMKeyword, error) {
@@ -1992,4 +2040,27 @@ func ToJulian(year int, month int, day int) int {
 	y := year + 4800 - adj
 	m := month + 12*adj - 3
 	return day + (153*m+2)/5 + y*365 + y/4 - y/100 + y/400 - 32045
+}
+
+func ToRRRR(thisYear int, RR int) int {
+	year := 0
+	firstTwo := thisYear / 100
+	lastTwo := thisYear % 100
+
+	// 0-49
+	if lastTwo >= 0 && lastTwo <= 49 {
+		if RR >= 0 && lastTwo <= 49 {
+			year = firstTwo*100 + RR
+		} else {
+			year = (firstTwo-1)*100 + RR
+		}
+	} else {
+		// 50-99
+		if RR >= 50 && lastTwo <= 99 {
+			year = firstTwo*100 + RR
+		} else {
+			year = (firstTwo+1)*100 + RR
+		}
+	}
+	return year
 }
