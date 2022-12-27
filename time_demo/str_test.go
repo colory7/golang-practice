@@ -41,17 +41,6 @@ func TestFormat2(t *testing.T) {
 	println(len(arr))
 }
 
-const (
-	flag_year   = 1
-	flag_month  = 1 << 1
-	flag_day    = 1 << 2
-	flag_hour   = 1 << 3
-	flag_minute = 1 << 4
-	flag_second = 1 << 5
-	flag_nansec = 1 << 6
-	flag_tz     = 1 << 7
-)
-
 func TestFXFormat(t *testing.T) {
 	//dch := "  公元2,023://sss    8         -;:        05-20 2:3:4.333"
 	dch := "公元2,023sss2008-05-20 12:53:64.333"
@@ -292,6 +281,36 @@ func parseDchFX(dch *string, dlen int, di *int, size int) (string, error) {
 	return "", errors.New("未找到格式对应的匹配项")
 }
 
-func TestZone(t *testing.T) {
+const mode_flag_fx = 1 << 1
 
+func ParseDchByTime(dch string, flag int) []string {
+	dItems := make([]string, 4, 4)
+
+	if (flag & mode_flag_fx) == 0 {
+		tmp := bytes.Buffer{}
+
+		for i := 0; i < len(dch); i++ {
+			if dch[i] == ' ' ||
+				dch[i] == '-' ||
+				dch[i] == ':' ||
+				dch[i] == ',' ||
+				dch[i] == '.' ||
+				dch[i] == '/' ||
+				dch[i] == ';' {
+				if tmp.Len() > 0 {
+					dItems = append(dItems, tmp.String())
+					tmp.Reset()
+				}
+			} else {
+				tmp.WriteByte(dch[i])
+			}
+		}
+		dItems = append(dItems, tmp.String())
+	} else {
+		for i := 0; i < len(dch); i++ {
+			dItems = append(dItems, string(dch[i]))
+		}
+	}
+
+	return dItems
 }
