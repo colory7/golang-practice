@@ -13,6 +13,7 @@ const dch_fmt_mismatch_err = "Date Format error, some formats do not match near 
 const dch_fmt_length_err = "Date Format error, incorrect format length near "
 const num_fmt_part_err = "Datetime Format error, some formats do not match near "
 const not_support_err = "not support"
+const unreachable_err = "unreachable"
 
 // 非法字符,超出格式关键词范围
 const out_keyword_range_err = "Illegal character, not in the range of Format Model keyword"
@@ -181,9 +182,10 @@ const (
 )
 
 const (
-	empty_str = ""
-	empty_int = 0
-	tsFormat  = "15:04:05"
+	empty_str   = ""
+	empty_int   = 0
+	empty_float = 0.0
+	tsFormat    = "15:04:05"
 	//dateFormat = "YYYY-MM-DD HH24:MI:SS"
 	dateLayout = "2006-01-02 15:04:05"
 )
@@ -296,7 +298,7 @@ type NumFmtDesc struct {
 	s uint8
 	// X 的个数 输出区分大小写，输出前先对参数做四舍五入，转换为正整数
 	xCount int
-	// 后缀
+	// 后缀 输出模式
 	suffix int
 	// 辅助后缀
 	auxSuffix int
@@ -309,8 +311,8 @@ type NumParamDesc struct {
 	eSign     string
 	eExponent int
 	// 可选
-	existDec bool
-	isEEEE   bool
+	hasDec bool
+	isEEEE bool
 }
 
 func (numParam *NumParamDesc) string() (string, error) {
@@ -358,24 +360,16 @@ func parseNumFormat(format string) (NumFmtDesc, error) {
 
 	// 格式字节长度
 	flen := len(format)
+	li := flen - 1
 
-	// 最后一个关键词的索引
-	lastFormatIndex := flen - 1
-
-	isRerun := false
 	var c byte
 
 	readDec := false
 	//var preDec = bytes.Buffer{}
 	//var postDec = bytes.Buffer{}
-	for i := 0; i < flen; {
+	for fi := 0; fi < flen; {
 		// 截取一个字符
-		if !isRerun {
-			c = format[i]
-		} else {
-			isRerun = false
-		}
-
+		c = format[fi]
 		if c >= 32 && c <= 127 {
 			// 这里设置为不区分大小写。NB: Oracle和Postgresql中为区分大小写
 			toUpper(&c)
@@ -384,26 +378,28 @@ func parseNumFormat(format string) (NumFmtDesc, error) {
 			switch c {
 			case ',':
 				if fmtDesc.commaIndex == 0 {
-					if i == 0 {
+					if fi == 0 {
 						return fmtDesc, errors.New("不能以逗号开头")
-					} else if i == lastFormatIndex {
+					} else if fi == li {
 						return fmtDesc, errors.New("逗号不能出现在数字最右边")
 					} else if fmtDesc.decIndex != -1 {
 						return fmtDesc, errors.New("逗号不能出现在点号的右边")
 					}
 
-					fmtDesc.commaIndex = i
+					fmtDesc.commaIndex = fi
 				} else {
 					return fmtDesc, errors.New("格式错误，存在多个格式符号 ,")
 				}
 
+				fi++
 			case '.':
 				if !readDec {
-					fmtDesc.decIndex = i
+					fmtDesc.decIndex = fi
 					readDec = true
 				} else {
 					return fmtDesc, errors.New("只能有1个 .")
 				}
+				fi++
 			case '0':
 				if readDec {
 					fmtDesc.postDec++
@@ -412,6 +408,7 @@ func parseNumFormat(format string) (NumFmtDesc, error) {
 					fmtDesc.preDec++
 					//preDec.WriteByte('0')
 				}
+				fi++
 			case '9':
 				if readDec {
 					fmtDesc.postDec++
@@ -420,44 +417,49 @@ func parseNumFormat(format string) (NumFmtDesc, error) {
 					fmtDesc.preDec++
 					//preDec.WriteByte('9')
 				}
+				fi++
 			case '$':
-				if fmtDesc.prefix == NUM_FMT_PREFIX_EMPTY && i == 0 {
+				if fmtDesc.prefix == NUM_FMT_PREFIX_EMPTY && fi == 0 {
 					fmtDesc.prefix = NUM_FMT_PREFIX_DOLLAR
 				} else {
 					return fmtDesc, errors.New("格式前缀冲突 " + "$")
 				}
+				fi++
 			case 'B':
 				if fmtDesc.prefix == NUM_FMT_PREFIX_EMPTY {
 					fmtDesc.prefix = NUM_FMT_PREFIX_B
 				} else {
 					return fmtDesc, errors.New("格式前缀冲突 " + "B")
 				}
+				fi++
 			case 'C':
 				if fmtDesc.prefix == NUM_FMT_PREFIX_EMPTY {
 					return fmtDesc, errors.New("格式前缀冲突 " + "C")
-				} else if lastFormatIndex != i && 0 != i {
+				} else if li != fi && 0 != fi {
 					return fmtDesc, errors.New("C 只能在开头或者结尾")
 				}
 				fmtDesc.prefix = NUM_FMT_PREFIX_C
+				fi++
 			case 'L':
 				if fmtDesc.prefix == NUM_FMT_PREFIX_EMPTY {
 					fmtDesc.prefix = NUM_FMT_PREFIX_L
 				} else {
 					return fmtDesc, errors.New("格式前缀冲突 " + "L")
 				}
+				fi++
 			case 'U':
 				if fmtDesc.prefix == NUM_FMT_PREFIX_EMPTY {
 					return fmtDesc, errors.New("格式前缀冲突 " + "U")
-				} else if lastFormatIndex != i && 0 != i {
+				} else if li != fi && 0 != fi {
 					return fmtDesc, errors.New("U 只能在开头或者结尾")
 				}
 				fmtDesc.prefix = NUM_FMT_PREFIX_U
+				fi++
 			case 'E':
 				if fmtDesc.suffix == NUM_FMT_SUFFIX_EMPTY {
-					j := i + 4
-					followingChars := format[i+1 : j]
-					if "EEE" == followingChars {
-						i = j
+					start := fi + 1
+					fi += 4
+					if "EEE" == format[start:fi] {
 						fmtDesc.suffix = NUM_FMT_SUFFIX_EEEE
 					} else {
 						return fmtDesc, errors.New(num_fmt_part_err + "E")
@@ -466,57 +468,53 @@ func parseNumFormat(format string) (NumFmtDesc, error) {
 					return fmtDesc, errors.New("conflict with E")
 				}
 			case 'F':
-				i++
-				followingOneChar := format[i]
-				switch followingOneChar {
-				case 'M':
+				fi++
+
+				if format[fi] == 'M' {
 					if fmtDesc.auxPrefix == NUM_FMT_AUX_PREFIX_EMPTY {
 						return fmtDesc, errors.New("只能有1组 FM")
 					}
-					if 1 == i {
+					if fi == 1 {
 						fmtDesc.auxPrefix = NUM_FMT_AUX_PREFIX_FM
 					} else {
 						return fmtDesc, errors.New("FM 必须在开头")
 					}
-				default:
+				} else {
 					return fmtDesc, errors.New(num_fmt_part_err + "F")
 				}
+				fi++
 			case 'M':
 				if fmtDesc.auxSuffix == NUM_FMT_AUX_SUFFIX_EMPTY {
 					return fmtDesc, errors.New("辅助后缀冲突" + "MI")
-				} else if i == (lastFormatIndex - 1) {
+				} else if fi == (li - 1) {
 					return fmtDesc, errors.New("MI 只能在结尾")
 				}
 
-				i++
-				followingOneChar := format[i]
-				switch followingOneChar {
-				case 'I':
+				fi++
+				if format[fi] == 'I' {
 					fmtDesc.auxSuffix = NUM_FMT_AUX_SUFFIX_MI
-				default:
+				} else {
 					return fmtDesc, errors.New(num_fmt_part_err + "M")
 				}
+				fi++
 			case 'P':
 				if fmtDesc.auxSuffix == NUM_FMT_AUX_SUFFIX_EMPTY {
 					return fmtDesc, errors.New("辅助后缀冲突" + "PR")
-				} else if i == (lastFormatIndex - 1) {
+				} else if fi == (li - 1) {
 					return fmtDesc, errors.New("PR 只能在结尾")
 				}
 
-				i++
-				followingOneChar := format[i]
-				switch followingOneChar {
-				case 'R':
+				fi++
+				if format[fi] == 'R' {
 					fmtDesc.auxSuffix = NUM_FMT_AUX_SUFFIX_PR
-				default:
+				} else {
 					return fmtDesc, errors.New(num_fmt_part_err + "P")
 				}
+				fi++
 			case 'R':
 				// 判断独占 长度 FIXME
-				i++
-				followingOneChar := format[i]
-				switch followingOneChar {
-				case 'N':
+				fi++
+				if format[fi] == 'N' {
 					if fmtDesc.suffix == NUM_FMT_SUFFIX_EMPTY {
 						return fmtDesc, errors.New("只能有1个 RN")
 					} else if fmtDesc.auxPrefix == NUM_FMT_AUX_PREFIX_FM && flen == 4 {
@@ -526,36 +524,36 @@ func parseNumFormat(format string) (NumFmtDesc, error) {
 					}
 
 					fmtDesc.suffix = NUM_FMT_SUFFIX_RN
-				default:
+				} else {
 					return fmtDesc, errors.New(num_fmt_part_err + "R")
 				}
+				fi++
 			case 'S':
 				if fmtDesc.s == NUM_FMT_S_EMPTY {
 					return fmtDesc, errors.New("只能有1个 S")
-				} else if i == lastFormatIndex && i != 0 {
+				} else if fi == li && fi != 0 {
 					return fmtDesc, errors.New("S 只能在开头或者结尾")
 				}
 
-				if i == 0 {
+				if fi == 0 {
 					fmtDesc.s = NUM_FMT_S_START
 				} else {
 					fmtDesc.s = NUM_FMT_S_END
 				}
+				fi++
 			case 'T':
 				if fmtDesc.suffix == NUM_FMT_SUFFIX_EMPTY {
-					i++
-					followingOneChar := format[i]
-					if 'M' == followingOneChar {
-						if i == lastFormatIndex {
+					fi++
+					if 'M' == format[fi] {
+						if fi == li {
 							fmtDesc.suffix = NUM_FMT_SUFFIX_TM
 						} else {
-							i++
-							followingOneChar = format[i]
-							if 'E' == followingOneChar {
+							fi++
+							if 'E' == format[fi] {
 								fmtDesc.suffix = NUM_FMT_SUFFIX_TME
-							} else if 'e' == followingOneChar { // FIXME 已经转换为了大写
+							} else if 'e' == format[fi] { // FIXME 已经转换为了大写
 								fmtDesc.suffix = NUM_FMT_SUFFIX_TMe
-							} else if '9' == followingOneChar {
+							} else if '9' == format[fi] {
 								fmtDesc.suffix = NUM_FMT_SUFFIX_TM9
 							} else {
 								return fmtDesc, errors.New("格式错误在 TM 附近")
@@ -567,31 +565,32 @@ func parseNumFormat(format string) (NumFmtDesc, error) {
 				} else {
 					return fmtDesc, errors.New("只能有1组 TM")
 				}
+				fi++
 			case 'V':
 				if fmtDesc.suffix == NUM_FMT_SUFFIX_EMPTY {
 					return fmtDesc, errors.New("只能有1个 V")
-				} else if 0 != i {
+				} else if 0 != fi {
 					return fmtDesc, errors.New("V 不能在开头")
 				}
 				fmtDesc.suffix = NUM_FMT_SUFFIX_V
+				fi++
 			case 'X':
 				if fmtDesc.suffix == NUM_FMT_SUFFIX_EMPTY {
 					return fmtDesc, errors.New("conflict with X")
-				} else if 0 != i {
+				} else if 0 != fi {
 					return fmtDesc, errors.New("V 不能在开头")
 				}
 
 				fmtDesc.suffix = NUM_FMT_SUFFIX_X
 				fmtDesc.xCount++
+				fi++
 			default:
 				return fmtDesc, errors.New(out_keyword_range_err)
 			}
-
 		} else {
 			return fmtDesc, errors.New(out_ascii_range_err)
 		}
 
-		i++
 	}
 
 	return fmtDesc, nil
@@ -602,6 +601,7 @@ func parseNumFormat(format string) (NumFmtDesc, error) {
 func parseNumParam(num string) (NumParamDesc, error) {
 	var paramDesc NumParamDesc
 
+	// 读取到小数点
 	readDec := false
 
 	var preBuf = bytes.Buffer{}
@@ -618,13 +618,12 @@ func parseNumParam(num string) (NumParamDesc, error) {
 		case '.':
 			if readDec == false {
 				readDec = true
-				paramDesc.existDec = true
+				paramDesc.hasDec = true
 			} else {
 				return paramDesc, errors.New("多个符号 " + ".")
 			}
 		case 'e', 'E':
 			i++
-
 			paramDesc.isEEEE = true
 			var exponent = bytes.Buffer{}
 
@@ -702,126 +701,62 @@ func parseNumParam(num string) (NumParamDesc, error) {
 	return paramDesc, nil
 }
 
-func ToNumber(num string, format string) (string, error) {
+// 字符串类型转换成数字
+func ToNumberByStr(num string, format string) (float64, error) {
 	numFmtDesc, err := parseNumFormat(format)
 	if err != nil {
-		return empty_str, err
+		return empty_float, err
 	}
-
-	//FIXME
-	numFmtDescStr := fmt.Sprintf("%#v\n", numFmtDesc)
-	fmt.Println(numFmtDescStr)
+	//log.Printf("%#v\n", numFmtDesc)
 
 	numParamDesc, err := parseNumParam(num)
 	if err != nil {
-		return empty_str, err
+		return empty_float, err
 	}
+	//log.Printf("%#v\n", numParamDesc)
 
-	//FIXME
-	numParamStr := fmt.Sprintf("%#v\n", numParamDesc)
-	fmt.Println(numParamStr)
-
-	result := bytes.Buffer{}
-
-	var bs []byte
-
-	// FM 模式，去除空格
-
-	wroteSign := false
+	flen := len(format)
 	switch numFmtDesc.suffix {
 	// 十进制
 	case NUM_FMT_SUFFIX_EMPTY:
-		paramLen := len(numParamDesc.preDec)
-		if numFmtDesc.preDec >= paramLen {
-			for i := numFmtDesc.preDec; i >= 0; i-- {
-				if i < paramLen {
-					if !wroteSign {
-						if numFmtDesc.auxPrefix == NUM_FMT_AUX_PREFIX_FM {
-							if numParamDesc.sign == minus {
-								bs = append(bs, '-')
-							}
-						} else {
-							if numParamDesc.sign == minus {
-								bs = append(bs, '-')
-							} else {
-								bs = append(bs, ' ')
-							}
-						}
-						wroteSign = true
-					}
-					bs = append(bs, numParamDesc.preDec[paramLen-i-1])
-				} else {
-					bs = append(bs, ' ')
-				}
-			}
-
-			if numFmtDesc.postDec > 0 {
-				bs = append(bs, '.')
-				for i := 0; i < numFmtDesc.postDec; i++ {
-					bs = append(bs, numParamDesc.postDec[i])
-				}
-			}
-		} else {
-			return empty_str, errors.New("格式的整数部分的长度不能比参数的整数部分的长度小")
+		if numFmtDesc.preDec < len(numParamDesc.preDec) {
+			return empty_float, errors.New("格式的整数部分的长度不能比参数的整数部分的长度小")
 		}
-	// 科学计数
-	case NUM_FMT_SUFFIX_EEEE:
-		// 转换科学计数
-		if numParamDesc.isEEEE {
-			//TODO
-		} else {
-
+		f, err := strconv.ParseFloat(num, 64)
+		if err != nil {
+			return empty_float, err
 		}
-	// 乘积
-	case NUM_FMT_SUFFIX_V:
-		if numParamDesc.isEEEE {
-			return empty_str, errors.New("格式V 不支持科学计数参数")
-		}
-	// 罗马数字
-	case NUM_FMT_SUFFIX_RN:
-		if numParamDesc.isEEEE {
-			return empty_str, errors.New("格式RN 不支持科学计数参数")
-		}
+		return f, nil
 	// 十六进制
 	case NUM_FMT_SUFFIX_X:
-		if numParamDesc.isEEEE {
-			return empty_str, errors.New("格式X 不支持科学计数参数")
+		d, err := strconv.ParseInt(num, 16, 64)
+		if err != nil {
+			return empty_float, err
 		}
-	// 十进制
-	// 少写几个9 最小文本匹配 没有修饰符逗号，货币符号等
-	// 超过64个字符则转换为科学计数
-	case NUM_FMT_SUFFIX_TM, NUM_FMT_SUFFIX_TM9:
-		if numParamDesc.isEEEE {
-			//TODO
+		if len(numParamDesc.preDec) > flen {
+			return empty_float, errors.New("格式长度比数值长度小")
 		}
-	// 科学计数
-	// 少写几个9 最小文本匹配 没有修饰符逗号，货币符号等
-	// 小数部分最多36个字符，整数部分最多1个字符
-	case NUM_FMT_SUFFIX_TME, NUM_FMT_SUFFIX_TMe:
-		if numParamDesc.isEEEE {
-			//TODO
-		}
+		return float64(d), nil
 	default:
-		return empty_str, errors.New("Theoretically unreachable")
+		return empty_float, errors.New(not_support_err)
 	}
 
-	result.Write(bs)
-	return result.String(), nil
+	return empty_float, nil
 }
 
 func ToTimestamp(dch string, format string) (*time.Time, error) {
-	return toDt(dch, format, dt_type_timestamp)
+	return toDT(dch, format, dt_type_timestamp)
 }
 
 func ToTimestampTimeZone(dch string, format string) (*time.Time, error) {
-	return toDt(dch, format, dt_type_timestamp_tz)
+	return toDT(dch, format, dt_type_timestamp_tz)
 }
 
 func ToDate(dch string, format string) (*time.Time, error) {
-	return toDt(dch, format, dt_type_date)
+	return toDT(dch, format, dt_type_date)
 }
 
-func toDt(dch string, format string, tp dtType) (*time.Time, error) {
+func toDT(dch string, format string, tp dtType) (*time.Time, error) {
 	fmKeywords, quoted, aux_flag, err := parseFmt(format)
 	if err != nil {
 		return nil, nil
@@ -1321,11 +1256,7 @@ func parseDchNotFX(dch *string, dlen *int, di *int, size int) (string, error) {
 	return empty_str, errors.New("未找到格式对应的匹配项")
 }
 
-func ToCharByStr(num string, format string) (string, error) {
-	return ToNumber(num, format)
-}
-
-func ToChar(t time.Time, format string) (string, error) {
+func ToDatetimeChar(t time.Time, format string) (string, error) {
 	fmKeywords, quoted, aux_flag, err := parseFmt(format)
 	if err != nil {
 		return empty_str, nil
@@ -1376,13 +1307,13 @@ func ToChar(t time.Time, format string) (string, error) {
 		case DCH_DD:
 			result.WriteString(strconv.Itoa(t.Day()))
 		case DCH_DL:
-			tmp, err := ToChar(t, NLS_DL)
+			tmp, err := ToDatetimeChar(t, NLS_DL)
 			if err != nil {
 				return empty_str, nil
 			}
 			result.WriteString(tmp)
 		case DCH_DS:
-			tmp, err := ToChar(t, NLS_DS)
+			tmp, err := ToDatetimeChar(t, NLS_DS)
 			if err != nil {
 				return empty_str, nil
 			}
@@ -1644,18 +1575,16 @@ func parsePrefixA(fi *int, flen int, format string) (FMKeyword, error) {
 	var keyword FMKeyword
 	*fi++
 	if *fi < flen {
-		followingOneChar := format[*fi]
-		switch followingOneChar {
+		switch format[*fi] {
 		case '.':
 			*fi++
 			start := *fi
 			*fi += 2
 			if *fi <= flen {
-				followingChars := format[start:*fi]
-				if "D." == followingChars {
+				if "D." == format[start:*fi] {
 					// DCH A.D.
 					keyword = DCH_A_D_
-				} else if "M." == followingChars {
+				} else if "M." == format[start:*fi] {
 					// DCH A.M.
 					keyword = DCH_A_M_
 				} else {
@@ -1685,8 +1614,7 @@ func parsePrefixB(fi *int, flen int, format string) (FMKeyword, error) {
 	var keyword FMKeyword
 	*fi++
 	if *fi < flen {
-		followingOneChar := format[*fi]
-		switch followingOneChar {
+		switch format[*fi] {
 		case 'C':
 			// DCH BC
 			keyword = DCH_BC
@@ -1715,8 +1643,7 @@ func parsePrefixC(fi *int, flen int, format string) (FMKeyword, error) {
 	var keyword FMKeyword
 	*fi++
 	if *fi < flen {
-		followingOneChar := format[*fi]
-		switch followingOneChar {
+		switch format[*fi] {
 		case 'C':
 			// DCH CC
 			keyword = DCH_CC
@@ -1779,8 +1706,7 @@ func parsePrefixF(fi *int, flen int, format string, flag *int) (FMKeyword, error
 	var keyword FMKeyword
 	*fi++
 	if *fi < flen {
-		followingOneChar := format[*fi]
-		switch followingOneChar {
+		switch format[*fi] {
 		case 'X':
 			// TODO 最后处理
 			*flag |= mode_flag_fx

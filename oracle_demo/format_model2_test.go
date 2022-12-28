@@ -33,7 +33,7 @@ func TestToChar(t *testing.T) {
 	fmt.Println(tm)
 	format := "YYYY-MM-DD"
 
-	str, err := ToChar(tm, format)
+	str, err := ToDatetimeChar(tm, format)
 	if err != nil {
 		panic(err)
 	}
@@ -42,9 +42,9 @@ func TestToChar(t *testing.T) {
 
 func TestToNumber(t *testing.T) {
 	numParam := "123456"
-	format := "999999"
+	format := "999999EEEE"
 
-	numResult, err := ToNumber(numParam, format)
+	numResult, err := ToNumberByStr(numParam, format)
 	if err != nil {
 		panic(err)
 	}
