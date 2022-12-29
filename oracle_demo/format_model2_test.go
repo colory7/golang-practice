@@ -33,7 +33,7 @@ func TestToChar(t *testing.T) {
 	fmt.Println(tm)
 	format := "YYYY-MM-DD"
 
-	str, err := ToDatetimeChar(tm, format)
+	str, err := ToCharByDatetime(tm, format)
 	if err != nil {
 		panic(err)
 	}
@@ -44,9 +44,42 @@ func TestToNumber(t *testing.T) {
 	numParam := "123456"
 	format := "999999EEEE"
 
-	numResult, err := ToNumberByStr(numParam, format)
+	numResult, err := ToNumber(numParam, format)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println(numResult)
+}
+
+// select to_char('-123.56','L9,999.999') from dual;
+func TestToCharByStr(t *testing.T) {
+	numStr := "-123.33"
+	format := "999v999PR"
+	s, err := ToCharByStr(numStr, format)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(s)
+}
+
+// select to_char('-123.33','999v999PR') from dual;
+func TestToCharByStr2(t *testing.T) {
+	numStr := "-123.33"
+	format := "999v999PR"
+	s, err := ToCharByStr(numStr, format)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(s)
+}
+
+// select to_char('123.33','999v999PR') from dual;
+func TestToCharByStr3(t *testing.T) {
+	numStr := "123.33"
+	format := "999v999PR"
+	s, err := ToCharByStr(numStr, format)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(s)
 }

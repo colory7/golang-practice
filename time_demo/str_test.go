@@ -3,6 +3,8 @@ package time_demo
 import (
 	"bytes"
 	"errors"
+	"fmt"
+	"strconv"
 	"testing"
 )
 
@@ -313,4 +315,35 @@ func ParseDchByTime(dch string, flag int) []string {
 	}
 
 	return dItems
+}
+
+func TestEEEE(t *testing.T) {
+	f := 26.345000
+	s := strconv.FormatFloat(f, 'f', -1, 64)
+	fmt.Println(s)
+}
+
+func TestEEEE2(t *testing.T) {
+	f := 26.345000
+	s := strconv.FormatFloat(f, 'E', -1, 64)
+	fmt.Println(s)
+}
+
+func TestEEEE3(t *testing.T) {
+	f := 26.345000e-2
+	s := strconv.FormatFloat(f, 'f', -1, 64)
+	fmt.Println(s)
+}
+
+func TestEEEE4(t *testing.T) {
+	f := 26.345000e-2
+	s := strconv.FormatFloat(f, 'E', -1, 64)
+	fmt.Println(s)
+}
+
+func TestByte(t *testing.T) {
+	b := bytes.Buffer{}
+	b.WriteByte(byte(0))
+	fmt.Println(b.String())
+	fmt.Println(len(b.String()))
 }

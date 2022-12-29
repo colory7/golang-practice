@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -13,7 +15,10 @@ const dch_fmt_mismatch_err = "Date Format error, some formats do not match near 
 const dch_fmt_length_err = "Date Format error, incorrect format length near "
 const num_fmt_part_err = "Datetime Format error, some formats do not match near "
 const not_support_err = "not support"
-const unreachable_err = "unreachable"
+const format_conflict_err = "format conflict with "
+const format_err = "format err "
+const unreachable_err = "unreachable code"
+const format_length_smaller_err = "Format length is smaller than parameter length"
 
 // 非法字符,超出格式关键词范围
 const out_keyword_range_err = "Illegal character, not in the range of Format Model keyword"
@@ -190,47 +195,83 @@ const (
 	dateLayout = "2006-01-02 15:04:05"
 )
 
-const (
-	empty = ""
-	plus  = "+"
-	minus = "-"
-	dec   = "."
-)
+type flag int
 
 const (
-	// 辅助前缀 没有冲突
-	NUM_FMT_AUX_PREFIX_EMPTY = 0
-	NUM_FMT_AUX_PREFIX_FM    = 1
-
-	// 前缀 前缀互斥
-	NUM_FMT_PREFIX_EMPTY  = 0
-	NUM_FMT_PREFIX_DOLLAR = '$'
-	NUM_FMT_PREFIX_B      = 'B'
-	NUM_FMT_PREFIX_C      = 'C'
-	NUM_FMT_PREFIX_L      = 'L'
-	NUM_FMT_PREFIX_U      = 'U'
-
-	// 后缀 后缀互斥 后缀决定了输出模式
-	NUM_FMT_SUFFIX_EMPTY = 0
-	NUM_FMT_SUFFIX_EEEE  = 1
-	NUM_FMT_SUFFIX_V     = 2
-	NUM_FMT_SUFFIX_RN    = 3
-	NUM_FMT_SUFFIX_X     = 4
-	NUM_FMT_SUFFIX_TM    = 5
-	NUM_FMT_SUFFIX_TM9   = 6
-	NUM_FMT_SUFFIX_TME   = 7
-	NUM_FMT_SUFFIX_TMe   = 8
-
-	// 辅助后缀 与MI PR冲突
-	NUM_FMT_AUX_SUFFIX_EMPTY = 0
-	NUM_FMT_AUX_SUFFIX_MI    = 1
-	NUM_FMT_AUX_SUFFIX_PR    = 2
-
-	// S
-	NUM_FMT_S_EMPTY = 0
-	NUM_FMT_S_START = 1
-	NUM_FMT_S_END   = 2
+	CARDINAL flag = 0
+	ORDINAL  flag = 1
 )
+
+var ordinalNums = map[string]string{
+	"one":           "first",
+	"two":           "second",
+	"three":         "third",
+	"five":          "fifth",
+	"eight":         "eighth",
+	"nine":          "ninth",
+	"twelve":        "twelfth",
+	"twenty":        "twentieth",
+	"twenty-one":    "twenty-first",
+	"twenty-two":    "twenty-second",
+	"twenty-three":  "twenty-third",
+	"twenty-five":   "twenty-fifth",
+	"twenty-eight":  "twenty-eighth",
+	"twenty-nine":   "twenty-ninth",
+	"thirty":        "thirtieth",
+	"thirty-one":    "thirty-first",
+	"thirty-two":    "thirty-second",
+	"thirty-three":  "thirty-third",
+	"thirty-five":   "thirty-fifth",
+	"thirty-eight":  "thirty-eighth",
+	"thirty-nine":   "thirty-ninth",
+	"forty":         "fortieth",
+	"forty-one":     "forty-first",
+	"forty-two":     "forty-second",
+	"forty-three":   "forty-third",
+	"forty-five":    "forty-fifth",
+	"forty-eight":   "forty-eighth",
+	"forty-nine":    "forty-ninth",
+	"fifty":         "fiftieth",
+	"fifty-one":     "fifty-first",
+	"fifty-two":     "fifty-second",
+	"fifty-three":   "fifty-third",
+	"fifty-five":    "fifty-fifth",
+	"fifty-eight":   "fifty-eighth",
+	"fifty-nine":    "fifty-ninth",
+	"sixty":         "sixtieth",
+	"sixty-one":     "sixty-first",
+	"sixty-two":     "sixty-second",
+	"sixty-three":   "sixty-third",
+	"sixty-five":    "sixty-fifth",
+	"sixty-eight":   "sixty-eighth",
+	"sixty-nine":    "sixty-ninth",
+	"seventy":       "seventieth",
+	"seventy-one":   "seventy-first",
+	"seventy-two":   "seventy-second",
+	"seventy-three": "seventy-third",
+	"seventy-five":  "seventy-fifth",
+	"seventy-eight": "seventy-eighth",
+	"seventy-nine":  "seventy-ninth",
+	"eighty":        "eightieth",
+	"eighty-one":    "eighty-first",
+	"eighty-two":    "eighty-second",
+	"eighty-three":  "eighty-third",
+	"eighty-five":   "eighty-fifth",
+	"eighty-eight":  "eighty-eighth",
+	"eighty-nine":   "eighty-ninth",
+	"ninety":        "ninetieth",
+	"ninety-one":    "ninety-first",
+	"ninety-two":    "ninety-second",
+	"ninety-three":  "ninety-third",
+	"ninety-five":   "ninety-fifth",
+	"ninety-eight":  "ninety-eighth",
+	"ninety-nine":   "ninety-ninth",
+}
+
+var englishMegas = []string{"", "thousand", "million", "billion", "trillion", "quadrillion", "quintillion", "sextillion", "septillion", "octillion", "nonillion", "decillion", "undecillion", "duodecillion", "tredecillion", "quattuordecillion"}
+var englishUnits = []string{"", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"}
+var englishTens = []string{"", "ten", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"}
+var englishTeens = []string{"ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"}
 
 func init() {
 
@@ -275,76 +316,146 @@ func init() {
 
 }
 
+type matchMode int
+type sign byte
+type currencySymbol string
+type outputMode int
+type signMode int
+
+const (
+	matchModeEmpty matchMode = 0
+	matchModeFm    matchMode = 1
+
+	signEmpty      = sign(0)
+	signSpace sign = ' '
+	signPlus  sign = '+'
+	signMinus sign = '-'
+	signGt    sign = '>'
+	signLt    sign = '<'
+
+	signModePR     signMode = 0
+	signModeMI     signMode = 1
+	signModeSStart signMode = 2
+	signModeSEnd   signMode = 3
+
+	currencySymbolEmpty  currencySymbol = ""
+	currencySymbolDollar currencySymbol = "$"
+	currencySymbolB      currencySymbol = " "
+	currencySymbolC      currencySymbol = "cny"
+	currencySymbolL      currencySymbol = NLS_CURRENCY
+	currencySymbolU      currencySymbol = NLS_DUAL_CURRENCY
+
+	// 后缀 后缀互斥 后缀决定了输出模式
+	outputModeEmpty outputMode = 0
+	outputModeEEEE  outputMode = 1
+	outputModeV     outputMode = 2
+	outputModeRN    outputMode = 3
+	outputModeX     outputMode = 4
+	outputModeTM    outputMode = 5
+	outputModeTME   outputMode = 6
+)
+
+const (
+	// 辅助前缀 没有冲突
+	// NUM_FMT_AUX_PREFIX_EMPTY = 0
+	// NUM_FMT_AUX_PREFIX_FM    = 1
+	//
+	// // 前缀 前缀互斥
+	//
+	// // 辅助后缀  MI PR冲突
+	NUM_FMT_AUX_SUFFIX_EMPTY = 0
+	NUM_FMT_AUX_SUFFIX_MI    = 1
+	NUM_FMT_AUX_SUFFIX_PR    = 2
+
+	// S 与辅助后缀冲突
+	NUM_FMT_S_EMPTY = 0
+	NUM_FMT_S_START = 1
+	NUM_FMT_S_END   = 2
+)
+
 type NumFmtDesc struct {
-	// 辅助前缀 前缀 十进制前半部分 逗号 小数点 十进制后半部分 后缀 辅助后缀
-	// 辅助前缀
-	auxPrefix int
-	// 互斥前缀
-	prefix int
-	// 前半部分 9或0的个数
-	// 如果是V 模式 忽略9或0的个数，不用格式做截取，直接用参数做乘积计算
-	preDec int
-	// 前半部分 是否是0开头
-	isLeadingZero bool
-	// 0开头的个数 FIXME
-	zeroCount int
-	// 后半部分 9或0的个数
-	postDec int
-	// 逗号位置 FIXME 同G
-	commaIndex int
-	// 点号位置 FIXME 同D
-	decIndex int
-	// S 位置 只能是开头或结尾
-	s uint8
-	// X 的个数 输出区分大小写，输出前先对参数做四舍五入，转换为正整数
-	xCount int
-	// 后缀 输出模式
-	suffix int
-	// 辅助后缀
-	auxSuffix int
+	// 匹配模式
+	matchMode matchMode
+	// 左符号 + - < 空
+	//leftSign sign
+	// 货币符号
+	currencySymbol currencySymbol
+	// 数值模型 前半部分 9 0 ,
+	preSep string
+	// 除去逗号的有效长度
+	preSepValidLen int
+	// 数值模型 后半部分 9 0
+	postSep string
+	// 分隔的位置 用. 或者V 分割
+	sepIndex int
+	// 输出模式
+	outputMode outputMode
+	// 右符号 + - > 空
+	//rightSign sign
+	// 符号模式
+	signMode signMode
 }
 
 type NumParamDesc struct {
-	sign      string
+	nSign     sign
 	preDec    string
 	postDec   string
-	eSign     string
+	eSign     sign
+	hasE      bool
 	eExponent int
-	// 可选
-	hasDec bool
-	isEEEE bool
+}
+
+func (numParam *NumParamDesc) decimal() (float64, error) {
+	base := bytes.Buffer{}
+	base.WriteByte(byte(numParam.nSign))
+	base.WriteString(numParam.preDec)
+	base.WriteString(numParam.postDec)
+
+	f, err := strconv.ParseFloat(base.String(), 64)
+	if err != nil {
+		return 0, err
+	}
+
+	if numParam.hasE {
+		if numParam.eSign == signMinus {
+			f *= math.Pow10(-numParam.eExponent)
+		} else {
+			f *= math.Pow10(numParam.eExponent)
+		}
+	}
+	return f, nil
 }
 
 func (numParam *NumParamDesc) string() (string, error) {
 	var result bytes.Buffer
-	if plus == numParam.sign {
-		result.WriteString(plus)
-	} else if minus == numParam.sign {
-		result.WriteString(minus)
-	} else if empty == numParam.sign {
+	if signPlus == numParam.nSign {
+		result.WriteByte(byte(signPlus))
+	} else if numParam.nSign == signMinus {
+		result.WriteByte(byte(signMinus))
+	} else if numParam.nSign == signEmpty {
 	} else {
 		return empty_str, errors.New("sign属性格式错误")
 	}
 
-	if empty != numParam.preDec {
+	if empty_str != numParam.preDec {
 		result.WriteString(numParam.preDec)
 	} else {
 		return empty_str, errors.New("格式错误,整数部分是空的")
 	}
 
-	if numParam.postDec != empty {
+	if numParam.postDec != empty_str {
 		result.WriteByte('.')
-		result.WriteString(string(numParam.postDec))
+		result.WriteString(numParam.postDec)
 	}
 
 	if numParam.eExponent != 0 {
 		result.WriteByte('e')
 
-		if plus == numParam.sign {
-			result.WriteString(plus)
-		} else if minus == numParam.sign {
-			result.WriteString(minus)
-		} else if empty == numParam.sign {
+		if numParam.nSign == signPlus {
+			result.WriteByte(byte(signPlus))
+		} else if numParam.nSign == signMinus {
+			result.WriteByte(byte(signMinus))
+		} else if numParam.nSign == signEmpty {
 		} else {
 			return empty_str, errors.New("eSign属性格式错误")
 		}
@@ -355,8 +466,8 @@ func (numParam *NumParamDesc) string() (string, error) {
 }
 
 // 解析数值格式
-func parseNumFormat(format string) (NumFmtDesc, error) {
-	var fmtDesc NumFmtDesc
+func parseNumFormat(format string) (*NumFmtDesc, error) {
+	fmtDesc := &NumFmtDesc{}
 
 	// 格式字节长度
 	flen := len(format)
@@ -365,230 +476,249 @@ func parseNumFormat(format string) (NumFmtDesc, error) {
 	var c byte
 
 	readDec := false
+	readV := false
 	//var preDec = bytes.Buffer{}
 	//var postDec = bytes.Buffer{}
 	for fi := 0; fi < flen; {
 		// 截取一个字符
 		c = format[fi]
 		if c >= 32 && c <= 127 {
-			// 这里设置为不区分大小写。NB: Oracle和Postgresql中为区分大小写
-			toUpper(&c)
-
 			// 匹配关键词并存储
 			switch c {
-			case ',':
-				if fmtDesc.commaIndex == 0 {
-					if fi == 0 {
-						return fmtDesc, errors.New("不能以逗号开头")
-					} else if fi == li {
-						return fmtDesc, errors.New("逗号不能出现在数字最右边")
-					} else if fmtDesc.decIndex != -1 {
-						return fmtDesc, errors.New("逗号不能出现在点号的右边")
-					}
-
-					fmtDesc.commaIndex = fi
-				} else {
-					return fmtDesc, errors.New("格式错误，存在多个格式符号 ,")
-				}
-
+			case 'F', 'f':
 				fi++
-			case '.':
-				if !readDec {
-					fmtDesc.decIndex = fi
-					readDec = true
-				} else {
-					return fmtDesc, errors.New("只能有1个 .")
-				}
-				fi++
-			case '0':
-				if readDec {
-					fmtDesc.postDec++
-					//postDec.WriteByte('0')
-				} else {
-					fmtDesc.preDec++
-					//preDec.WriteByte('0')
-				}
-				fi++
-			case '9':
-				if readDec {
-					fmtDesc.postDec++
-					//postDec.WriteByte('9')
-				} else {
-					fmtDesc.preDec++
-					//preDec.WriteByte('9')
-				}
-				fi++
-			case '$':
-				if fmtDesc.prefix == NUM_FMT_PREFIX_EMPTY && fi == 0 {
-					fmtDesc.prefix = NUM_FMT_PREFIX_DOLLAR
-				} else {
-					return fmtDesc, errors.New("格式前缀冲突 " + "$")
-				}
-				fi++
-			case 'B':
-				if fmtDesc.prefix == NUM_FMT_PREFIX_EMPTY {
-					fmtDesc.prefix = NUM_FMT_PREFIX_B
-				} else {
-					return fmtDesc, errors.New("格式前缀冲突 " + "B")
-				}
-				fi++
-			case 'C':
-				if fmtDesc.prefix == NUM_FMT_PREFIX_EMPTY {
-					return fmtDesc, errors.New("格式前缀冲突 " + "C")
-				} else if li != fi && 0 != fi {
-					return fmtDesc, errors.New("C 只能在开头或者结尾")
-				}
-				fmtDesc.prefix = NUM_FMT_PREFIX_C
-				fi++
-			case 'L':
-				if fmtDesc.prefix == NUM_FMT_PREFIX_EMPTY {
-					fmtDesc.prefix = NUM_FMT_PREFIX_L
-				} else {
-					return fmtDesc, errors.New("格式前缀冲突 " + "L")
-				}
-				fi++
-			case 'U':
-				if fmtDesc.prefix == NUM_FMT_PREFIX_EMPTY {
-					return fmtDesc, errors.New("格式前缀冲突 " + "U")
-				} else if li != fi && 0 != fi {
-					return fmtDesc, errors.New("U 只能在开头或者结尾")
-				}
-				fmtDesc.prefix = NUM_FMT_PREFIX_U
-				fi++
-			case 'E':
-				if fmtDesc.suffix == NUM_FMT_SUFFIX_EMPTY {
-					start := fi + 1
-					fi += 4
-					if "EEE" == format[start:fi] {
-						fmtDesc.suffix = NUM_FMT_SUFFIX_EEEE
-					} else {
-						return fmtDesc, errors.New(num_fmt_part_err + "E")
-					}
-				} else {
-					return fmtDesc, errors.New("conflict with E")
-				}
-			case 'F':
-				fi++
-
-				if format[fi] == 'M' {
-					if fmtDesc.auxPrefix == NUM_FMT_AUX_PREFIX_EMPTY {
-						return fmtDesc, errors.New("只能有1组 FM")
+				if format[fi] == 'M' || format[fi] == 'm' {
+					if fmtDesc.matchMode == matchModeEmpty {
+						return fmtDesc, errors.New(format_conflict_err + "FM")
 					}
 					if fi == 1 {
-						fmtDesc.auxPrefix = NUM_FMT_AUX_PREFIX_FM
+						fmtDesc.matchMode = matchModeFm
 					} else {
-						return fmtDesc, errors.New("FM 必须在开头")
+						return nil, errors.New("FM can only be at the beginning")
 					}
 				} else {
-					return fmtDesc, errors.New(num_fmt_part_err + "F")
+					return nil, errors.New(num_fmt_part_err + "F")
 				}
 				fi++
-			case 'M':
-				if fmtDesc.auxSuffix == NUM_FMT_AUX_SUFFIX_EMPTY {
-					return fmtDesc, errors.New("辅助后缀冲突" + "MI")
-				} else if fi == (li - 1) {
-					return fmtDesc, errors.New("MI 只能在结尾")
-				}
-
-				fi++
-				if format[fi] == 'I' {
-					fmtDesc.auxSuffix = NUM_FMT_AUX_SUFFIX_MI
-				} else {
-					return fmtDesc, errors.New(num_fmt_part_err + "M")
-				}
-				fi++
-			case 'P':
-				if fmtDesc.auxSuffix == NUM_FMT_AUX_SUFFIX_EMPTY {
-					return fmtDesc, errors.New("辅助后缀冲突" + "PR")
-				} else if fi == (li - 1) {
-					return fmtDesc, errors.New("PR 只能在结尾")
-				}
-
-				fi++
-				if format[fi] == 'R' {
-					fmtDesc.auxSuffix = NUM_FMT_AUX_SUFFIX_PR
-				} else {
-					return fmtDesc, errors.New(num_fmt_part_err + "P")
-				}
-				fi++
-			case 'R':
+			case 'R', 'r':
 				// 判断独占 长度 FIXME
 				fi++
-				if format[fi] == 'N' {
-					if fmtDesc.suffix == NUM_FMT_SUFFIX_EMPTY {
-						return fmtDesc, errors.New("只能有1个 RN")
-					} else if fmtDesc.auxPrefix == NUM_FMT_AUX_PREFIX_FM && flen == 4 {
-						return fmtDesc, errors.New("包含RN的格式,除了 FM 和 RN 不能有其他格式字符")
-					} else if fmtDesc.auxPrefix == NUM_FMT_AUX_PREFIX_EMPTY && flen == 2 {
-						return fmtDesc, errors.New("包含RN的格式,除了 FM 和 RN 不能有其他格式字符")
+				if format[fi] == 'N' || format[fi] == 'n' {
+					if fmtDesc.outputMode == outputModeEmpty {
+						return fmtDesc, errors.New(format_conflict_err + "RN")
+					} else if fmtDesc.matchMode == matchModeFm && flen == 4 {
+						return nil, errors.New(format_conflict_err + "RN")
+					} else if fmtDesc.matchMode == matchModeEmpty && flen == 2 {
+						return nil, errors.New(format_conflict_err + "RN")
 					}
-
-					fmtDesc.suffix = NUM_FMT_SUFFIX_RN
+					fmtDesc.outputMode = outputModeRN
 				} else {
-					return fmtDesc, errors.New(num_fmt_part_err + "R")
+					return nil, errors.New(num_fmt_part_err + "R")
 				}
-				fi++
-			case 'S':
-				if fmtDesc.s == NUM_FMT_S_EMPTY {
-					return fmtDesc, errors.New("只能有1个 S")
-				} else if fi == li && fi != 0 {
-					return fmtDesc, errors.New("S 只能在开头或者结尾")
-				}
-
-				if fi == 0 {
-					fmtDesc.s = NUM_FMT_S_START
+				if fi != li {
+					return nil, errors.New(format_err + "RN")
 				} else {
-					fmtDesc.s = NUM_FMT_S_END
+					break
 				}
-				fi++
-			case 'T':
-				if fmtDesc.suffix == NUM_FMT_SUFFIX_EMPTY {
+			case 'T', 't':
+				if fmtDesc.outputMode == outputModeEmpty {
 					fi++
-					if 'M' == format[fi] {
+					if format[fi] == 'M' || format[fi] == 'm' {
 						if fi == li {
-							fmtDesc.suffix = NUM_FMT_SUFFIX_TM
+							fmtDesc.outputMode = outputModeTM
 						} else {
 							fi++
-							if 'E' == format[fi] {
-								fmtDesc.suffix = NUM_FMT_SUFFIX_TME
-							} else if 'e' == format[fi] { // FIXME 已经转换为了大写
-								fmtDesc.suffix = NUM_FMT_SUFFIX_TMe
-							} else if '9' == format[fi] {
-								fmtDesc.suffix = NUM_FMT_SUFFIX_TM9
+							if format[fi] == 'E' || format[fi] == 'e' {
+								fmtDesc.outputMode = outputModeTME
+							} else if format[fi] == '9' {
+								fmtDesc.outputMode = outputModeTM
 							} else {
-								return fmtDesc, errors.New("格式错误在 TM 附近")
+								return nil, errors.New(format_err + "TM")
 							}
 						}
 					} else {
-						return fmtDesc, errors.New("格式错误在 T 附近")
+						return nil, errors.New(format_err + string(c))
 					}
 				} else {
-					return fmtDesc, errors.New("只能有1组 TM")
-				}
-				fi++
-			case 'V':
-				if fmtDesc.suffix == NUM_FMT_SUFFIX_EMPTY {
-					return fmtDesc, errors.New("只能有1个 V")
-				} else if 0 != fi {
-					return fmtDesc, errors.New("V 不能在开头")
-				}
-				fmtDesc.suffix = NUM_FMT_SUFFIX_V
-				fi++
-			case 'X':
-				if fmtDesc.suffix == NUM_FMT_SUFFIX_EMPTY {
-					return fmtDesc, errors.New("conflict with X")
-				} else if 0 != fi {
-					return fmtDesc, errors.New("V 不能在开头")
+					return nil, errors.New(format_conflict_err + "TM")
 				}
 
-				fmtDesc.suffix = NUM_FMT_SUFFIX_X
-				fmtDesc.xCount++
-				fi++
+				if fi != li {
+					return nil, errors.New(format_err + "TM")
+				} else {
+					break
+				}
+			case 'X', 'x':
+				if fmtDesc.outputMode != outputModeX {
+					return nil, errors.New(format_conflict_err + string(c))
+				}
+				fmtDesc.outputMode = outputModeX
+				for ; fi < flen; fi++ {
+					if format[fi] == 'X' || format[fi] == 'x' {
+						fmtDesc.preSepValidLen++
+					} else {
+						return nil, errors.New("can only have X or x in hexadecimal format")
+					}
+				}
+				break
 			default:
-				return fmtDesc, errors.New(out_keyword_range_err)
+				preSep := bytes.Buffer{}
+				postSep := bytes.Buffer{}
+
+				signAffixSetup := false
+
+				for fi < flen {
+					// 截取一个字符
+					c = format[fi]
+					if c >= 32 && c <= 127 {
+						switch c {
+						case '9':
+							if readDec || readV {
+								postSep.WriteByte('9')
+							} else {
+								preSep.WriteByte('9')
+							}
+							fi++
+						case '.':
+							if !readDec {
+								readDec = true
+							} else {
+								return fmtDesc, errors.New("there can only be 1 period")
+							}
+							fi++
+						case '0':
+							if readDec || readV {
+								postSep.WriteByte('0')
+							} else {
+								preSep.WriteByte('0')
+							}
+							fi++
+						case ',':
+							if fi == 0 {
+								return nil, errors.New("cannot begin with a comma")
+							} else if fi == li {
+								return fmtDesc, errors.New("comma cannot appear on the right most side of a number")
+							} else if readDec {
+								return fmtDesc, errors.New("the comma cannot appear on the right side of the period")
+							}
+							preSep.WriteByte(',')
+							fi++
+						case '$':
+							if fmtDesc.currencySymbol == currencySymbolEmpty && fi == 0 {
+								fmtDesc.currencySymbol = currencySymbolDollar
+							} else {
+								return fmtDesc, errors.New(format_conflict_err + string(c))
+							}
+							fi++
+						case 'B', 'b':
+							if fmtDesc.currencySymbol == currencySymbolEmpty {
+								fmtDesc.currencySymbol = currencySymbolB
+							} else {
+								return fmtDesc, errors.New(format_conflict_err + string(c))
+							}
+							fi++
+						case 'C', 'c':
+							if fmtDesc.currencySymbol == currencySymbolEmpty {
+								return nil, errors.New(format_conflict_err + string(c))
+							} else if li != fi && 0 != fi {
+								return fmtDesc, errors.New("C can only be at the beginning or end")
+							}
+							fmtDesc.currencySymbol = currencySymbolC
+							fi++
+						case 'L', 'l':
+							if fmtDesc.currencySymbol == currencySymbolEmpty {
+								fmtDesc.currencySymbol = currencySymbolL
+							} else {
+								return nil, errors.New(format_conflict_err + string(c))
+							}
+							fi++
+						case 'U', 'u':
+							if fmtDesc.currencySymbol == currencySymbolEmpty {
+								return nil, errors.New(format_conflict_err + "U")
+							} else if li != fi && 0 != fi {
+								return fmtDesc, errors.New("U can only be at the beginning or end")
+							}
+							fmtDesc.currencySymbol = currencySymbolU
+							fi++
+						case 'M', 'm':
+							if signAffixSetup {
+								return nil, errors.New(format_conflict_err + "M")
+							} else if fi == (li - 1) {
+								return nil, errors.New("MI can only be at the end")
+							}
+
+							fi++
+							if format[fi] == 'I' || format[fi] == 'i' {
+								fmtDesc.signMode = signModeMI
+							} else {
+								return nil, errors.New(num_fmt_part_err + "M")
+							}
+							fi++
+						case 'P', 'p':
+							if signAffixSetup {
+								return nil, errors.New(format_conflict_err + "PR")
+							} else if fi != (li - 1) {
+								return fmtDesc, errors.New("PR can only be at the end")
+							}
+
+							fi++
+							if format[fi] == 'R' || format[fi] == 'r' {
+								fmtDesc.signMode = signModePR
+							} else {
+								return nil, errors.New(num_fmt_part_err + "P")
+							}
+							fi++
+						case 'S', 's':
+							if signAffixSetup {
+								return nil, errors.New(format_conflict_err + string(c))
+							} else if fi == li {
+								fmtDesc.signMode = signModeSEnd
+							} else if fi != 0 {
+								fmtDesc.signMode = signModeSStart
+							} else {
+								return fmtDesc, errors.New("S can only be at the beginning or end")
+							}
+
+							fi++
+						case 'E', 'e':
+							if fmtDesc.outputMode == outputModeEmpty {
+								start := fi + 1
+								fi += 3
+								if "EEE" == strings.ToUpper(format[start:fi]) {
+									fmtDesc.outputMode = outputModeEEEE
+								} else {
+									return nil, errors.New(num_fmt_part_err + string(c))
+								}
+							} else {
+								return nil, errors.New("conflict with E")
+							}
+							if fi != li {
+								return nil, errors.New(format_err + "E")
+							} else {
+								break
+							}
+						case 'V', 'v':
+							if readDec {
+								return nil, errors.New(format_conflict_err + ".")
+							}
+							if fmtDesc.outputMode != outputModeEmpty {
+								return nil, errors.New(format_conflict_err + string(c))
+							} else if 0 == fi {
+								return nil, errors.New("can not start with " + string(c))
+							}
+							readV = true
+							fmtDesc.outputMode = outputModeV
+							fi++
+						default:
+							return nil, errors.New(out_keyword_range_err)
+						}
+					} else {
+						return nil, errors.New(out_ascii_range_err)
+					}
+				}
 			}
 		} else {
-			return fmtDesc, errors.New(out_ascii_range_err)
+			return nil, errors.New(out_ascii_range_err)
 		}
 
 	}
@@ -598,8 +728,8 @@ func parseNumFormat(format string) (NumFmtDesc, error) {
 }
 
 // 解析数字参数
-func parseNumParam(num string) (NumParamDesc, error) {
-	var paramDesc NumParamDesc
+func parseNumParam(num string) (*NumParamDesc, error) {
+	paramDesc := &NumParamDesc{}
 
 	// 读取到小数点
 	readDec := false
@@ -618,21 +748,20 @@ func parseNumParam(num string) (NumParamDesc, error) {
 		case '.':
 			if readDec == false {
 				readDec = true
-				paramDesc.hasDec = true
 			} else {
 				return paramDesc, errors.New("多个符号 " + ".")
 			}
 		case 'e', 'E':
 			i++
-			paramDesc.isEEEE = true
+			paramDesc.hasE = true
 			var exponent = bytes.Buffer{}
 
 			if num[i] == '+' {
-				paramDesc.eSign = plus
+				paramDesc.eSign = signPlus
 			} else if num[i] == '-' {
-				paramDesc.eSign = minus
+				paramDesc.eSign = signMinus
 			} else if num[i] <= '9' && num[i] >= '0' {
-				paramDesc.eSign = empty
+				paramDesc.eSign = signEmpty
 				exponent.WriteByte(num[i])
 			}
 
@@ -651,13 +780,13 @@ func parseNumParam(num string) (NumParamDesc, error) {
 			paramDesc.eExponent = exponentNum
 		case '-':
 			if i == 0 {
-				paramDesc.sign = minus
+				paramDesc.nSign = signMinus
 			} else {
 				return paramDesc, errors.New("符号位置不对 " + "-")
 			}
 		case '+':
 			if i == 0 {
-				paramDesc.sign = plus
+				paramDesc.nSign = signPlus
 			} else {
 				return paramDesc, errors.New("符号位置不对 " + "+")
 			}
@@ -673,7 +802,7 @@ func parseNumParam(num string) (NumParamDesc, error) {
 
 	// 科学计数 转换为 十进制
 	// TODO 提前转换 还是不转换 十进制
-	if paramDesc.isEEEE {
+	if paramDesc.hasE {
 		if preBuf.Len() > 0 {
 			paramDesc.preDec = preBuf.String()
 		} else {
@@ -702,7 +831,7 @@ func parseNumParam(num string) (NumParamDesc, error) {
 }
 
 // 字符串类型转换成数字
-func ToNumberByStr(num string, format string) (float64, error) {
+func ToNumber(num string, format string) (float64, error) {
 	numFmtDesc, err := parseNumFormat(format)
 	if err != nil {
 		return empty_float, err
@@ -715,12 +844,11 @@ func ToNumberByStr(num string, format string) (float64, error) {
 	}
 	//log.Printf("%#v\n", numParamDesc)
 
-	flen := len(format)
-	switch numFmtDesc.suffix {
+	switch numFmtDesc.outputMode {
 	// 十进制
-	case NUM_FMT_SUFFIX_EMPTY:
-		if numFmtDesc.preDec < len(numParamDesc.preDec) {
-			return empty_float, errors.New("格式的整数部分的长度不能比参数的整数部分的长度小")
+	case outputModeEmpty:
+		if numFmtDesc.preSepValidLen < len(numParamDesc.preDec) {
+			return empty_float, errors.New(format_length_smaller_err)
 		}
 		f, err := strconv.ParseFloat(num, 64)
 		if err != nil {
@@ -728,35 +856,37 @@ func ToNumberByStr(num string, format string) (float64, error) {
 		}
 		return f, nil
 	// 十六进制
-	case NUM_FMT_SUFFIX_X:
+	case outputModeX:
 		d, err := strconv.ParseInt(num, 16, 64)
 		if err != nil {
 			return empty_float, err
 		}
-		if len(numParamDesc.preDec) > flen {
-			return empty_float, errors.New("格式长度比数值长度小")
+		if len(numParamDesc.preDec) > numFmtDesc.preSepValidLen {
+			return empty_float, errors.New(format_length_smaller_err)
 		}
 		return float64(d), nil
 	default:
 		return empty_float, errors.New(not_support_err)
 	}
 
-	return empty_float, nil
 }
 
+// 字符串 转 时间戳
 func ToTimestamp(dch string, format string) (*time.Time, error) {
-	return toDT(dch, format, dt_type_timestamp)
+	return toDatetime(dch, format, dt_type_timestamp)
 }
 
+// 字符串 转 带时区的时间戳
 func ToTimestampTimeZone(dch string, format string) (*time.Time, error) {
-	return toDT(dch, format, dt_type_timestamp_tz)
+	return toDatetime(dch, format, dt_type_timestamp_tz)
 }
 
+// 字符串 转 日期
 func ToDate(dch string, format string) (*time.Time, error) {
-	return toDT(dch, format, dt_type_date)
+	return toDatetime(dch, format, dt_type_date)
 }
 
-func toDT(dch string, format string, tp dtType) (*time.Time, error) {
+func toDatetime(dch string, format string, tp dtType) (*time.Time, error) {
 	fmKeywords, quoted, aux_flag, err := parseFmt(format)
 	if err != nil {
 		return nil, nil
@@ -1256,7 +1386,140 @@ func parseDchNotFX(dch *string, dlen *int, di *int, size int) (string, error) {
 	return empty_str, errors.New("未找到格式对应的匹配项")
 }
 
-func ToDatetimeChar(t time.Time, format string) (string, error) {
+// 数字类型 转 格式化字符串
+func ToCharByNum(numFloat float64, format string) (string, error) {
+	numStr := strconv.FormatFloat(numFloat, 'f', -1, 64)
+	return ToChar(numStr, numFloat, format)
+}
+
+// 字符串类型 转 格式化字符串
+func ToCharByStr(numStr string, format string) (string, error) {
+	numFloat, err := strconv.ParseFloat(numStr, 64)
+	if err != nil {
+		return empty_str, err
+	}
+	return ToChar(numStr, numFloat, format)
+}
+
+func ToChar(numStr string, numFloat float64, format string) (string, error) {
+	negative := numFloat < 0
+	numFloat = math.Abs(numFloat)
+	numFmtDesc, err := parseNumFormat(format)
+	if err != nil {
+		return empty_str, err
+	}
+	//log.Printf("%#v\n", numFmtDesc)
+
+	numParamDesc, err := parseNumParam(numStr)
+	if err != nil {
+		return empty_str, err
+	}
+	//log.Printf("%#v\n", numParamDesc)
+
+	result := bytes.Buffer{}
+
+	if numFmtDesc.preSepValidLen < len(numParamDesc.preDec) {
+		return empty_str, errors.New("格式的整数部分的长度不能比参数的整数部分的长度小")
+	}
+
+	switch numFmtDesc.outputMode {
+	// 十进制
+	case outputModeEmpty:
+		// 符号
+		// 前缀
+		// 数 逗号 小数点
+		// 符号
+		leftSign, rightSign := decorateSign(negative, numFmtDesc.signMode)
+		if leftSign == 0 && numFmtDesc.matchMode != matchModeFm {
+			result.WriteByte(' ')
+		} else {
+			result.WriteByte(byte(leftSign))
+		}
+		result.WriteString(string(numFmtDesc.currencySymbol))
+
+		result.WriteString(strconv.FormatFloat(numFloat, 'f', -1, 64))
+		// FIXME TODO  校验位置 长度 逗号处理 0 9处理
+		for i := len(numFmtDesc.preSep); i >= 0; i-- {
+			result.WriteByte(numParamDesc.preDec[i])
+		}
+		for i := 0; i < len(numFmtDesc.postSep); i++ {
+			result.WriteByte(numParamDesc.postDec[i])
+		}
+
+		if rightSign == 0 && numFmtDesc.matchMode != matchModeFm {
+			result.WriteByte(' ')
+		} else {
+			result.WriteByte(byte(rightSign))
+		}
+	// 十六进制
+	case outputModeX:
+		// X
+		result.WriteString(strconv.FormatFloat(numFloat, 'f', -1, 64))
+	// 科学计数
+	case outputModeEEEE:
+		// FIXME TODO
+		// 符号
+		// 前缀
+		// 数 小数点
+		// 符号
+
+	// 乘积 V 9 独占
+	case outputModeV:
+		// FIXME TODO
+		// 符号
+		// 前缀
+		// 数 逗号
+		// V
+		// 数
+		// 符号
+
+	// 罗马计数 RN 独占
+	case outputModeRN:
+		result.WriteString(toRoman(int(numFloat)).String())
+	// 最小文本 TM 独占
+	case outputModeTM:
+		result.WriteString(strconv.FormatFloat(numFloat, 'f', -1, 64))
+	// 最小文本 TME 独占
+	case outputModeTME:
+		result.WriteString(strconv.FormatFloat(numFloat, 'E', -1, 64))
+	default:
+		return empty_str, errors.New(not_support_err)
+	}
+	return result.String(), nil
+}
+
+func decorateSign(negative bool, signMode signMode) (sign, sign) {
+	leftSign := signEmpty
+	rightSign := signEmpty
+
+	switch signMode {
+	case signModePR:
+		if negative {
+			leftSign = signLt
+			rightSign = signGt
+		}
+	case signModeMI:
+		if negative {
+			leftSign = signSpace
+			rightSign = signMinus
+		}
+	case signModeSStart:
+		if negative {
+			leftSign = signMinus
+		} else {
+			leftSign = signPlus
+		}
+	case signModeSEnd:
+		if negative {
+			rightSign = signMinus
+		} else {
+			rightSign = signPlus
+		}
+	}
+	return leftSign, rightSign
+}
+
+func ToCharByDatetime(t time.Time, format string) (string, error) {
 	fmKeywords, quoted, aux_flag, err := parseFmt(format)
 	if err != nil {
 		return empty_str, nil
@@ -1307,13 +1570,13 @@ func ToDatetimeChar(t time.Time, format string) (string, error) {
 		case DCH_DD:
 			result.WriteString(strconv.Itoa(t.Day()))
 		case DCH_DL:
-			tmp, err := ToDatetimeChar(t, NLS_DL)
+			tmp, err := ToCharByDatetime(t, NLS_DL)
 			if err != nil {
 				return empty_str, nil
 			}
 			result.WriteString(tmp)
 		case DCH_DS:
-			tmp, err := ToDatetimeChar(t, NLS_DS)
+			tmp, err := ToCharByDatetime(t, NLS_DS)
 			if err != nil {
 				return empty_str, nil
 			}
@@ -2064,6 +2327,132 @@ func parsePrefixY(fi *int, flen int, format string) (FMKeyword, error) {
 	}
 	return keyword, nil
 }
+
+func NumToOrdinalWord(input int) string {
+	return integerToEnUs(input, ORDINAL)
+}
+
+func NumToCardinalWord(input int) string {
+	return integerToEnUs(input, CARDINAL)
+}
+
+func NumToWithOrdinalSuffix(input int) string {
+	if input == 0 {
+		return "0th"
+	}
+
+	words := bytes.Buffer{}
+	words.WriteString(strconv.Itoa(input))
+
+	remainder := input % 10
+	switch remainder {
+	case 1:
+		words.WriteString("st")
+	case 2:
+		words.WriteString("nd")
+	case 3:
+		words.WriteString("rd")
+	default:
+		words.WriteString("th")
+	}
+	return words.String()
+}
+
+// integerToEnUs converts an integer to American English words
+func integerToEnUs(input int, f flag) string {
+
+	//log.Printf("Input: %d\n", input)
+	words := []string{}
+
+	if input < 0 {
+		words = append(words, "signMinus")
+		input *= -1
+	}
+
+	// split integer in triplets
+	triplets := integerToTriplets(input)
+	//log.Printf("Triplets: %v\n", triplets)
+
+	// zero is a special case
+	if len(triplets) == 0 {
+		if f == ORDINAL {
+			return "zeroth"
+		} else {
+			return "zero"
+		}
+	}
+
+	// iterate over triplets
+	for idx := len(triplets) - 1; idx >= 0; idx-- {
+		triplet := triplets[idx]
+		//log.Printf("Triplet: %d (idx=%d)\n", triplet, idx)
+
+		// nothing todo for empty triplet
+		if triplet == 0 {
+			continue
+		}
+
+		// three-digits
+		hundreds := triplet / 100 % 10
+		tens := triplet / 10 % 10
+		units := triplet % 10
+		//log.Printf("Hundreds:%d, Tens:%d, Units:%d\n", hundreds, tens, units)
+		if hundreds > 0 {
+			words = append(words, englishUnits[hundreds], "hundred")
+		}
+
+		if tens == 0 && units == 0 {
+			goto tripletEnd
+		}
+
+		switch tens {
+		case 0:
+			words = append(words, englishUnits[units])
+		case 1:
+			words = append(words, englishTeens[units])
+		default:
+			if units > 0 {
+				word := fmt.Sprintf("%s-%s", englishTens[tens], englishUnits[units])
+				words = append(words, word)
+			} else {
+				words = append(words, englishTens[tens])
+			}
+			break
+		}
+
+	tripletEnd:
+		// mega
+		if mega := englishMegas[idx]; mega != "" {
+			words = append(words, mega)
+		}
+	}
+
+	if f == ORDINAL {
+		li := len(words) - 1
+		lastWord := words[li]
+		ordinalWord := ordinalNums[lastWord]
+		if ordinalWord != "" {
+			words[li] = ordinalWord
+		} else {
+			words[li] = lastWord + "th"
+		}
+	}
+
+	//log.Printf("Words length: %d\n", len(words))
+	return strings.Join(words, " ")
+}
+
+func integerToTriplets(number int) []int {
+	triplets := []int{}
+
+	for number > 0 {
+		triplets = append(triplets, number%1000)
+		number = number / 1000
+	}
+
+	return triplets
+}
+
 func toUpper(c *byte) {
 	if 'a' <= *c && *c <= 'z' {
 		*c -= 32

@@ -118,7 +118,7 @@ package oracle_demo
 //	f := "99"
 //	num := "-36.25"
 //
-//	result, err := ToNumberByStr(f, num)
+//	result, err := ToNumber(f, num)
 //	assert.NoError(t, err)
 //	assert.Equal(t, "-36", result)
 //	fmt.Println(result)
@@ -128,7 +128,7 @@ package oracle_demo
 //	f := "99999999999999999999"
 //	num := "-36.25e+3"
 //
-//	result, err := ToNumberByStr(f, num)
+//	result, err := ToNumber(f, num)
 //	assert.NoError(t, err)
 //	fmt.Println(result)
 //}
@@ -137,7 +137,7 @@ package oracle_demo
 //	f := "9"
 //	num := "-36.25e+3"
 //
-//	result, err := ToNumberByStr(f, num)
+//	result, err := ToNumber(f, num)
 //	assert.NoError(t, err)
 //	fmt.Println(result)
 //}
@@ -146,7 +146,7 @@ package oracle_demo
 //	f := "99EEEE"
 //	num := "-36.25e+3"
 //
-//	result, err := ToNumberByStr(f, num)
+//	result, err := ToNumber(f, num)
 //	assert.NoError(t, err)
 //	fmt.Println(result)
 //}
