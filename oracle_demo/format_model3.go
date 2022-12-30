@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"strconv"
 	"strings"
@@ -326,17 +327,18 @@ const (
 	matchModeEmpty matchMode = 0
 	matchModeFm    matchMode = 1
 
-	signEmpty      = sign(0)
+	signEmpty sign = sign(0)
 	signSpace sign = ' '
 	signPlus  sign = '+'
 	signMinus sign = '-'
 	signGt    sign = '>'
 	signLt    sign = '<'
 
-	signModePR     signMode = 0
-	signModeMI     signMode = 1
-	signModeSStart signMode = 2
-	signModeSEnd   signMode = 3
+	signModeEmpty  signMode = 0
+	signModePR     signMode = 1
+	signModeMI     signMode = 2
+	signModeSStart signMode = 3
+	signModeSEnd   signMode = 4
 
 	currencySymbolEmpty  currencySymbol = ""
 	currencySymbolDollar currencySymbol = "$"
@@ -387,7 +389,7 @@ type NumFmtDesc struct {
 	// 数值模型 后半部分 9 0
 	postSep string
 	// 分隔的位置 用. 或者V 分割
-	sepIndex int
+	//sepIndex int
 	// 输出模式
 	outputMode outputMode
 	// 右符号 + - > 空
@@ -477,8 +479,9 @@ func parseNumFormat(format string) (*NumFmtDesc, error) {
 
 	readDec := false
 	readV := false
-	//var preDec = bytes.Buffer{}
-	//var postDec = bytes.Buffer{}
+
+	preSep := bytes.Buffer{}
+	postSep := bytes.Buffer{}
 	for fi := 0; fi < flen; {
 		// 截取一个字符
 		c = format[fi]
@@ -488,7 +491,7 @@ func parseNumFormat(format string) (*NumFmtDesc, error) {
 			case 'F', 'f':
 				fi++
 				if format[fi] == 'M' || format[fi] == 'm' {
-					if fmtDesc.matchMode == matchModeEmpty {
+					if fmtDesc.matchMode != matchModeEmpty {
 						return fmtDesc, errors.New(format_conflict_err + "FM")
 					}
 					if fi == 1 {
@@ -504,7 +507,7 @@ func parseNumFormat(format string) (*NumFmtDesc, error) {
 				// 判断独占 长度 FIXME
 				fi++
 				if format[fi] == 'N' || format[fi] == 'n' {
-					if fmtDesc.outputMode == outputModeEmpty {
+					if fmtDesc.outputMode != outputModeEmpty {
 						return fmtDesc, errors.New(format_conflict_err + "RN")
 					} else if fmtDesc.matchMode == matchModeFm && flen == 4 {
 						return nil, errors.New(format_conflict_err + "RN")
@@ -562,9 +565,6 @@ func parseNumFormat(format string) (*NumFmtDesc, error) {
 				}
 				break
 			default:
-				preSep := bytes.Buffer{}
-				postSep := bytes.Buffer{}
-
 				signAffixSetup := false
 
 				for fi < flen {
@@ -577,6 +577,7 @@ func parseNumFormat(format string) (*NumFmtDesc, error) {
 								postSep.WriteByte('9')
 							} else {
 								preSep.WriteByte('9')
+								fmtDesc.preSepValidLen++
 							}
 							fi++
 						case '.':
@@ -591,6 +592,7 @@ func parseNumFormat(format string) (*NumFmtDesc, error) {
 								postSep.WriteByte('0')
 							} else {
 								preSep.WriteByte('0')
+								fmtDesc.preSepValidLen++
 							}
 							fi++
 						case ',':
@@ -683,19 +685,14 @@ func parseNumFormat(format string) (*NumFmtDesc, error) {
 						case 'E', 'e':
 							if fmtDesc.outputMode == outputModeEmpty {
 								start := fi + 1
-								fi += 3
+								fi = start + 3
 								if "EEE" == strings.ToUpper(format[start:fi]) {
 									fmtDesc.outputMode = outputModeEEEE
 								} else {
 									return nil, errors.New(num_fmt_part_err + string(c))
 								}
 							} else {
-								return nil, errors.New("conflict with E")
-							}
-							if fi != li {
-								return nil, errors.New(format_err + "E")
-							} else {
-								break
+								return nil, errors.New(format_conflict_err + "E")
 							}
 						case 'V', 'v':
 							if readDec {
@@ -720,9 +717,10 @@ func parseNumFormat(format string) (*NumFmtDesc, error) {
 		} else {
 			return nil, errors.New(out_ascii_range_err)
 		}
-
 	}
 
+	fmtDesc.preSep = preSep.String()
+	fmtDesc.postSep = postSep.String()
 	return fmtDesc, nil
 
 }
@@ -1408,13 +1406,13 @@ func ToChar(numStr string, numFloat float64, format string) (string, error) {
 	if err != nil {
 		return empty_str, err
 	}
-	//log.Printf("%#v\n", numFmtDesc)
+	log.Printf("%#v\n", numFmtDesc)
 
 	numParamDesc, err := parseNumParam(numStr)
 	if err != nil {
 		return empty_str, err
 	}
-	//log.Printf("%#v\n", numParamDesc)
+	log.Printf("%#v\n", numParamDesc)
 
 	result := bytes.Buffer{}
 
@@ -1422,57 +1420,67 @@ func ToChar(numStr string, numFloat float64, format string) (string, error) {
 		return empty_str, errors.New("格式的整数部分的长度不能比参数的整数部分的长度小")
 	}
 
+	// 左符号
+	leftSign, rightSign := decorateSign(negative, numFmtDesc.signMode)
+	if leftSign != signEmpty {
+		if numFmtDesc.matchMode != matchModeFm {
+			result.WriteByte(byte(leftSign))
+		}
+	}
+	// 货币符号
+	result.WriteString(string(numFmtDesc.currencySymbol))
+
 	switch numFmtDesc.outputMode {
 	// 十进制
 	case outputModeEmpty:
-		// 符号
-		// 前缀
-		// 数 逗号 小数点
-		// 符号
-		leftSign, rightSign := decorateSign(negative, numFmtDesc.signMode)
-		if leftSign == 0 && numFmtDesc.matchMode != matchModeFm {
-			result.WriteByte(' ')
-		} else {
-			result.WriteByte(byte(leftSign))
+		// 左符号
+		// 货币符号
+		// 分隔符前半部分: 0 9 逗号
+		// 分隔符: 小数点
+		// 分隔符后半部分: 0 9
+		// 右符号
+		outputDecimal(numParamDesc, numFmtDesc, negative, &result)
+		// 右符号
+		if rightSign != signEmpty {
+			if numFmtDesc.matchMode != matchModeFm {
+				result.WriteByte(byte(rightSign))
+			}
 		}
-		result.WriteString(string(numFmtDesc.currencySymbol))
-
-		result.WriteString(strconv.FormatFloat(numFloat, 'f', -1, 64))
-		// FIXME TODO  校验位置 长度 逗号处理 0 9处理
-		for i := len(numFmtDesc.preSep); i >= 0; i-- {
-			result.WriteByte(numParamDesc.preDec[i])
-		}
-		for i := 0; i < len(numFmtDesc.postSep); i++ {
-			result.WriteByte(numParamDesc.postDec[i])
-		}
-
-		if rightSign == 0 && numFmtDesc.matchMode != matchModeFm {
-			result.WriteByte(' ')
-		} else {
-			result.WriteByte(byte(rightSign))
-		}
-	// 十六进制
-	case outputModeX:
-		// X
-		result.WriteString(strconv.FormatFloat(numFloat, 'f', -1, 64))
 	// 科学计数
 	case outputModeEEEE:
-		// FIXME TODO
-		// 符号
-		// 前缀
-		// 数 小数点
-		// 符号
-
+		// 左符号
+		// 货币符号
+		// 分隔符前半部分: 0 9
+		// 分隔符: 小数点
+		// 分隔符后半部分: 0 9
+		// 右符号
+		// TODO NB: Oracle中,会对最后一位进行四舍五入
+		result.WriteString(strconv.FormatFloat(numFloat, 'E', len(numFmtDesc.postSep), 64))
+		// 右符号
+		if rightSign != signEmpty {
+			if numFmtDesc.matchMode != matchModeFm {
+				result.WriteByte(byte(rightSign))
+			}
+		}
 	// 乘积 V 9 独占
 	case outputModeV:
-		// FIXME TODO
-		// 符号
-		// 前缀
-		// 数 逗号
-		// V
-		// 数
-		// 符号
-
+		// 左符号
+		// 货币符号
+		// 分隔符前半部分: 0 9 逗号
+		// 分隔符: V
+		// 分隔符后半部分: 0 9
+		// 右符号
+		// TODO NB: Oracle中,会对最后一位进行四舍五入
+		result.WriteString(strconv.FormatInt(int64(numFloat*math.Pow10(len(numFmtDesc.postSep))), 10))
+		// 右符号
+		if rightSign != signEmpty {
+			if numFmtDesc.matchMode != matchModeFm {
+				result.WriteByte(byte(rightSign))
+			}
+		}
+	// 十六进制 X 独占
+	case outputModeX:
+		result.WriteString(strconv.FormatFloat(numFloat, 'f', -1, 64))
 	// 罗马计数 RN 独占
 	case outputModeRN:
 		result.WriteString(toRoman(int(numFloat)).String())
@@ -1516,7 +1524,52 @@ func decorateSign(negative bool, signMode signMode) (sign, sign) {
 			rightSign = signPlus
 		}
 	}
+	if leftSign == signEmpty && negative {
+		leftSign = signMinus
+	}
 	return leftSign, rightSign
+}
+
+func outputDecimal(numParamDesc *NumParamDesc, numFmtDesc *NumFmtDesc, negative bool, result *bytes.Buffer) {
+	// 分隔符前半部分: 0 9 逗号
+	pPreLen := len(numParamDesc.preDec)
+	fPreLen := len(numFmtDesc.preSep)
+
+	commaCnt := fPreLen - numFmtDesc.preSepValidLen
+	pRightLen := commaCnt + pPreLen
+	pLeftLen := fPreLen - pRightLen
+
+	firstZeroFound := false
+	for i := 0; i < pLeftLen; i++ {
+		if !firstZeroFound && numFmtDesc.preSep[i] == '0' {
+			firstZeroFound = true
+		}
+		if firstZeroFound {
+			result.WriteByte('0')
+		}
+	}
+
+	j := 0
+	for i := pLeftLen; i < fPreLen; i++ {
+		if numFmtDesc.preSep[i] == ',' {
+			if j != 0 {
+				result.WriteByte(',')
+			}
+		} else {
+			result.WriteByte(numParamDesc.preDec[j])
+			j++
+		}
+	}
+
+	// 分隔符: 小数点
+	if numFmtDesc.postSep != empty_str {
+		result.WriteByte('.')
+		// TODO NB: Oracle中,会对最后一位进行四舍五入
+		// 分隔符后半部分: 0 9
+		for i := 0; i < len(numFmtDesc.postSep) && i < len(numParamDesc.postDec); i++ {
+			result.WriteByte(numParamDesc.postDec[i])
+		}
+	}
 }
 
 func ToCharByDatetime(t time.Time, format string) (string, error) {
