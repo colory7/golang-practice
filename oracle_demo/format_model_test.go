@@ -30,10 +30,36 @@ func TestToDate2(txx *testing.T) {
 	fmt.Println(*tm)
 }
 
+func TestToDate3(txx *testing.T) {
+	dch := "2018-05-06 01:02:05"
+	format := "YYYY-MM-DD HH:MI:SS"
+	tm, err := ToDate(dch, format)
+	if err != nil {
+		panic(err)
+	}
+
+	if tm != nil {
+		fmt.Println(*tm)
+	}
+	//log.Println(tm)
+}
+
 func TestToChar(t *testing.T) {
 	tm := time.Date(2017, 02, 27, 20, 20, 20, 20, time.Local)
 	fmt.Println(tm)
 	format := "YYYY-MM-DD"
+
+	str, err := ToCharByDatetime(tm, format)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(str)
+}
+
+func TestToChar2(t *testing.T) {
+	tm := time.Date(2017, 02, 27, 9, 10, 30, 50, time.Local)
+	fmt.Println(tm)
+	format := "YYYY-MM-DD HH:MI:SS"
 
 	str, err := ToCharByDatetime(tm, format)
 	if err != nil {

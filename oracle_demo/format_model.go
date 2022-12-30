@@ -11,6 +11,14 @@ import (
 	"time"
 )
 
+// Oracle 变量
+const (
+	// for number format 'L'
+	NLS_CURRENCY = "￥"
+	// for number format 'U'
+	NLS_DUAL_CURRENCY = "￥"
+)
+
 // 格式部分不匹配，报错
 const dch_fmt_mismatch_err = "Date Format error, some formats do not match near "
 const dch_fmt_length_err = "Date Format error, incorrect format length near "
@@ -63,31 +71,6 @@ const (
 )
 
 const (
-	// Format Model关键词
-	// Number Format Model Keyword
-	NUM_COMMA = iota
-	NUM_DEC
-	NUM_DOLLAR
-	NUM_0
-	NUM_9
-	NUM_B
-	NUM_C
-	NUM_D
-	NUM_E
-	NUM_FM
-	NUM_G
-	NUM_L
-	NUM_MI
-	NUM_PR
-	NUM_RN
-	NUM_S
-	NUM_TM
-	NUM_TM9
-	NUM_TME
-	NUM_U
-	NUM_V
-	NUM_X
-
 	// Datetime Format Model Keyword
 	DCH_EMPTY = iota
 	DCH_MINUS
@@ -355,24 +338,6 @@ const (
 	outputModeX     outputMode = 4
 	outputModeTM    outputMode = 5
 	outputModeTME   outputMode = 6
-)
-
-const (
-	// 辅助前缀 没有冲突
-	// NUM_FMT_AUX_PREFIX_EMPTY = 0
-	// NUM_FMT_AUX_PREFIX_FM    = 1
-	//
-	// // 前缀 前缀互斥
-	//
-	// // 辅助后缀  MI PR冲突
-	NUM_FMT_AUX_SUFFIX_EMPTY = 0
-	NUM_FMT_AUX_SUFFIX_MI    = 1
-	NUM_FMT_AUX_SUFFIX_PR    = 2
-
-	// S 与辅助后缀冲突
-	NUM_FMT_S_EMPTY = 0
-	NUM_FMT_S_START = 1
-	NUM_FMT_S_END   = 2
 )
 
 type NumFmtDesc struct {
@@ -894,12 +859,6 @@ func toDatetime(dch string, format string, tp dtType) (*time.Time, error) {
 	hour, min, sec, nsec := 0, 0, 0, 0
 	tzr := time.Local
 
-	//dItems := ParseDchByTime(dch, flag)
-
-	//if len(fmKeywords) != len(dItems) {
-	//	return nil, errors.New("格式长度与参数长度不匹配")
-	//}
-
 	now := time.Now()
 
 	var parseDch func(*string, *int, *int, int) (string, error)
@@ -994,7 +953,7 @@ func toDatetime(dch string, format string, tp dtType) (*time.Time, error) {
 				if err != nil {
 					return nil, err
 				}
-				day, err = strconv.Atoi(field)
+				hour, err = strconv.Atoi(field)
 				if err != nil {
 					return nil, err
 				}

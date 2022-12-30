@@ -3,8 +3,7 @@ package oracle_demo
 const (
 	NLS_LANGUAGE  = "SIMPLIFIED CHINESE"
 	NLS_TERRITORY = "CHINA"
-	// for number format 'L'
-	NLS_CURRENCY = "￥"
+
 	// for number format 'C'
 	NLS_ISO_CURRENCY = "CHINA"
 	// for number format 'D' 'G'
@@ -18,10 +17,8 @@ const (
 	NLS_TIMESTAMP_FORMAT    = "DD-MON-RR HH.MI.SSXFF AM"
 	NLS_TIME_TZ_FORMAT      = "HH.MI.SSXFF AM TZR"
 	NLS_TIMESTAMP_TZ_FORMAT = "DD-MON-RR HH.MI.SSXFF AM TZR"
-	// for number format 'U'
-	NLS_DUAL_CURRENCY      = "￥"
-	NLS_NCHAR_CHARACTERSET = "AL16UTF16"
-	NLS_COMP               = "BINARY"
-	NLS_LENGTH_SEMANTICS   = "BYTE"
-	NLS_NCHAR_CONV_EXCP    = "FALSE"
+	NLS_NCHAR_CHARACTERSET  = "AL16UTF16"
+	NLS_COMP                = "BINARY"
+	NLS_LENGTH_SEMANTICS    = "BYTE"
+	NLS_NCHAR_CONV_EXCP     = "FALSE"
 )
