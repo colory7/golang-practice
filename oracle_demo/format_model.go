@@ -11,46 +11,86 @@ import (
 	"time"
 )
 
-// Oracle 变量
 const (
+	//// Oracle 变量
+
 	// for number format 'L'
 	NLS_CURRENCY = "￥"
 	// for number format 'U'
 	NLS_DUAL_CURRENCY = "￥"
-)
 
-// 格式部分不匹配，报错
-const dch_fmt_mismatch_err = "Date Format error, some formats do not match near "
-const dch_fmt_length_err = "Date Format error, incorrect format length near "
-const num_fmt_part_err = "Datetime Format error, some formats do not match near "
-const not_support_err = "not support"
-const format_conflict_err = "format conflict with "
-const format_err = "format err "
-const unreachable_err = "unreachable code"
-const format_length_smaller_err = "Format length is smaller than parameter length"
+	//// 异常
+	// 格式部分不匹配，报错
+	dch_fmt_mismatch_err      = "Date Format error, some formats do not match near "
+	dch_fmt_length_err        = "Date Format error, incorrect format length near "
+	num_fmt_part_err          = "Datetime Format error, some formats do not match near "
+	not_support_err           = "not support"
+	format_conflict_err       = "format conflict with "
+	format_err                = "format err "
+	unreachable_err           = "unreachable code"
+	format_length_smaller_err = "Format length is smaller than parameter length"
+	// 非法字符,超出格式关键词范围
+	out_keyword_range_err = "Illegal character, not in the range of Format Model keyword"
+	// 非法字符,超出ASCII[32-126]字符范围
+	out_ascii_range_err = "Illegal character, not in ASCII [32-126] character range"
+	invalid_num_err     = "invalid number"
 
-// 非法字符,超出格式关键词范围
-const out_keyword_range_err = "Illegal character, not in the range of Format Model keyword"
-
-// 非法字符,超出ASCII[32-126]字符范围
-const out_ascii_range_err = "Illegal character, not in ASCII [32-126] character range"
-
-const invalid_num_err = "invalid number"
-
-type FMKeyword int
-
-type DateFmtDesc struct {
-}
-
-const (
 	mode_flag_fm = 1
 	mode_flag_fx = 1 << 1
 	mode_flag_th = 1 << 2
 	mode_flag_sp = 1 << 3
 )
 
+type matchMode int
+type sign byte
+type currencySymbol string
+type outputMode int
+type signMode int
+
+// 数值类型相关常量
+const (
+	matchModeEmpty matchMode = 0
+	matchModeFm    matchMode = 1
+
+	signEmpty sign = sign(0)
+	signSpace sign = ' '
+	signPlus  sign = '+'
+	signMinus sign = '-'
+	signGt    sign = '>'
+	signLt    sign = '<'
+
+	signModeEmpty  signMode = 0
+	signModePR     signMode = 1
+	signModeMI     signMode = 2
+	signModeSStart signMode = 3
+	signModeSEnd   signMode = 4
+
+	currencySymbolEmpty  currencySymbol = ""
+	currencySymbolDollar currencySymbol = "$"
+	currencySymbolB      currencySymbol = " "
+	currencySymbolC      currencySymbol = "cny"
+	currencySymbolL      currencySymbol = NLS_CURRENCY
+	currencySymbolU      currencySymbol = NLS_DUAL_CURRENCY
+
+	// 后缀 后缀互斥 后缀决定了输出模式
+	outputModeEmpty outputMode = 0
+	outputModeEEEE  outputMode = 1
+	outputModeV     outputMode = 2
+	outputModeRN    outputMode = 3
+	outputModeX     outputMode = 4
+	outputModeTM    outputMode = 5
+	outputModeTME   outputMode = 6
+)
+
+type dchKeyword int
 type dtType int
 
+var dchKeywords map[int]int
+var NLS_WEEKS = map[time.Weekday]string{}
+var NLS_MONTHS = map[time.Month]string{}
+var NLS_MONTHS_REVERSE = map[string]time.Month{}
+
+// 日期模型相关常量
 const (
 	dt_type_date         dtType = 1
 	dt_type_timestamp    dtType = 2
@@ -72,87 +112,81 @@ const (
 
 const (
 	// Datetime Format Model Keyword
-	DCH_EMPTY = iota
-	DCH_MINUS
-	DCH_SLASH
-	DCH_COMMA
-	DCH_DEC
-	DCH_SEMICOLON
-	DCH_COLON
-	DCH_SPACE
-	DCH_DOUBLE_QUOTE
-	DCH_AD
-	DCH_A_D_
-	DCH_AM
-	DCH_A_M_
-	DCH_BC
-	DCH_B_C_
-	DCH_CC
-	DCH_SCC
-	DCH_DAY
-	DCH_DDD
-	DCH_DD
-	DCH_DL
-	DCH_DS
-	DCH_DY
-	DCH_D
-	DCH_E
-	DCH_EE
-	DCH_FF1
-	DCH_FF2
-	DCH_FF3
-	DCH_FF4
-	DCH_FF5
-	DCH_FF6
-	DCH_FF7
-	DCH_FF8
-	DCH_FF9
-	DCH_FF
-	DCH_HH24
-	DCH_HH12
-	DCH_HH
-	DCH_IW
-	DCH_IYYY
-	DCH_IYY
-	DCH_IY
-	DCH_I
-	DCH_J
-	DCH_MI
-	DCH_MM
-	DCH_MONTH
-	DCH_MON
-	DCH_P_M_
-	DCH_PM
-	DCH_Q
-	DCH_RM
-	DCH_RR
-	DCH_RRRR
-	DCH_SP
-	DCH_SSSSS
-	DCH_SS
-	DCH_TZH
-	DCH_TZM
-	DCH_TZD
-	DCH_TZR
-	DCH_TS
-	DCH_WW
-	DCH_W
-	DCH_X
-	DCH_Y_YYY
-	DCH_YEAR
-	DCH_SYEAR
-	DCH_YYYY
-	DCH_SYYYY
-	DCH_YYY
-	DCH_YY
-	DCH_Y
+	DCH_EMPTY        dchKeyword = 0
+	DCH_MINUS        dchKeyword = 1
+	DCH_SLASH        dchKeyword = 2
+	DCH_COMMA        dchKeyword = 3
+	DCH_DEC          dchKeyword = 4
+	DCH_SEMICOLON    dchKeyword = 5
+	DCH_COLON        dchKeyword = 6
+	DCH_SPACE        dchKeyword = 7
+	DCH_DOUBLE_QUOTE dchKeyword = 8
+	DCH_AD           dchKeyword = 9
+	DCH_A_D_         dchKeyword = 10
+	DCH_AM           dchKeyword = 11
+	DCH_A_M_         dchKeyword = 12
+	DCH_BC           dchKeyword = 13
+	DCH_B_C_         dchKeyword = 14
+	DCH_CC           dchKeyword = 15
+	DCH_SCC          dchKeyword = 16
+	DCH_DAY          dchKeyword = 17
+	DCH_DDD          dchKeyword = 18
+	DCH_DD           dchKeyword = 19
+	DCH_DL           dchKeyword = 20
+	DCH_DS           dchKeyword = 21
+	DCH_DY           dchKeyword = 22
+	DCH_D            dchKeyword = 23
+	DCH_E            dchKeyword = 24
+	DCH_EE           dchKeyword = 25
+	DCH_FF1          dchKeyword = 26
+	DCH_FF2          dchKeyword = 27
+	DCH_FF3          dchKeyword = 28
+	DCH_FF4          dchKeyword = 29
+	DCH_FF5          dchKeyword = 30
+	DCH_FF6          dchKeyword = 31
+	DCH_FF7          dchKeyword = 32
+	DCH_FF8          dchKeyword = 33
+	DCH_FF9          dchKeyword = 34
+	DCH_FF           dchKeyword = 35
+	DCH_HH24         dchKeyword = 36
+	DCH_HH12         dchKeyword = 37
+	DCH_HH           dchKeyword = 38
+	DCH_IW           dchKeyword = 39
+	DCH_IYYY         dchKeyword = 40
+	DCH_IYY          dchKeyword = 41
+	DCH_IY           dchKeyword = 42
+	DCH_I            dchKeyword = 43
+	DCH_J            dchKeyword = 44
+	DCH_MI           dchKeyword = 45
+	DCH_MM           dchKeyword = 46
+	DCH_MONTH        dchKeyword = 47
+	DCH_MON          dchKeyword = 48
+	DCH_P_M_         dchKeyword = 49
+	DCH_PM           dchKeyword = 50
+	DCH_Q            dchKeyword = 51
+	DCH_RM           dchKeyword = 52
+	DCH_RR           dchKeyword = 53
+	DCH_RRRR         dchKeyword = 54
+	DCH_SP           dchKeyword = 55
+	DCH_SSSSS        dchKeyword = 56
+	DCH_SS           dchKeyword = 57
+	DCH_TZH          dchKeyword = 58
+	DCH_TZM          dchKeyword = 59
+	DCH_TZD          dchKeyword = 60
+	DCH_TZR          dchKeyword = 61
+	DCH_TS           dchKeyword = 62
+	DCH_WW           dchKeyword = 63
+	DCH_W            dchKeyword = 64
+	DCH_X            dchKeyword = 65
+	DCH_Y_YYY        dchKeyword = 66
+	DCH_YEAR         dchKeyword = 67
+	DCH_SYEAR        dchKeyword = 68
+	DCH_YYYY         dchKeyword = 69
+	DCH_SYYYY        dchKeyword = 70
+	DCH_YYY          dchKeyword = 71
+	DCH_YY           dchKeyword = 72
+	DCH_Y            dchKeyword = 73
 )
-
-var dchKeywords map[int]int
-
-var NLS_WEEKS = map[time.Weekday]string{}
-var NLS_MONTHS = map[time.Month]string{}
-var NLS_MONTHS_REVERSE = map[string]time.Month{}
 
 const (
 	SPACE       = " "
@@ -168,9 +202,7 @@ const (
 	NLS_DL      = "YYYY\"年\"MM\"月\"DD\"日\" DAY"
 	NLS_DS      = "YYYY-MM-DD"
 	NLS_X       = "."
-)
 
-const (
 	empty_str   = ""
 	empty_int   = 0
 	empty_float = 0.0
@@ -179,86 +211,7 @@ const (
 	dateLayout = "2006-01-02 15:04:05"
 )
 
-type flag int
-
-const (
-	CARDINAL flag = 0
-	ORDINAL  flag = 1
-)
-
-var ordinalNums = map[string]string{
-	"one":           "first",
-	"two":           "second",
-	"three":         "third",
-	"five":          "fifth",
-	"eight":         "eighth",
-	"nine":          "ninth",
-	"twelve":        "twelfth",
-	"twenty":        "twentieth",
-	"twenty-one":    "twenty-first",
-	"twenty-two":    "twenty-second",
-	"twenty-three":  "twenty-third",
-	"twenty-five":   "twenty-fifth",
-	"twenty-eight":  "twenty-eighth",
-	"twenty-nine":   "twenty-ninth",
-	"thirty":        "thirtieth",
-	"thirty-one":    "thirty-first",
-	"thirty-two":    "thirty-second",
-	"thirty-three":  "thirty-third",
-	"thirty-five":   "thirty-fifth",
-	"thirty-eight":  "thirty-eighth",
-	"thirty-nine":   "thirty-ninth",
-	"forty":         "fortieth",
-	"forty-one":     "forty-first",
-	"forty-two":     "forty-second",
-	"forty-three":   "forty-third",
-	"forty-five":    "forty-fifth",
-	"forty-eight":   "forty-eighth",
-	"forty-nine":    "forty-ninth",
-	"fifty":         "fiftieth",
-	"fifty-one":     "fifty-first",
-	"fifty-two":     "fifty-second",
-	"fifty-three":   "fifty-third",
-	"fifty-five":    "fifty-fifth",
-	"fifty-eight":   "fifty-eighth",
-	"fifty-nine":    "fifty-ninth",
-	"sixty":         "sixtieth",
-	"sixty-one":     "sixty-first",
-	"sixty-two":     "sixty-second",
-	"sixty-three":   "sixty-third",
-	"sixty-five":    "sixty-fifth",
-	"sixty-eight":   "sixty-eighth",
-	"sixty-nine":    "sixty-ninth",
-	"seventy":       "seventieth",
-	"seventy-one":   "seventy-first",
-	"seventy-two":   "seventy-second",
-	"seventy-three": "seventy-third",
-	"seventy-five":  "seventy-fifth",
-	"seventy-eight": "seventy-eighth",
-	"seventy-nine":  "seventy-ninth",
-	"eighty":        "eightieth",
-	"eighty-one":    "eighty-first",
-	"eighty-two":    "eighty-second",
-	"eighty-three":  "eighty-third",
-	"eighty-five":   "eighty-fifth",
-	"eighty-eight":  "eighty-eighth",
-	"eighty-nine":   "eighty-ninth",
-	"ninety":        "ninetieth",
-	"ninety-one":    "ninety-first",
-	"ninety-two":    "ninety-second",
-	"ninety-three":  "ninety-third",
-	"ninety-five":   "ninety-fifth",
-	"ninety-eight":  "ninety-eighth",
-	"ninety-nine":   "ninety-ninth",
-}
-
-var englishMegas = []string{"", "thousand", "million", "billion", "trillion", "quadrillion", "quintillion", "sextillion", "septillion", "octillion", "nonillion", "decillion", "undecillion", "duodecillion", "tredecillion", "quattuordecillion"}
-var englishUnits = []string{"", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"}
-var englishTens = []string{"", "ten", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"}
-var englishTeens = []string{"ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"}
-
 func init() {
-
 	NLS_WEEKS = map[time.Weekday]string{
 		time.Sunday:    "星期日",
 		time.Monday:    "星期一",
@@ -297,48 +250,7 @@ func init() {
 		"11月": time.November,
 		"12月": time.December,
 	}
-
 }
-
-type matchMode int
-type sign byte
-type currencySymbol string
-type outputMode int
-type signMode int
-
-const (
-	matchModeEmpty matchMode = 0
-	matchModeFm    matchMode = 1
-
-	signEmpty sign = sign(0)
-	signSpace sign = ' '
-	signPlus  sign = '+'
-	signMinus sign = '-'
-	signGt    sign = '>'
-	signLt    sign = '<'
-
-	signModeEmpty  signMode = 0
-	signModePR     signMode = 1
-	signModeMI     signMode = 2
-	signModeSStart signMode = 3
-	signModeSEnd   signMode = 4
-
-	currencySymbolEmpty  currencySymbol = ""
-	currencySymbolDollar currencySymbol = "$"
-	currencySymbolB      currencySymbol = " "
-	currencySymbolC      currencySymbol = "cny"
-	currencySymbolL      currencySymbol = NLS_CURRENCY
-	currencySymbolU      currencySymbol = NLS_DUAL_CURRENCY
-
-	// 后缀 后缀互斥 后缀决定了输出模式
-	outputModeEmpty outputMode = 0
-	outputModeEEEE  outputMode = 1
-	outputModeV     outputMode = 2
-	outputModeRN    outputMode = 3
-	outputModeX     outputMode = 4
-	outputModeTM    outputMode = 5
-	outputModeTME   outputMode = 6
-)
 
 type NumFmtDesc struct {
 	// 匹配模式
@@ -850,7 +762,7 @@ func ToDate(dch string, format string) (*time.Time, error) {
 }
 
 func toDatetime(dch string, format string, tp dtType) (*time.Time, error) {
-	fmKeywords, quoted, aux_flag, err := parseFmt(format)
+	dchKeywords, quoted, aux_flag, err := parseFmt(format)
 	if err != nil {
 		return nil, nil
 	}
@@ -873,8 +785,8 @@ func toDatetime(dch string, format string, tp dtType) (*time.Time, error) {
 	dlen := len(dch)
 	dt_flag := 0
 
-	for ki := 0; ki < len(fmKeywords); ki++ {
-		switch fmKeywords[ki] {
+	for ki := 0; ki < len(dchKeywords); ki++ {
+		switch dchKeywords[ki] {
 		case DCH_DOUBLE_QUOTE:
 			field, err := parseDch(&dch, &dlen, &di, len(quoted[qi]))
 			if err != nil {
@@ -1730,15 +1642,15 @@ func ToCharByDatetime(t time.Time, format string) (string, error) {
 }
 
 // 解析日期格式
-func parseFmt(format string) ([]int, []string, int, error) {
-	fmKeywords := []int{}
+func parseFmt(format string) ([]dchKeyword, []string, int, error) {
+	dchKeywords := []dchKeyword{}
 
 	flen := len(format)
 
 	quoted := []string{}
 	aux_flag := 0
 
-	var keyword FMKeyword
+	var keyword dchKeyword
 	var err error
 	for fi := 0; fi < flen; {
 		// 截取一个字符
@@ -1837,17 +1749,17 @@ func parseFmt(format string) ([]int, []string, int, error) {
 			if err != nil {
 				return nil, nil, empty_int, err
 			}
-			fmKeywords = append(fmKeywords, int(keyword))
+			dchKeywords = append(dchKeywords, keyword)
 		} else {
 			return nil, nil, empty_int, errors.New(out_ascii_range_err + string(c))
 		}
 	}
 
-	return fmKeywords, quoted, aux_flag, nil
+	return dchKeywords, quoted, aux_flag, nil
 }
 
-func parsePrefixA(fi *int, flen int, format string) (FMKeyword, error) {
-	var keyword FMKeyword
+func parsePrefixA(fi *int, flen int, format string) (dchKeyword, error) {
+	var keyword dchKeyword
 	*fi++
 	if *fi < flen {
 		switch format[*fi] {
@@ -1885,8 +1797,8 @@ func parsePrefixA(fi *int, flen int, format string) (FMKeyword, error) {
 	return keyword, nil
 }
 
-func parsePrefixB(fi *int, flen int, format string) (FMKeyword, error) {
-	var keyword FMKeyword
+func parsePrefixB(fi *int, flen int, format string) (dchKeyword, error) {
+	var keyword dchKeyword
 	*fi++
 	if *fi < flen {
 		switch format[*fi] {
@@ -1914,8 +1826,8 @@ func parsePrefixB(fi *int, flen int, format string) (FMKeyword, error) {
 	return keyword, nil
 }
 
-func parsePrefixC(fi *int, flen int, format string) (FMKeyword, error) {
-	var keyword FMKeyword
+func parsePrefixC(fi *int, flen int, format string) (dchKeyword, error) {
+	var keyword dchKeyword
 	*fi++
 	if *fi < flen {
 		switch format[*fi] {
@@ -1933,8 +1845,8 @@ func parsePrefixC(fi *int, flen int, format string) (FMKeyword, error) {
 	return keyword, nil
 }
 
-func parsePrefixD(fi *int, flen int, format string) (FMKeyword, error) {
-	var keyword FMKeyword
+func parsePrefixD(fi *int, flen int, format string) (dchKeyword, error) {
+	var keyword dchKeyword
 	*fi++
 	if *fi < flen {
 		if format[*fi] == 'A' {
@@ -1977,8 +1889,8 @@ func parsePrefixD(fi *int, flen int, format string) (FMKeyword, error) {
 	return keyword, nil
 }
 
-func parsePrefixF(fi *int, flen int, format string, flag *int) (FMKeyword, error) {
-	var keyword FMKeyword
+func parsePrefixF(fi *int, flen int, format string, flag *int) (dchKeyword, error) {
+	var keyword dchKeyword
 	*fi++
 	if *fi < flen {
 		switch format[*fi] {
@@ -2034,8 +1946,8 @@ func parsePrefixF(fi *int, flen int, format string, flag *int) (FMKeyword, error
 	return keyword, nil
 }
 
-func parsePrefixH(fi *int, flen int, format string) (FMKeyword, error) {
-	var keyword FMKeyword
+func parsePrefixH(fi *int, flen int, format string) (dchKeyword, error) {
+	var keyword dchKeyword
 	*fi++
 	if *fi < flen {
 		switch format[*fi] {
@@ -2074,8 +1986,8 @@ func parsePrefixH(fi *int, flen int, format string) (FMKeyword, error) {
 	return keyword, nil
 }
 
-func parsePrefixI(fi *int, flen int, format string) (FMKeyword, error) {
-	var keyword FMKeyword
+func parsePrefixI(fi *int, flen int, format string) (dchKeyword, error) {
+	var keyword dchKeyword
 	*fi++
 	if *fi < flen {
 		switch format[*fi] {
@@ -2107,8 +2019,8 @@ func parsePrefixI(fi *int, flen int, format string) (FMKeyword, error) {
 	return keyword, nil
 }
 
-func parsePrefixM(fi *int, flen int, format string) (FMKeyword, error) {
-	var keyword FMKeyword
+func parsePrefixM(fi *int, flen int, format string) (dchKeyword, error) {
+	var keyword dchKeyword
 	*fi++
 	if *fi < flen && format[*fi] == 'I' {
 		// DCH MI
@@ -2141,8 +2053,8 @@ func parsePrefixM(fi *int, flen int, format string) (FMKeyword, error) {
 	return keyword, nil
 }
 
-func parsePrefixP(fi *int, flen int, format string) (FMKeyword, error) {
-	var keyword FMKeyword
+func parsePrefixP(fi *int, flen int, format string) (dchKeyword, error) {
+	var keyword dchKeyword
 	*fi++
 	if *fi < flen {
 		if 'M' == format[*fi] {
@@ -2170,8 +2082,8 @@ func parsePrefixP(fi *int, flen int, format string) (FMKeyword, error) {
 	return keyword, nil
 }
 
-func parsePrefixR(fi *int, flen int, format string) (FMKeyword, error) {
-	var keyword FMKeyword
+func parsePrefixR(fi *int, flen int, format string) (dchKeyword, error) {
+	var keyword dchKeyword
 	*fi++
 	if *fi < flen {
 		if 'M' == format[*fi] {
@@ -2198,8 +2110,8 @@ func parsePrefixR(fi *int, flen int, format string) (FMKeyword, error) {
 	return keyword, nil
 }
 
-func parsePrefixS(fi *int, flen int, format string, flag *int) (FMKeyword, error) {
-	var keyword FMKeyword
+func parsePrefixS(fi *int, flen int, format string, flag *int) (dchKeyword, error) {
+	var keyword dchKeyword
 	*fi++
 	if *fi < flen {
 		switch format[*fi] {
@@ -2249,8 +2161,8 @@ func parsePrefixS(fi *int, flen int, format string, flag *int) (FMKeyword, error
 	return keyword, nil
 }
 
-func parsePrefixT(fi *int, flen int, format string, flag *int) (FMKeyword, error) {
-	var keyword FMKeyword
+func parsePrefixT(fi *int, flen int, format string, flag *int) (dchKeyword, error) {
+	var keyword dchKeyword
 	// TODO 更换类型后更改时区
 	*fi++
 	if *fi < flen {
@@ -2287,8 +2199,8 @@ func parsePrefixT(fi *int, flen int, format string, flag *int) (FMKeyword, error
 	*fi++
 	return keyword, nil
 }
-func parsePrefixY(fi *int, flen int, format string) (FMKeyword, error) {
-	var keyword FMKeyword
+func parsePrefixY(fi *int, flen int, format string) (dchKeyword, error) {
+	var keyword dchKeyword
 	*fi++
 	if *fi < flen {
 		if format[*fi] == ',' {
@@ -2338,179 +2250,4 @@ func parsePrefixY(fi *int, flen int, format string) (FMKeyword, error) {
 		keyword = DCH_Y
 	}
 	return keyword, nil
-}
-
-func NumToOrdinalWord(input int) string {
-	return integerToEnUs(input, ORDINAL)
-}
-
-func NumToCardinalWord(input int) string {
-	return integerToEnUs(input, CARDINAL)
-}
-
-func NumToWithOrdinalSuffix(input int) string {
-	if input == 0 {
-		return "0th"
-	}
-
-	words := bytes.Buffer{}
-	words.WriteString(strconv.Itoa(input))
-
-	remainder := input % 10
-	switch remainder {
-	case 1:
-		words.WriteString("st")
-	case 2:
-		words.WriteString("nd")
-	case 3:
-		words.WriteString("rd")
-	default:
-		words.WriteString("th")
-	}
-	return words.String()
-}
-
-// integerToEnUs converts an integer to American English words
-func integerToEnUs(input int, f flag) string {
-
-	//log.Printf("Input: %d\n", input)
-	words := []string{}
-
-	if input < 0 {
-		words = append(words, "signMinus")
-		input *= -1
-	}
-
-	// split integer in triplets
-	triplets := integerToTriplets(input)
-	//log.Printf("Triplets: %v\n", triplets)
-
-	// zero is a special case
-	if len(triplets) == 0 {
-		if f == ORDINAL {
-			return "zeroth"
-		} else {
-			return "zero"
-		}
-	}
-
-	// iterate over triplets
-	for idx := len(triplets) - 1; idx >= 0; idx-- {
-		triplet := triplets[idx]
-		//log.Printf("Triplet: %d (idx=%d)\n", triplet, idx)
-
-		// nothing todo for empty triplet
-		if triplet == 0 {
-			continue
-		}
-
-		// three-digits
-		hundreds := triplet / 100 % 10
-		tens := triplet / 10 % 10
-		units := triplet % 10
-		//log.Printf("Hundreds:%d, Tens:%d, Units:%d\n", hundreds, tens, units)
-		if hundreds > 0 {
-			words = append(words, englishUnits[hundreds], "hundred")
-		}
-
-		if tens == 0 && units == 0 {
-			goto tripletEnd
-		}
-
-		switch tens {
-		case 0:
-			words = append(words, englishUnits[units])
-		case 1:
-			words = append(words, englishTeens[units])
-		default:
-			if units > 0 {
-				word := fmt.Sprintf("%s-%s", englishTens[tens], englishUnits[units])
-				words = append(words, word)
-			} else {
-				words = append(words, englishTens[tens])
-			}
-			break
-		}
-
-	tripletEnd:
-		// mega
-		if mega := englishMegas[idx]; mega != "" {
-			words = append(words, mega)
-		}
-	}
-
-	if f == ORDINAL {
-		li := len(words) - 1
-		lastWord := words[li]
-		ordinalWord := ordinalNums[lastWord]
-		if ordinalWord != "" {
-			words[li] = ordinalWord
-		} else {
-			words[li] = lastWord + "th"
-		}
-	}
-
-	//log.Printf("Words length: %d\n", len(words))
-	return strings.Join(words, " ")
-}
-
-func integerToTriplets(number int) []int {
-	triplets := []int{}
-
-	for number > 0 {
-		triplets = append(triplets, number%1000)
-		number = number / 1000
-	}
-
-	return triplets
-}
-
-func toUpper(c *byte) {
-	if 'a' <= *c && *c <= 'z' {
-		*c -= 32
-	}
-}
-
-func toRoman(num int) *bytes.Buffer {
-	romes := []string{"M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"}
-	numbers := []int{1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1}
-
-	rm := &bytes.Buffer{}
-	for i := 0; i < len(numbers); i++ {
-		for num >= numbers[i] {
-			num -= numbers[i]
-			rm.WriteString(romes[i])
-		}
-	}
-	return rm
-}
-
-func toJulian(year int, month int, day int) int {
-	adj := (14 - month) / 12
-	y := year + 4800 - adj
-	m := month + 12*adj - 3
-	return day + (153*m+2)/5 + y*365 + y/4 - y/100 + y/400 - 32045
-}
-
-func toRRRR(thisYear int, RR int) int {
-	year := 0
-	firstTwo := thisYear / 100
-	lastTwo := thisYear % 100
-
-	// 0-49
-	if lastTwo >= 0 && lastTwo <= 49 {
-		if RR >= 0 && lastTwo <= 49 {
-			year = firstTwo*100 + RR
-		} else {
-			year = (firstTwo-1)*100 + RR
-		}
-	} else {
-		// 50-99
-		if RR >= 50 && lastTwo <= 99 {
-			year = firstTwo*100 + RR
-		} else {
-			year = (firstTwo+1)*100 + RR
-		}
-	}
-	return year
 }
