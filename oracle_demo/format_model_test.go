@@ -44,6 +44,20 @@ func TestToDate3(txx *testing.T) {
 	//log.Println(tm)
 }
 
+func TestToDate4(txx *testing.T) {
+	dch := "2018-05-06"
+	format := "YYYY-mm-dd"
+	tm, err := ToDate(dch, format)
+	if err != nil {
+		panic(err)
+	}
+
+	if tm != nil {
+		fmt.Println(*tm)
+	}
+	//log.Println(tm)
+}
+
 func TestToChar(t *testing.T) {
 	tm := time.Date(2017, 02, 27, 20, 20, 20, 20, time.Local)
 	fmt.Println(tm)

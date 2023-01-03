@@ -11,15 +11,115 @@ import (
 	"time"
 )
 
+// ASCII Table
 const (
-	//// Oracle 变量
+	ASCII_SPACE                = ' '
+	ASCII_EXCLAMATION          = '!'
+	ASCII_QUOTATION            = '"'
+	ASCII_NUMBER_SIGN          = '#'
+	ASCII_DOLLAR               = '$'
+	ASCII_PERCENT              = '%'
+	ASCII_AMPERSAND            = '&'
+	ASCII_APOSTROPHE           = '\''
+	ASCII_LEFT_PARENTHESIS     = '('
+	ASCII_RIGHT_PARENTHESIS    = ')'
+	ASCII_ASTERISK             = '*'
+	ASCII_PLUS                 = '+'
+	ASCII_COMMA                = ','
+	ASCII_HYPHEN               = '-'
+	ASCII_PERIOD               = '.'
+	ASCII_SLASH                = '/'
+	ASCII_0                    = '0'
+	ASCII_1                    = '1'
+	ASCII_2                    = '2'
+	ASCII_3                    = '3'
+	ASCII_4                    = '4'
+	ASCII_5                    = '5'
+	ASCII_6                    = '6'
+	ASCII_7                    = '7'
+	ASCII_8                    = '8'
+	ASCII_9                    = '9'
+	ASCII_COLON                = ':'
+	ASCII_SEMICOLON            = ';'
+	ASCII_LT                   = '<'
+	ASCII_EQ                   = '='
+	ASCII_GT                   = '>'
+	ASCII_QUESTION             = '?'
+	ASCII_AT                   = '@'
+	ASCII_A                    = 'A'
+	ASCII_B                    = 'B'
+	ASCII_C                    = 'C'
+	ASCII_D                    = 'D'
+	ASCII_E                    = 'E'
+	ASCII_F                    = 'F'
+	ASCII_G                    = 'G'
+	ASCII_H                    = 'H'
+	ASCII_I                    = 'I'
+	ASCII_J                    = 'J'
+	ASCII_K                    = 'K'
+	ASCII_L                    = 'L'
+	ASCII_M                    = 'M'
+	ASCII_N                    = 'N'
+	ASCII_O                    = 'O'
+	ASCII_P                    = 'P'
+	ASCII_Q                    = 'Q'
+	ASCII_R                    = 'R'
+	ASCII_S                    = 'S'
+	ASCII_T                    = 'T'
+	ASCII_U                    = 'U'
+	ASCII_V                    = 'V'
+	ASCII_W                    = 'W'
+	ASCII_X                    = 'X'
+	ASCII_Y                    = 'Y'
+	ASCII_Z                    = 'Z'
+	ASCII_LEFT_SQUARE_BRACKET  = '['
+	ASCII_BACKSLASH            = '\\'
+	ASCII_RIGHT_SQUARE_BRACKET = ']'
+	ASCII_CARET                = '^'
+	ASCII_UNDERSCORE           = '_'
+	ASCII_GRAVE_ACCENT         = '`'
+	ASCII_a                    = 'a'
+	ASCII_b                    = 'b'
+	ASCII_c                    = 'c'
+	ASCII_d                    = 'd'
+	ASCII_e                    = 'e'
+	ASCII_f                    = 'f'
+	ASCII_g                    = 'g'
+	ASCII_h                    = 'h'
+	ASCII_i                    = 'i'
+	ASCII_j                    = 'j'
+	ASCII_k                    = 'k'
+	ASCII_l                    = 'l'
+	ASCII_m                    = 'm'
+	ASCII_n                    = 'n'
+	ASCII_o                    = 'o'
+	ASCII_p                    = 'p'
+	ASCII_q                    = 'q'
+	ASCII_r                    = 'r'
+	ASCII_s                    = 's'
+	ASCII_t                    = 't'
+	ASCII_u                    = 'u'
+	ASCII_v                    = 'v'
+	ASCII_w                    = 'w'
+	ASCII_x                    = 'x'
+	ASCII_y                    = 'y'
+	ASCII_z                    = 'z'
+	ASCII_LEFT_CURLY_BRACE     = '{'
+	ASCII_VERTICAL_BAR         = '|'
+	ASCII_RIGHT_CURLY_BRACE    = '}'
+	ASCII_TILDE                = '~'
+)
 
+// Oracle 内置变量
+const (
 	// for number format 'L'
 	NLS_CURRENCY = "￥"
 	// for number format 'U'
 	NLS_DUAL_CURRENCY = "￥"
+)
 
-	//// 异常
+// 异常
+const (
 	// 格式部分不匹配，报错
 	dch_fmt_mismatch_err      = "Date Format error, some formats do not match near "
 	dch_fmt_length_err        = "Date Format error, incorrect format length near "
@@ -34,18 +134,15 @@ const (
 	// 非法字符,超出ASCII[32-126]字符范围
 	out_ascii_range_err = "Illegal character, not in ASCII [32-126] character range"
 	invalid_num_err     = "invalid number"
+)
 
+// 模式
+const (
 	mode_flag_fm = 1
 	mode_flag_fx = 1 << 1
 	mode_flag_th = 1 << 2
 	mode_flag_sp = 1 << 3
 )
-
-type matchMode int
-type sign byte
-type currencySymbol string
-type outputMode int
-type signMode int
 
 // 数值类型相关常量
 const (
@@ -82,13 +179,80 @@ const (
 	outputModeTME   outputMode = 6
 )
 
+// 数值相关类型
+type matchMode int
+type sign byte
+type currencySymbol string
+type outputMode int
+type signMode int
+
+// 日期相关类型
 type dchKeyword int
 type dtType int
 
 var dchKeywords map[int]int
-var NLS_WEEKS = map[time.Weekday]string{}
-var NLS_MONTHS = map[time.Month]string{}
-var NLS_MONTHS_REVERSE = map[string]time.Month{}
+var NLS_WEEKS = map[time.Weekday]string{
+	time.Sunday:    "星期日",
+	time.Monday:    "星期一",
+	time.Tuesday:   "星期二",
+	time.Wednesday: "星期三",
+	time.Thursday:  "星期四",
+	time.Friday:    "星期五",
+	time.Saturday:  "星期六",
+}
+
+var NLS_MONTHS = map[time.Month]string{
+	time.January:   "1月",
+	time.February:  "2月",
+	time.March:     "3月",
+	time.April:     "4月",
+	time.May:       "5月",
+	time.June:      "6月",
+	time.July:      "7月",
+	time.August:    "8月",
+	time.September: "9月",
+	time.October:   "10月",
+	time.November:  "11月",
+	time.December:  "12月",
+}
+var NLS_MONTHS_REVERSE = map[string]time.Month{
+	"1月":  time.January,
+	"2月":  time.February,
+	"3月":  time.March,
+	"4月":  time.April,
+	"5月":  time.May,
+	"6月":  time.June,
+	"7月":  time.July,
+	"8月":  time.August,
+	"9月":  time.September,
+	"10月": time.October,
+	"11月": time.November,
+	"12月": time.December,
+}
+
+// 日期类型相关变量
+const (
+	SPACE       = " "
+	ASSIC_SPACE = ' '
+	NLS_AD      = "公元"
+	NLS_A_D_    = "公元"
+	NLS_AM      = "上午"
+	NLS_A_M_    = "上午"
+	NLS_BC      = "公元前"
+	NLS_B_C_    = "公元前"
+	NLS_PM      = "下午"
+	NLS_P_M_    = "下午"
+	NLS_DL      = "YYYY\"年\"MM\"月\"DD\"日\" DAY"
+	NLS_DS      = "YYYY-MM-DD"
+	NLS_X       = "."
+
+	empty_str   = ""
+	empty_int   = 0
+	empty_float = 0.0
+	tsFormat    = "15:04:05"
+	//dateFormat = "YYYY-MM-DD HH24:MI:SS"
+	dateLayout = "2006-01-02 15:04:05"
+)
 
 // 日期模型相关常量
 const (
@@ -110,8 +274,8 @@ const (
 	dt_flag_ampm   = 1 << 11
 )
 
+// 日期类型模型关键词
 const (
-	// Datetime Format Model Keyword
 	DCH_EMPTY        dchKeyword = 0
 	DCH_MINUS        dchKeyword = 1
 	DCH_SLASH        dchKeyword = 2
@@ -188,70 +352,7 @@ const (
 	DCH_Y            dchKeyword = 73
 )
 
-const (
-	SPACE       = " "
-	ASSIC_SPACE = ' '
-	NLS_AD      = "公元"
-	NLS_A_D_    = "公元"
-	NLS_AM      = "上午"
-	NLS_A_M_    = "上午"
-	NLS_BC      = "公元前"
-	NLS_B_C_    = "公元前"
-	NLS_PM      = "下午"
-	NLS_P_M_    = "下午"
-	NLS_DL      = "YYYY\"年\"MM\"月\"DD\"日\" DAY"
-	NLS_DS      = "YYYY-MM-DD"
-	NLS_X       = "."
-
-	empty_str   = ""
-	empty_int   = 0
-	empty_float = 0.0
-	tsFormat    = "15:04:05"
-	//dateFormat = "YYYY-MM-DD HH24:MI:SS"
-	dateLayout = "2006-01-02 15:04:05"
-)
-
-func init() {
-	NLS_WEEKS = map[time.Weekday]string{
-		time.Sunday:    "星期日",
-		time.Monday:    "星期一",
-		time.Tuesday:   "星期二",
-		time.Wednesday: "星期三",
-		time.Thursday:  "星期四",
-		time.Friday:    "星期五",
-		time.Saturday:  "星期六",
-	}
-
-	NLS_MONTHS = map[time.Month]string{
-		time.January:   "1月",
-		time.February:  "2月",
-		time.March:     "3月",
-		time.April:     "4月",
-		time.May:       "5月",
-		time.June:      "6月",
-		time.July:      "7月",
-		time.August:    "8月",
-		time.September: "9月",
-		time.October:   "10月",
-		time.November:  "11月",
-		time.December:  "12月",
-	}
-	NLS_MONTHS_REVERSE = map[string]time.Month{
-		"1月":  time.January,
-		"2月":  time.February,
-		"3月":  time.March,
-		"4月":  time.April,
-		"5月":  time.May,
-		"6月":  time.June,
-		"7月":  time.July,
-		"8月":  time.August,
-		"9月":  time.September,
-		"10月": time.October,
-		"11月": time.November,
-		"12月": time.December,
-	}
-}
-
+// 数值的格式描述
 type NumFmtDesc struct {
 	// 匹配模式
 	matchMode matchMode
@@ -275,6 +376,7 @@ type NumFmtDesc struct {
 	signMode signMode
 }
 
+// 数值的参数描述
 type NumParamDesc struct {
 	nSign     sign
 	preDec    string
@@ -1694,40 +1796,40 @@ func parseFmt(format string) ([]dchKeyword, []string, int, error) {
 						tmp.WriteByte(format[fi])
 					}
 				}
-			case 'A':
+			case 'A', 'a':
 				keyword, err = parsePrefixA(&fi, flen, format)
-			case 'B':
+			case 'B', 'b':
 				keyword, err = parsePrefixB(&fi, flen, format)
-			case 'C':
+			case 'C', 'c':
 				keyword, err = parsePrefixC(&fi, flen, format)
-			case 'D':
+			case 'D', 'd':
 				keyword, err = parsePrefixD(&fi, flen, format)
-			case 'E':
+			case 'E', 'e':
 				// TODO EE E
 				return nil, nil, empty_int, errors.New(not_support_err)
-			case 'F':
+			case 'F', 'f':
 				keyword, err = parsePrefixF(&fi, flen, format, &aux_flag)
-			case 'H':
+			case 'H', 'h':
 				keyword, err = parsePrefixH(&fi, flen, format)
-			case 'I':
+			case 'I', 'i':
 				keyword, err = parsePrefixI(&fi, flen, format)
-			case 'J':
+			case 'J', 'j':
 				keyword = DCH_J
 				fi++
-			case 'M':
+			case 'M', 'm':
 				keyword, err = parsePrefixM(&fi, flen, format)
-			case 'P':
+			case 'P', 'p':
 				keyword, err = parsePrefixP(&fi, flen, format)
-			case 'Q':
+			case 'Q', 'q':
 				keyword = DCH_Q
 				fi++
-			case 'R':
+			case 'R', 'r':
 				keyword, err = parsePrefixR(&fi, flen, format)
-			case 'S':
+			case 'S', 's':
 				keyword, err = parsePrefixS(&fi, flen, format, &aux_flag)
-			case 'T':
+			case 'T', 't':
 				keyword, err = parsePrefixT(&fi, flen, format, &aux_flag)
-			case 'W':
+			case 'W', 'w':
 				fi++
 				if fi < flen && format[fi] == 'W' {
 					// DCH WW
@@ -1737,10 +1839,10 @@ func parseFmt(format string) ([]dchKeyword, []string, int, error) {
 					// DCH W
 					keyword = DCH_W
 				}
-			case 'X':
+			case 'X', 'x':
 				keyword = DCH_X
 				fi++
-			case 'Y':
+			case 'Y', 'y':
 				keyword, err = parsePrefixY(&fi, flen, format)
 			default:
 				return nil, nil, aux_flag, errors.New(out_keyword_range_err)
@@ -1768,10 +1870,10 @@ func parsePrefixA(fi *int, flen int, format string) (dchKeyword, error) {
 			start := *fi
 			*fi += 2
 			if *fi <= flen {
-				if "D." == format[start:*fi] {
+				if format[start:*fi] == "D." || format[start:*fi] == "d." {
 					// DCH A.D.
 					keyword = DCH_A_D_
-				} else if "M." == format[start:*fi] {
+				} else if format[start:*fi] == "M." || format[start:*fi] == "m." {
 					// DCH A.M.
 					keyword = DCH_A_M_
 				} else {
@@ -1780,11 +1882,11 @@ func parsePrefixA(fi *int, flen int, format string) (dchKeyword, error) {
 			} else {
 				return DCH_EMPTY, errors.New(dch_fmt_length_err + "A.")
 			}
-		case 'D':
+		case 'D', 'd':
 			// DCH AD
 			keyword = DCH_AD
 			*fi++
-		case 'M':
+		case 'M', 'm':
 			// DCH AM
 			keyword = DCH_AM
 			*fi++
@@ -1802,7 +1904,7 @@ func parsePrefixB(fi *int, flen int, format string) (dchKeyword, error) {
 	*fi++
 	if *fi < flen {
 		switch format[*fi] {
-		case 'C':
+		case 'C', 'c':
 			// DCH BC
 			keyword = DCH_BC
 			*fi++
@@ -1810,7 +1912,7 @@ func parsePrefixB(fi *int, flen int, format string) (dchKeyword, error) {
 			*fi++
 			start := *fi
 			*fi += 2
-			if *fi <= flen && "C." == format[start:*fi] {
+			if *fi <= flen && (format[start:*fi] == "C." || format[start:*fi] == "c.") {
 				// DCH B.C.
 				keyword = DCH_B_C_
 			} else {
@@ -1831,7 +1933,7 @@ func parsePrefixC(fi *int, flen int, format string) (dchKeyword, error) {
 	*fi++
 	if *fi < flen {
 		switch format[*fi] {
-		case 'C':
+		case 'C', 'c':
 			// DCH CC
 			keyword = DCH_CC
 			*fi++
@@ -1849,7 +1951,7 @@ func parsePrefixD(fi *int, flen int, format string) (dchKeyword, error) {
 	var keyword dchKeyword
 	*fi++
 	if *fi < flen {
-		if format[*fi] == 'A' {
+		if format[*fi] == 'A' || format[*fi] == 'a' {
 			*fi++
 			if *fi < flen && format[*fi] == 'Y' {
 				// DCH DAY 同 DY
@@ -1858,9 +1960,9 @@ func parsePrefixD(fi *int, flen int, format string) (dchKeyword, error) {
 			} else {
 				return DCH_EMPTY, errors.New(dch_fmt_mismatch_err + "DA")
 			}
-		} else if format[*fi] == 'D' {
+		} else if format[*fi] == 'D' || format[*fi] == 'd' {
 			*fi++
-			if *fi < flen && format[*fi] == 'D' {
+			if *fi < flen && (format[*fi] == 'D' || format[*fi] == 'd') {
 				// DCH DDD
 				keyword = DCH_DDD
 				*fi++
@@ -1868,13 +1970,13 @@ func parsePrefixD(fi *int, flen int, format string) (dchKeyword, error) {
 				// DCH DD
 				keyword = DCH_DD
 			}
-		} else if format[*fi] == 'L' {
+		} else if format[*fi] == 'L' || format[*fi] == 'l' {
 			keyword = DCH_DL
 			*fi++
-		} else if format[*fi] == 'S' {
+		} else if format[*fi] == 'S' || format[*fi] == 's' {
 			keyword = DCH_DS
 			*fi++
-		} else if format[*fi] == 'Y' {
+		} else if format[*fi] == 'Y' || format[*fi] == 'y' {
 			// DCH DY
 			keyword = DCH_DY
 			*fi++
@@ -1894,13 +1996,13 @@ func parsePrefixF(fi *int, flen int, format string, flag *int) (dchKeyword, erro
 	*fi++
 	if *fi < flen {
 		switch format[*fi] {
-		case 'X':
+		case 'X', 'x':
 			// TODO 最后处理
 			*flag |= mode_flag_fx
-		case 'M':
+		case 'M', 'm':
 			// TODO 最后处理
 			*flag |= mode_flag_fm
-		case 'F':
+		case 'F', 'f':
 			*fi++
 			if *fi < flen {
 				switch format[*fi] {
@@ -1950,34 +2052,32 @@ func parsePrefixH(fi *int, flen int, format string) (dchKeyword, error) {
 	var keyword dchKeyword
 	*fi++
 	if *fi < flen {
-		switch format[*fi] {
-		case 'H':
-			// DCH HH 同 HH12
-			keyword = DCH_HH
-		case '2':
+		if format[*fi] == 'H' || format[*fi] == 'h' {
 			*fi++
-			if *fi < flen {
-				// DCH HH24
-				if format[*fi] == '4' {
-					keyword = DCH_HH24
-				} else {
-					return DCH_EMPTY, errors.New(dch_fmt_mismatch_err + "H2")
+			if format[*fi] == '2' {
+				*fi++
+				if *fi < flen {
+					// DCH HH24
+					if format[*fi] == '4' {
+						keyword = DCH_HH24
+					}
 				}
-			} else {
-				return DCH_EMPTY, errors.New(dch_fmt_length_err + "H2")
-			}
-		case '1':
-			*fi++
-			if *fi < flen {
-				// DCH HH12
-				if format[*fi] == '2' {
-					keyword = DCH_HH12
-				} else {
-					return DCH_EMPTY, errors.New(dch_fmt_mismatch_err + "H2")
+			} else if format[*fi] == '1' {
+				*fi++
+				if *fi < flen {
+					// DCH HH12
+					if format[*fi] == '2' {
+						keyword = DCH_HH12
+					}
 				}
-			} else {
-				return DCH_EMPTY, errors.New(dch_fmt_length_err + "H1")
 			}
+
+			if keyword == DCH_EMPTY {
+				// DCH HH 同 HH12
+				keyword = DCH_HH
+			}
+		} else {
+			return DCH_EMPTY, errors.New(dch_fmt_mismatch_err + "H")
 		}
 	} else {
 		return DCH_EMPTY, errors.New(dch_fmt_length_err + "H")
@@ -1991,15 +2091,15 @@ func parsePrefixI(fi *int, flen int, format string) (dchKeyword, error) {
 	*fi++
 	if *fi < flen {
 		switch format[*fi] {
-		case 'W':
+		case 'W', 'w':
 			// DCH IW
 			keyword = DCH_IW
 			*fi++
-		case 'Y':
+		case 'Y', 'y':
 			*fi++
-			if *fi < flen && format[*fi] == 'Y' {
+			if *fi < flen && (format[*fi] == 'Y' || format[*fi] == 'y') {
 				*fi++
-				if *fi < flen && format[*fi] == 'Y' {
+				if *fi < flen && (format[*fi] == 'Y' || format[*fi] == 'y') {
 					// DCH IYYY
 					keyword = DCH_IYYY
 					*fi++
@@ -2022,21 +2122,21 @@ func parsePrefixI(fi *int, flen int, format string) (dchKeyword, error) {
 func parsePrefixM(fi *int, flen int, format string) (dchKeyword, error) {
 	var keyword dchKeyword
 	*fi++
-	if *fi < flen && format[*fi] == 'I' {
+	if *fi < flen && (format[*fi] == 'I' || format[*fi] == 'i') {
 		// DCH MI
 		keyword = DCH_MI
 		*fi++
-	} else if *fi < flen && format[*fi] == 'M' {
+	} else if *fi < flen && (format[*fi] == 'M' || format[*fi] == 'm') {
 		// DCH MM
 		keyword = DCH_MM
 		*fi++
-	} else if *fi < flen && format[*fi] == 'O' {
+	} else if *fi < flen && (format[*fi] == 'O' || format[*fi] == 'o') {
 		*fi++
-		if *fi < flen && format[*fi] == 'N' {
+		if *fi < flen && (format[*fi] == 'N' || format[*fi] == 'n') {
 			*fi++
 			start := *fi
 			*fi += 2
-			if *fi <= flen && format[start:*fi] == "TH" {
+			if *fi <= flen && strings.ToUpper(format[start:*fi]) == "TH" {
 				// DCH MONTH
 				keyword = DCH_MONTH
 			} else {
@@ -2057,10 +2157,10 @@ func parsePrefixP(fi *int, flen int, format string) (dchKeyword, error) {
 	var keyword dchKeyword
 	*fi++
 	if *fi < flen {
-		if 'M' == format[*fi] {
+		if format[*fi] == 'M' || format[*fi] == 'm' {
 			keyword = DCH_PM
 			*fi++
-		} else if '.' == format[*fi] {
+		} else if format[*fi] == '.' {
 			*fi++
 			start := *fi
 			*fi += 2
@@ -2086,14 +2186,14 @@ func parsePrefixR(fi *int, flen int, format string) (dchKeyword, error) {
 	var keyword dchKeyword
 	*fi++
 	if *fi < flen {
-		if 'M' == format[*fi] {
+		if format[*fi] == 'M' || format[*fi] == 'm' {
 			keyword = DCH_RM
 			*fi++
-		} else if 'R' == format[*fi] {
+		} else if format[*fi] == 'R' || format[*fi] == 'r' {
 			*fi++
 			start := *fi
 			*fi += 2
-			if *fi <= flen && format[start:*fi] == "RR" {
+			if *fi <= flen && strings.ToUpper(format[start:*fi]) == "RR" {
 				// DCH RRRR
 				keyword = DCH_RRRR
 			} else {
@@ -2115,15 +2215,15 @@ func parsePrefixS(fi *int, flen int, format string, flag *int) (dchKeyword, erro
 	*fi++
 	if *fi < flen {
 		switch format[*fi] {
-		case 'P':
+		case 'P', 'p':
 			// DCH SP TODO 最后处理
 			*flag |= mode_flag_sp
 			*fi++
-		case 'S':
+		case 'S', 's':
 			*fi++
 			start := *fi
 			*fi += 3
-			if *fi <= flen && format[start:*fi] == "SSS" {
+			if *fi <= flen && strings.ToUpper(format[start:*fi]) == "SSS" {
 				// DCH SSSSS 午夜过后的秒
 				keyword = DCH_SSSSS
 			} else {
@@ -2136,12 +2236,12 @@ func parsePrefixS(fi *int, flen int, format string, flag *int) (dchKeyword, erro
 			start := *fi
 			*fi += 3
 			if *fi <= flen {
-				if format[start:*fi] == "YYY" {
+				if strings.ToUpper(format[start:*fi]) == "YYY" {
 					// TODO golang 好像不支持公元前
 					// DCH SYYYY 正负号+数字
 					//if 公元前 {result.WriteByte('-')}
 					keyword = DCH_SYYYY
-				} else if format[start:*fi] == "EAR" {
+				} else if strings.ToUpper(format[start:*fi]) == "EAR" {
 					// FIXME oracle中将4位的年分成了 2个2位数
 					// DCH SYEAR 正负号+基数词
 					//if 公元前 {result.WriteByte('-')}
@@ -2166,27 +2266,27 @@ func parsePrefixT(fi *int, flen int, format string, flag *int) (dchKeyword, erro
 	// TODO 更换类型后更改时区
 	*fi++
 	if *fi < flen {
-		if format[*fi] == 'S' {
+		if format[*fi] == 'S' || format[*fi] == 's' {
 			// DCH TS 下午 9:30:00
 			keyword = DCH_TS
-		} else if format[*fi] == 'Z' {
+		} else if format[*fi] == 'Z' || format[*fi] == 'z' {
 			*fi++
 			if *fi < flen && format[*fi] == 'D' {
 				// DCH TZD PDT 时区
 				keyword = DCH_TZD
-			} else if *fi < flen && format[*fi] == 'H' {
+			} else if *fi < flen && (format[*fi] == 'H' || format[*fi] == 'h') {
 				// DCH TZH -07 时区小时
 				keyword = DCH_TZH
-			} else if *fi < flen && format[*fi] == 'M' {
+			} else if *fi < flen && (format[*fi] == 'M' || format[*fi] == 'm') {
 				// DCH TZM 00 时区分
 				keyword = DCH_TZM
-			} else if *fi < flen && format[*fi] == 'R' {
+			} else if *fi < flen && (format[*fi] == 'R' || format[*fi] == 'r') {
 				// DCH TZR US/PACIFIC 时区区域
 				keyword = DCH_TZR
 			} else {
 				return DCH_EMPTY, errors.New("格式错误")
 			}
-		} else if format[*fi] == 'H' {
+		} else if format[*fi] == 'H' || format[*fi] == 'h' {
 			// DCH TH TODO 最后处理
 			//keyword = DCH_TH
 			*flag |= mode_flag_th
@@ -2208,7 +2308,7 @@ func parsePrefixY(fi *int, flen int, format string) (dchKeyword, error) {
 			start := *fi
 			*fi += 3
 			if *fi <= flen {
-				if format[start:*fi] == "YYY" {
+				if strings.ToUpper(format[start:*fi]) == "YYY" {
 					// DCH Y,YYY
 					keyword = DCH_Y_YYY
 				} else {
@@ -2217,12 +2317,12 @@ func parsePrefixY(fi *int, flen int, format string) (dchKeyword, error) {
 			} else {
 				return DCH_EMPTY, errors.New(dch_fmt_length_err + "Y,")
 			}
-		} else if format[*fi] == 'Y' {
+		} else if format[*fi] == 'Y' || format[*fi] == 'y' {
 			*fi++
 
-			if *fi < flen && format[*fi] == 'Y' {
+			if *fi < flen && (format[*fi] == 'Y' || format[*fi] == 'y') {
 				*fi++
-				if *fi < flen && format[*fi] == 'Y' {
+				if *fi < flen && (format[*fi] == 'Y' || format[*fi] == 'y') {
 					// DCH YYYY
 					keyword = DCH_YYYY
 					*fi++
@@ -2234,11 +2334,11 @@ func parsePrefixY(fi *int, flen int, format string) (dchKeyword, error) {
 				// DCH YY
 				keyword = DCH_YY
 			}
-		} else if format[*fi] == 'E' {
+		} else if format[*fi] == 'E' || format[*fi] == 'e' {
 			*fi++
 			start := *fi
 			*fi += 2
-			if *fi <= flen && format[start:*fi] == "AR" {
+			if *fi <= flen && strings.ToUpper(format[start:*fi]) == "AR" {
 				// DCH YEAR 基数词
 				keyword = DCH_YEAR
 			} else {
