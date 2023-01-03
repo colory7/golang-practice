@@ -1953,7 +1953,7 @@ func parsePrefixD(fi *int, flen int, format string) (dchKeyword, error) {
 	if *fi < flen {
 		if format[*fi] == 'A' || format[*fi] == 'a' {
 			*fi++
-			if *fi < flen && format[*fi] == 'Y' {
+			if *fi < flen && (format[*fi] == 'Y' || format[*fi] == 'y') {
 				// DCH DAY 同 DY
 				keyword = DCH_DAY
 				*fi++
@@ -2165,7 +2165,7 @@ func parsePrefixP(fi *int, flen int, format string) (dchKeyword, error) {
 			start := *fi
 			*fi += 2
 			if *fi <= flen {
-				if "M." == format[start:*fi] {
+				if format[start:*fi] == "M." || format[start:*fi] == "m." {
 					keyword = DCH_P_M_
 				} else {
 					return DCH_EMPTY, errors.New(dch_fmt_mismatch_err + "P")
@@ -2231,7 +2231,7 @@ func parsePrefixS(fi *int, flen int, format string, flag *int) (dchKeyword, erro
 				keyword = DCH_SS
 				*fi -= 3
 			}
-		case 'Y':
+		case 'Y', 'y':
 			*fi++
 			start := *fi
 			*fi += 3
@@ -2271,7 +2271,7 @@ func parsePrefixT(fi *int, flen int, format string, flag *int) (dchKeyword, erro
 			keyword = DCH_TS
 		} else if format[*fi] == 'Z' || format[*fi] == 'z' {
 			*fi++
-			if *fi < flen && format[*fi] == 'D' {
+			if *fi < flen && (format[*fi] == 'D' || format[*fi] == 'd') {
 				// DCH TZD PDT 时区
 				keyword = DCH_TZD
 			} else if *fi < flen && (format[*fi] == 'H' || format[*fi] == 'h') {
