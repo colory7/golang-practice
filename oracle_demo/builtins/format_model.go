@@ -1,4 +1,4 @@
-package oracle_demo
+package builtins
 
 import (
 	"bytes"
@@ -9,105 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-)
-
-// ASCII Table
-const (
-	ASCII_SPACE                = ' '
-	ASCII_EXCLAMATION          = '!'
-	ASCII_QUOTATION            = '"'
-	ASCII_NUMBER_SIGN          = '#'
-	ASCII_DOLLAR               = '$'
-	ASCII_PERCENT              = '%'
-	ASCII_AMPERSAND            = '&'
-	ASCII_APOSTROPHE           = '\''
-	ASCII_LEFT_PARENTHESIS     = '('
-	ASCII_RIGHT_PARENTHESIS    = ')'
-	ASCII_ASTERISK             = '*'
-	ASCII_PLUS                 = '+'
-	ASCII_COMMA                = ','
-	ASCII_HYPHEN               = '-'
-	ASCII_PERIOD               = '.'
-	ASCII_SLASH                = '/'
-	ASCII_0                    = '0'
-	ASCII_1                    = '1'
-	ASCII_2                    = '2'
-	ASCII_3                    = '3'
-	ASCII_4                    = '4'
-	ASCII_5                    = '5'
-	ASCII_6                    = '6'
-	ASCII_7                    = '7'
-	ASCII_8                    = '8'
-	ASCII_9                    = '9'
-	ASCII_COLON                = ':'
-	ASCII_SEMICOLON            = ';'
-	ASCII_LT                   = '<'
-	ASCII_EQ                   = '='
-	ASCII_GT                   = '>'
-	ASCII_QUESTION             = '?'
-	ASCII_AT                   = '@'
-	ASCII_A                    = 'A'
-	ASCII_B                    = 'B'
-	ASCII_C                    = 'C'
-	ASCII_D                    = 'D'
-	ASCII_E                    = 'E'
-	ASCII_F                    = 'F'
-	ASCII_G                    = 'G'
-	ASCII_H                    = 'H'
-	ASCII_I                    = 'I'
-	ASCII_J                    = 'J'
-	ASCII_K                    = 'K'
-	ASCII_L                    = 'L'
-	ASCII_M                    = 'M'
-	ASCII_N                    = 'N'
-	ASCII_O                    = 'O'
-	ASCII_P                    = 'P'
-	ASCII_Q                    = 'Q'
-	ASCII_R                    = 'R'
-	ASCII_S                    = 'S'
-	ASCII_T                    = 'T'
-	ASCII_U                    = 'U'
-	ASCII_V                    = 'V'
-	ASCII_W                    = 'W'
-	ASCII_X                    = 'X'
-	ASCII_Y                    = 'Y'
-	ASCII_Z                    = 'Z'
-	ASCII_LEFT_SQUARE_BRACKET  = '['
-	ASCII_BACKSLASH            = '\\'
-	ASCII_RIGHT_SQUARE_BRACKET = ']'
-	ASCII_CARET                = '^'
-	ASCII_UNDERSCORE           = '_'
-	ASCII_GRAVE_ACCENT         = '`'
-	ASCII_a                    = 'a'
-	ASCII_b                    = 'b'
-	ASCII_c                    = 'c'
-	ASCII_d                    = 'd'
-	ASCII_e                    = 'e'
-	ASCII_f                    = 'f'
-	ASCII_g                    = 'g'
-	ASCII_h                    = 'h'
-	ASCII_i                    = 'i'
-	ASCII_j                    = 'j'
-	ASCII_k                    = 'k'
-	ASCII_l                    = 'l'
-	ASCII_m                    = 'm'
-	ASCII_n                    = 'n'
-	ASCII_o                    = 'o'
-	ASCII_p                    = 'p'
-	ASCII_q                    = 'q'
-	ASCII_r                    = 'r'
-	ASCII_s                    = 's'
-	ASCII_t                    = 't'
-	ASCII_u                    = 'u'
-	ASCII_v                    = 'v'
-	ASCII_w                    = 'w'
-	ASCII_x                    = 'x'
-	ASCII_y                    = 'y'
-	ASCII_z                    = 'z'
-	ASCII_LEFT_CURLY_BRACE     = '{'
-	ASCII_VERTICAL_BAR         = '|'
-	ASCII_RIGHT_CURLY_BRACE    = '}'
-	ASCII_TILDE                = '~'
 )
 
 // Oracle 内置变量
@@ -121,16 +22,17 @@ const (
 // 异常
 const (
 	// 格式部分不匹配，报错
-	dch_fmt_mismatch_err      = "Date Format error, some formats do not match near "
-	dch_fmt_length_err        = "Date Format error, incorrect format length near "
-	num_fmt_part_err          = "Datetime Format error, some formats do not match near "
-	not_support_err           = "not support"
-	format_conflict_err       = "format conflict with "
-	format_err                = "format err "
-	unreachable_err           = "unreachable code"
-	format_length_smaller_err = "Format length is smaller than parameter length"
+	dch_fmt_mismatch_err         = "Date Format error, some formats do not match near "
+	dch_fmt_length_err           = "Date Format error, incorrect format length near "
+	num_fmt_part_err             = "Datetime Format error, some formats do not match near "
+	not_support_err              = "not support "
+	format_conflict_err          = "format conflict with "
+	format_err                   = "format err "
+	unreachable_err              = "unreachable code"
+	format_length_smaller_err    = "format length is smaller than parameter length"
+	format_param_not_matched_err = "format and parameter mismatch error"
 	// 非法字符,超出格式关键词范围
-	out_keyword_range_err = "Illegal character, not in the range of Format Model keyword"
+	out_keyword_range_err = "Illegal character, not in the range of Format Model keyword "
 	// 非法字符,超出ASCII[32-126]字符范围
 	out_ascii_range_err = "Illegal character, not in ASCII [32-126] character range"
 	invalid_num_err     = "invalid number"
@@ -138,10 +40,11 @@ const (
 
 // 模式
 const (
-	mode_flag_fm = 1
-	mode_flag_fx = 1 << 1
-	mode_flag_th = 1 << 2
-	mode_flag_sp = 1 << 3
+	mode_flag_empty = 0
+	mode_flag_fm    = 1
+	mode_flag_fx    = 1 << 1
+	mode_flag_th    = 1 << 2
+	mode_flag_sp    = 1 << 3
 )
 
 // 数值类型相关常量
@@ -164,8 +67,8 @@ const (
 
 	currencySymbolEmpty  currencySymbol = ""
 	currencySymbolDollar currencySymbol = "$"
-	currencySymbolB      currencySymbol = " "
-	currencySymbolC      currencySymbol = "cny"
+	currencySymbolB      currencySymbol = SPACE
+	currencySymbolC      currencySymbol = "CNY"
 	currencySymbolL      currencySymbol = NLS_CURRENCY
 	currencySymbolU      currencySymbol = NLS_DUAL_CURRENCY
 
@@ -190,7 +93,6 @@ type signMode int
 type dchKeyword int
 type dtType int
 
-var dchKeywords map[int]int
 var NLS_WEEKS = map[time.Weekday]string{
 	time.Sunday:    "星期日",
 	time.Monday:    "星期一",
@@ -312,48 +214,51 @@ const (
 	DCH_FF8          dchKeyword = 33
 	DCH_FF9          dchKeyword = 34
 	DCH_FF           dchKeyword = 35
-	DCH_HH24         dchKeyword = 36
-	DCH_HH12         dchKeyword = 37
-	DCH_HH           dchKeyword = 38
-	DCH_IW           dchKeyword = 39
-	DCH_IYYY         dchKeyword = 40
-	DCH_IYY          dchKeyword = 41
-	DCH_IY           dchKeyword = 42
-	DCH_I            dchKeyword = 43
-	DCH_J            dchKeyword = 44
-	DCH_MI           dchKeyword = 45
-	DCH_MM           dchKeyword = 46
-	DCH_MONTH        dchKeyword = 47
-	DCH_MON          dchKeyword = 48
-	DCH_P_M_         dchKeyword = 49
-	DCH_PM           dchKeyword = 50
-	DCH_Q            dchKeyword = 51
-	DCH_RM           dchKeyword = 52
-	DCH_RR           dchKeyword = 53
-	DCH_RRRR         dchKeyword = 54
-	DCH_SP           dchKeyword = 55
-	DCH_SSSSS        dchKeyword = 56
-	DCH_SS           dchKeyword = 57
-	DCH_TZH          dchKeyword = 58
-	DCH_TZM          dchKeyword = 59
-	DCH_TZD          dchKeyword = 60
-	DCH_TZR          dchKeyword = 61
-	DCH_TS           dchKeyword = 62
-	DCH_WW           dchKeyword = 63
-	DCH_W            dchKeyword = 64
-	DCH_X            dchKeyword = 65
-	DCH_Y_YYY        dchKeyword = 66
-	DCH_YEAR         dchKeyword = 67
-	DCH_SYEAR        dchKeyword = 68
-	DCH_YYYY         dchKeyword = 69
-	DCH_SYYYY        dchKeyword = 70
-	DCH_YYY          dchKeyword = 71
-	DCH_YY           dchKeyword = 72
-	DCH_Y            dchKeyword = 73
+	DCH_FM           dchKeyword = 36
+	DCH_FX           dchKeyword = 37
+	DCH_HH24         dchKeyword = 38
+	DCH_HH12         dchKeyword = 39
+	DCH_HH           dchKeyword = 40
+	DCH_IW           dchKeyword = 41
+	DCH_IYYY         dchKeyword = 42
+	DCH_IYY          dchKeyword = 43
+	DCH_IY           dchKeyword = 44
+	DCH_I            dchKeyword = 45
+	DCH_J            dchKeyword = 46
+	DCH_MI           dchKeyword = 47
+	DCH_MM           dchKeyword = 48
+	DCH_MONTH        dchKeyword = 49
+	DCH_MON          dchKeyword = 50
+	DCH_P_M_         dchKeyword = 51
+	DCH_PM           dchKeyword = 52
+	DCH_Q            dchKeyword = 53
+	DCH_RM           dchKeyword = 54
+	DCH_RR           dchKeyword = 55
+	DCH_RRRR         dchKeyword = 56
+	DCH_SP           dchKeyword = 57
+	DCH_SSSSS        dchKeyword = 58
+	DCH_SS           dchKeyword = 59
+	DCH_TH           dchKeyword = 60
+	DCH_TZH          dchKeyword = 61
+	DCH_TZM          dchKeyword = 62
+	DCH_TZD          dchKeyword = 63
+	DCH_TZR          dchKeyword = 64
+	DCH_TS           dchKeyword = 65
+	DCH_WW           dchKeyword = 66
+	DCH_W            dchKeyword = 67
+	DCH_X            dchKeyword = 68
+	DCH_Y_YYY        dchKeyword = 69
+	DCH_YEAR         dchKeyword = 70
+	DCH_SYEAR        dchKeyword = 71
+	DCH_YYYY         dchKeyword = 72
+	DCH_SYYYY        dchKeyword = 73
+	DCH_YYY          dchKeyword = 74
+	DCH_YY           dchKeyword = 75
+	DCH_Y            dchKeyword = 76
 )
 
 // 数值的格式描述
-type NumFmtDesc struct {
+type numFmtDesc struct {
 	// 匹配模式
 	matchMode matchMode
 	// 左符号 + - < 空
@@ -377,7 +282,7 @@ type NumFmtDesc struct {
 }
 
 // 数值的参数描述
-type NumParamDesc struct {
+type numParamDesc struct {
 	nSign     sign
 	preDec    string
 	postDec   string
@@ -386,7 +291,7 @@ type NumParamDesc struct {
 	eExponent int
 }
 
-func (numParam *NumParamDesc) decimal() (float64, error) {
+func (numParam *numParamDesc) decimal() (float64, error) {
 	base := bytes.Buffer{}
 	base.WriteByte(byte(numParam.nSign))
 	base.WriteString(numParam.preDec)
@@ -407,7 +312,7 @@ func (numParam *NumParamDesc) decimal() (float64, error) {
 	return f, nil
 }
 
-func (numParam *NumParamDesc) string() (string, error) {
+func (numParam *numParamDesc) string() (string, error) {
 	var result bytes.Buffer
 	if signPlus == numParam.nSign {
 		result.WriteByte(byte(signPlus))
@@ -447,8 +352,8 @@ func (numParam *NumParamDesc) string() (string, error) {
 }
 
 // 解析数值格式
-func parseNumFormat(format string) (*NumFmtDesc, error) {
-	fmtDesc := &NumFmtDesc{}
+func parseNumFormat(format string) (*numFmtDesc, error) {
+	fmtDesc := &numFmtDesc{}
 
 	// 格式字节长度
 	flen := len(format)
@@ -488,28 +393,29 @@ func parseNumFormat(format string) (*NumFmtDesc, error) {
 				if format[fi] == 'N' || format[fi] == 'n' {
 					if fmtDesc.outputMode != outputModeEmpty {
 						return fmtDesc, errors.New(format_conflict_err + "RN")
-					} else if fmtDesc.matchMode == matchModeFm && flen == 4 {
-						return nil, errors.New(format_conflict_err + "RN")
-					} else if fmtDesc.matchMode == matchModeEmpty && flen == 2 {
+					}
+					if flen == 4 {
+						if fmtDesc.matchMode != matchModeFm {
+							return nil, errors.New(format_conflict_err + "RN")
+						}
+					} else if flen == 2 {
+						if fmtDesc.matchMode != matchModeEmpty {
+							return nil, errors.New(format_conflict_err + "RN")
+						}
+					} else {
 						return nil, errors.New(format_conflict_err + "RN")
 					}
 					fmtDesc.outputMode = outputModeRN
 				} else {
 					return nil, errors.New(num_fmt_part_err + "R")
 				}
-				if fi != li {
-					return nil, errors.New(format_err + "RN")
-				} else {
-					break
-				}
+				fi++
 			case 'T', 't':
 				if fmtDesc.outputMode == outputModeEmpty {
 					fi++
 					if format[fi] == 'M' || format[fi] == 'm' {
-						if fi == li {
-							fmtDesc.outputMode = outputModeTM
-						} else {
-							fi++
+						fi++
+						if fi < flen {
 							if format[fi] == 'E' || format[fi] == 'e' {
 								fmtDesc.outputMode = outputModeTME
 							} else if format[fi] == '9' {
@@ -517,6 +423,8 @@ func parseNumFormat(format string) (*NumFmtDesc, error) {
 							} else {
 								return nil, errors.New(format_err + "TM")
 							}
+						} else {
+							fmtDesc.outputMode = outputModeTM
 						}
 					} else {
 						return nil, errors.New(format_err + string(c))
@@ -525,13 +433,13 @@ func parseNumFormat(format string) (*NumFmtDesc, error) {
 					return nil, errors.New(format_conflict_err + "TM")
 				}
 
-				if fi != li {
+				if fi != flen {
 					return nil, errors.New(format_err + "TM")
 				} else {
 					break
 				}
 			case 'X', 'x':
-				if fmtDesc.outputMode != outputModeX {
+				if fmtDesc.outputMode != outputModeEmpty {
 					return nil, errors.New(format_conflict_err + string(c))
 				}
 				fmtDesc.outputMode = outputModeX
@@ -545,7 +453,6 @@ func parseNumFormat(format string) (*NumFmtDesc, error) {
 				break
 			default:
 				signAffixSetup := false
-
 				for fi < flen {
 					// 截取一个字符
 					c = format[fi]
@@ -559,7 +466,7 @@ func parseNumFormat(format string) (*NumFmtDesc, error) {
 								fmtDesc.preSepValidLen++
 							}
 							fi++
-						case '.':
+						case '.', 'D', 'd':
 							if !readDec {
 								readDec = true
 							} else {
@@ -574,7 +481,7 @@ func parseNumFormat(format string) (*NumFmtDesc, error) {
 								fmtDesc.preSepValidLen++
 							}
 							fi++
-						case ',':
+						case ',', 'G', 'g':
 							if fi == 0 {
 								return nil, errors.New("cannot begin with a comma")
 							} else if fi == li {
@@ -686,7 +593,7 @@ func parseNumFormat(format string) (*NumFmtDesc, error) {
 							fmtDesc.outputMode = outputModeV
 							fi++
 						default:
-							return nil, errors.New(out_keyword_range_err)
+							return nil, errors.New(out_keyword_range_err + string(c))
 						}
 					} else {
 						return nil, errors.New(out_ascii_range_err)
@@ -705,12 +612,12 @@ func parseNumFormat(format string) (*NumFmtDesc, error) {
 }
 
 // 解析数字参数
-func parseNumParam(num string) (*NumParamDesc, error) {
-	paramDesc := &NumParamDesc{}
+func parseNum(num string) (*numParamDesc, error) {
+	paramDesc := &numParamDesc{}
 
 	// 读取到小数点
 	readDec := false
-
+	readCurrency := false
 	var preBuf = bytes.Buffer{}
 	var postBuf = bytes.Buffer{}
 	for i := 0; i < len(num); i++ {
@@ -746,7 +653,7 @@ func parseNumParam(num string) (*NumParamDesc, error) {
 				if num[i] <= '9' && num[i] >= '0' {
 					exponent.WriteByte(num[i])
 				} else {
-					return paramDesc, errors.New("科学计数的指数使用了非法字符 " + string(num[i]))
+					return paramDesc, errors.New("illegal character " + string(num[i]))
 				}
 			}
 
@@ -759,18 +666,37 @@ func parseNumParam(num string) (*NumParamDesc, error) {
 			if i == 0 {
 				paramDesc.nSign = signMinus
 			} else {
-				return paramDesc, errors.New("符号位置不对 " + "-")
+				return paramDesc, errors.New("position error " + "-")
 			}
 		case '+':
 			if i == 0 {
 				paramDesc.nSign = signPlus
 			} else {
-				return paramDesc, errors.New("符号位置不对 " + "+")
+				return paramDesc, errors.New("position error " + "+")
 			}
 		case ',':
-			return paramDesc, errors.New("暂时不支持 " + ",")
+			if readDec {
+				postBuf.WriteByte(c)
+			} else {
+				preBuf.WriteByte(c)
+			}
+			readCurrency = true
+		// 货币符号
+		case '$',
+			'C', 'c',
+			'¥':
+			if readCurrency {
+				return paramDesc, errors.New("currency symbol duplicate error ")
+			} else {
+				if readDec {
+					postBuf.WriteByte(c)
+				} else {
+					preBuf.WriteByte(c)
+				}
+				readCurrency = true
+			}
 		default:
-			return paramDesc, errors.New("不支持的数字符号")
+			return paramDesc, errors.New(not_support_err + string(c))
 		}
 	}
 
@@ -813,33 +739,83 @@ func ToNumber(num string, format string) (float64, error) {
 	if err != nil {
 		return empty_float, err
 	}
-	//log.Printf("%#v\n", numFmtDesc)
+	log.Printf("%#v\n", numFmtDesc)
 
-	numParamDesc, err := parseNumParam(num)
-	if err != nil {
-		return empty_float, err
+	var numDesc = &numParamDesc{}
+	if numFmtDesc.outputMode == outputModeEmpty {
+		numDesc, err = parseNum(num)
+		if err != nil {
+			return empty_float, err
+		}
+		log.Printf("%#v\n", numDesc)
+	} else if numFmtDesc.outputMode == outputModeX {
+	} else {
+		return empty_float, errors.New(not_support_err)
 	}
-	//log.Printf("%#v\n", numParamDesc)
+
+	numTidy := bytes.Buffer{}
 
 	switch numFmtDesc.outputMode {
 	// 十进制
 	case outputModeEmpty:
-		if numFmtDesc.preSepValidLen < len(numParamDesc.preDec) {
+		var preDiff = len(numFmtDesc.preSep) - len(numDesc.preDec)
+		if preDiff < 0 {
 			return empty_float, errors.New(format_length_smaller_err)
 		}
-		f, err := strconv.ParseFloat(num, 64)
+
+		if numFmtDesc.preSep == "" {
+			numTidy.WriteString("0.")
+		} else {
+			pi := 0
+			fi := preDiff
+			for ; fi < len(numFmtDesc.preSep); fi++ {
+				switch numFmtDesc.preSep[fi] {
+				case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+					numTidy.WriteByte(numDesc.preDec[pi])
+				case ',':
+					// 校验逗号位置
+					if numDesc.preDec[pi] != ',' {
+						return empty_float, errors.New(format_param_not_matched_err)
+					}
+				default:
+					return empty_float, errors.New(out_keyword_range_err)
+				}
+				pi++
+			}
+		}
+		if len(numFmtDesc.postSep) >= len(numDesc.postDec) {
+			for k := 0; k < len(numDesc.postDec); k++ {
+				numTidy.WriteByte(numDesc.postDec[k])
+			}
+		} else {
+			return empty_float, errors.New(format_length_smaller_err)
+		}
+		f, err := strconv.ParseFloat(numTidy.String(), 64)
 		if err != nil {
 			return empty_float, err
 		}
 		return f, nil
 	// 十六进制
 	case outputModeX:
-		d, err := strconv.ParseInt(num, 16, 64)
+		count := 0
+		for i := 0; i < len(num); i++ {
+			if (num[i] >= '0' && num[i] <= '9') ||
+				(num[i] >= 'a' && num[i] <= 'f') ||
+				(num[i] >= 'A' && num[i] <= 'F') {
+				numTidy.WriteByte(num[i])
+				count++
+			} else if num[i] == ',' {
+
+			} else {
+				return empty_float, errors.New(out_keyword_range_err)
+			}
+		}
+		if numFmtDesc.preSepValidLen < count {
+			return empty_float, errors.New(format_length_smaller_err)
+		}
+		d, err := strconv.ParseInt(numTidy.String(), 16, 64)
 		if err != nil {
 			return empty_float, err
-		}
-		if len(numParamDesc.preDec) > numFmtDesc.preSepValidLen {
-			return empty_float, errors.New(format_length_smaller_err)
 		}
 		return float64(d), nil
 	default:
@@ -866,7 +842,7 @@ func ToDate(dch string, format string) (*time.Time, error) {
 func toDatetime(dch string, format string, tp dtType) (*time.Time, error) {
 	dchKeywords, quoted, aux_flag, err := parseFmt(format)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 
 	year, month, day := 0, time.Month(0), 0
@@ -876,434 +852,497 @@ func toDatetime(dch string, format string, tp dtType) (*time.Time, error) {
 	now := time.Now()
 
 	var parseDch func(*string, *int, *int, int) (string, error)
-	if aux_flag&mode_flag_fx == 0 {
+	if aux_flag&mode_flag_fm == 1 {
 		parseDch = parseDchNotFX
-	} else {
+	} else if aux_flag&mode_flag_fx == 1 {
 		parseDch = parseDchFX
+	} else {
+		parseDch = parseDchNotFX
 	}
 
 	qi := 0
 	di := 0
 	dlen := len(dch)
 	dt_flag := 0
+	ki := 0
 
-	for ki := 0; ki < len(dchKeywords); ki++ {
-		switch dchKeywords[ki] {
-		case DCH_DOUBLE_QUOTE:
-			field, err := parseDch(&dch, &dlen, &di, len(quoted[qi]))
-			if err != nil {
-				return nil, err
-			}
-			if field != quoted[qi] {
-				return nil, errors.New("引号内容不匹配")
-			}
-			qi++
-		case DCH_SPACE:
-			if aux_flag&mode_flag_fx == 1 {
-				if dch[di] != ' ' {
-					return nil, errors.New("严格模式下` `不匹配")
+	for ; ki < len(dchKeywords); ki++ {
+		if di < dlen {
+			switch dchKeywords[ki] {
+			case DCH_FM, DCH_FX:
+			case DCH_DOUBLE_QUOTE:
+				if qi < len(quoted) {
+					field, err := parseDch(&dch, &dlen, &di, len(quoted[qi]))
+					if err != nil {
+						return nil, err
+					}
+					if field != quoted[qi] {
+						return nil, errors.New("引号内容不匹配")
+					}
+					qi++
+				} else {
+					return nil, errors.New("引号数量不匹配")
+				}
+			case DCH_SPACE:
+				if aux_flag&mode_flag_fx == 1 {
+					if dch[di] != ' ' {
+						return nil, errors.New("严格模式下` `不匹配")
+					}
+				} else if !(dch[di] == ' ' ||
+					dch[di] == '-' ||
+					dch[di] == ':' ||
+					dch[di] == ',' ||
+					dch[di] == '.' ||
+					dch[di] == '/' ||
+					dch[di] == ';') {
+					return nil, errors.New("space mismatch")
 				}
 				di++
-			}
-		case DCH_MINUS:
-			if aux_flag&mode_flag_fx == 1 {
-				if dch[di] != '-' {
-					return nil, errors.New("严格模式下`-`不匹配")
+			case DCH_MINUS:
+				if aux_flag&mode_flag_fx == 1 {
+					if dch[di] != '-' {
+						return nil, errors.New("严格模式下`-`不匹配")
+					}
+				} else if !(dch[di] == ' ' ||
+					dch[di] == '-' ||
+					dch[di] == ':' ||
+					dch[di] == ',' ||
+					dch[di] == '.' ||
+					dch[di] == '/' ||
+					dch[di] == ';') {
+					return nil, errors.New("minus mismatch")
 				}
 				di++
-			}
-		case DCH_SLASH:
-			if aux_flag&mode_flag_fx == 1 {
-				if dch[di] != '-' {
-					return nil, errors.New("严格模式下`/`不匹配")
+			case DCH_SLASH:
+				if aux_flag&mode_flag_fx == 1 {
+					if dch[di] != '-' {
+						return nil, errors.New("严格模式下`/`不匹配")
+					}
+				} else if !(dch[di] == ' ' ||
+					dch[di] == '-' ||
+					dch[di] == ':' ||
+					dch[di] == ',' ||
+					dch[di] == '.' ||
+					dch[di] == '/' ||
+					dch[di] == ';') {
+					return nil, errors.New("slash mismatch")
 				}
 				di++
-			}
-		case DCH_COMMA:
-			if aux_flag&mode_flag_fx == 1 {
-				if dch[di] != '-' {
-					return nil, errors.New("严格模式下`,`不匹配")
+			case DCH_COMMA:
+				if aux_flag&mode_flag_fx == 1 {
+					if dch[di] != '-' {
+						return nil, errors.New("严格模式下`,`不匹配")
+					}
+				} else if !(dch[di] == ' ' ||
+					dch[di] == '-' ||
+					dch[di] == ':' ||
+					dch[di] == ',' ||
+					dch[di] == '.' ||
+					dch[di] == '/' ||
+					dch[di] == ';') {
+					return nil, errors.New("colon mismatch")
 				}
 				di++
-			}
-		case DCH_DEC:
-			if aux_flag&mode_flag_fx == 1 {
-				if dch[di] != '-' {
-					return nil, errors.New("严格模式下`.`不匹配")
+			case DCH_DEC:
+				if aux_flag&mode_flag_fx == 1 {
+					if dch[di] != '-' {
+						return nil, errors.New("严格模式下`.`不匹配")
+					}
+				} else if !(dch[di] == ' ' ||
+					dch[di] == '-' ||
+					dch[di] == ':' ||
+					dch[di] == ',' ||
+					dch[di] == '.' ||
+					dch[di] == '/' ||
+					dch[di] == ';') {
+					return nil, errors.New("colon mismatch")
 				}
 				di++
-			}
-		case DCH_COLON:
-			if aux_flag&mode_flag_fx == 1 {
-				if dch[di] != '-' {
-					return nil, errors.New("严格模式下`:`不匹配")
+			case DCH_COLON:
+				if aux_flag&mode_flag_fx == 1 {
+					if dch[di] != '-' {
+						return nil, errors.New("严格模式下`:`不匹配")
+					}
+				} else if !(dch[di] == ' ' ||
+					dch[di] == '-' ||
+					dch[di] == ':' ||
+					dch[di] == ',' ||
+					dch[di] == '.' ||
+					dch[di] == '/' ||
+					dch[di] == ';') {
+					return nil, errors.New("colon mismatch")
 				}
 				di++
-			}
-		case DCH_SEMICOLON:
-			if aux_flag&mode_flag_fx == 1 {
-				if dch[di] != '-' {
-					return nil, errors.New("严格模式下`;`不匹配")
+			case DCH_SEMICOLON:
+				if aux_flag&mode_flag_fx == 1 {
+					if dch[di] != '-' {
+						return nil, errors.New("严格模式下`;`不匹配")
+					}
+					di++
+				} else if !(dch[di] == ' ' ||
+					dch[di] == '-' ||
+					dch[di] == ':' ||
+					dch[di] == ',' ||
+					dch[di] == '.' ||
+					dch[di] == '/' ||
+					dch[di] == ';') {
+					return nil, errors.New("semicolon mismatch")
 				}
 				di++
-			}
-		case DCH_DD:
-			if dt_flag&dt_flag_day == 0 {
-				field, err := parseDch(&dch, &dlen, &di, 2)
-				if err != nil {
-					return nil, err
+			case DCH_DD:
+				if dt_flag&dt_flag_day == 0 {
+					field, err := parseDch(&dch, &dlen, &di, 2)
+					if err != nil {
+						return nil, err
+					}
+					day, err = strconv.Atoi(field)
+					if err != nil {
+						return nil, err
+					}
+					dt_flag |= dt_flag_day
+				} else {
+					return nil, errors.New("格式 日 已经重复")
 				}
-				day, err = strconv.Atoi(field)
-				if err != nil {
-					return nil, err
+			case DCH_HH24, DCH_HH12, DCH_HH:
+				if dt_flag&dt_flag_hour == 0 {
+					field, err := parseDch(&dch, &dlen, &di, 2)
+					if err != nil {
+						return nil, err
+					}
+					hour, err = strconv.Atoi(field)
+					if err != nil {
+						return nil, err
+					}
+					dt_flag |= dt_flag_hour
+				} else {
+					return nil, errors.New("格式 小时 已经重复")
 				}
-				dt_flag |= dt_flag_day
-			} else {
-				return nil, errors.New("格式 日 已经重复")
-			}
-		case DCH_HH24, DCH_HH12, DCH_HH:
-			if dt_flag&dt_flag_hour == 0 {
-				field, err := parseDch(&dch, &dlen, &di, 2)
-				if err != nil {
-					return nil, err
+			case DCH_MI:
+				if dt_flag&dt_flag_minute == 0 {
+					field, err := parseDch(&dch, &dlen, &di, 2)
+					if err != nil {
+						return nil, err
+					}
+					min, err = strconv.Atoi(field)
+					if err != nil {
+						return nil, err
+					}
+					dt_flag |= dt_flag_minute
+				} else {
+					return nil, errors.New("格式 分钟 已经重复")
 				}
-				hour, err = strconv.Atoi(field)
-				if err != nil {
-					return nil, err
+			case DCH_MM:
+				if dt_flag&dt_flag_month == 0 {
+					field, err := parseDch(&dch, &dlen, &di, 2)
+					if err != nil {
+						return nil, err
+					}
+					mon, err := strconv.Atoi(field)
+					month = time.Month(mon)
+					if err != nil {
+						return nil, err
+					}
+					dt_flag |= dt_flag_month
+				} else {
+					return nil, errors.New("格式 月 已经重复")
 				}
-				dt_flag |= dt_flag_hour
-			} else {
-				return nil, errors.New("格式 小时 已经重复")
-			}
-		case DCH_MI:
-			if dt_flag&dt_flag_minute == 0 {
-				field, err := parseDch(&dch, &dlen, &di, 2)
-				if err != nil {
-					return nil, err
+			case DCH_MONTH, DCH_MON: //FIXME 汉字
+				if dt_flag&dt_flag_month == 0 {
+					field := readField(&dch, &dlen, &di)
+					month = NLS_MONTHS_REVERSE[field]
+					dt_flag |= dt_flag_month
+				} else {
+					return nil, errors.New("格式 月 已经重复")
 				}
-				min, err = strconv.Atoi(field)
-				if err != nil {
-					return nil, err
+			case DCH_RR:
+				if dt_flag&dt_flag_year == 0 {
+					field, err := parseDch(&dch, &dlen, &di, 2)
+					if err != nil {
+						return nil, err
+					}
+					RR, err := strconv.Atoi(field)
+					if err != nil {
+						return nil, err
+					}
+					year = toRRRR(now.Year(), RR)
+					dt_flag |= dt_flag_year
+				} else {
+					return nil, errors.New("格式 年 已经重复")
 				}
-				dt_flag |= dt_flag_minute
-			} else {
-				return nil, errors.New("格式 分钟 已经重复")
-			}
-		case DCH_MM:
-			if dt_flag&dt_flag_month == 0 {
-				field, err := parseDch(&dch, &dlen, &di, 2)
-				if err != nil {
-					return nil, err
+			case DCH_RRRR:
+				if dt_flag&dt_flag_year == 0 {
+					field, err := parseDch(&dch, &dlen, &di, 4)
+					if err != nil {
+						return nil, err
+					}
+					year, err = strconv.Atoi(field)
+					if err != nil {
+						return nil, err
+					}
+					dt_flag |= dt_flag_year
+				} else {
+					return nil, errors.New("格式 年 已经重复")
 				}
-				mon, err := strconv.Atoi(field)
-				month = time.Month(mon)
-				if err != nil {
-					return nil, err
+			case DCH_SS:
+				if dt_flag&dt_flag_second == 0 {
+					field, err := parseDch(&dch, &dlen, &di, 2)
+					if err != nil {
+						return nil, err
+					}
+					sec, err = strconv.Atoi(field)
+					if err != nil {
+						return nil, err
+					}
+					dt_flag |= dt_flag_second
+				} else {
+					return nil, errors.New("格式 秒 已经重复")
 				}
-				dt_flag |= dt_flag_month
-			} else {
-				return nil, errors.New("格式 月 已经重复")
-			}
-		case DCH_MONTH, DCH_MON: //FIXME
-			if dt_flag&dt_flag_month == 0 {
-				field, err := parseDch(&dch, &dlen, &di, 2)
-				if err != nil {
-					return nil, err
-				}
-				month = NLS_MONTHS_REVERSE[field]
-				if err != nil {
-					return nil, err
-				}
-				dt_flag |= dt_flag_month
-			} else {
-				return nil, errors.New("格式 月 已经重复")
-			}
-		case DCH_RR:
-			if dt_flag&dt_flag_year == 0 {
-				field, err := parseDch(&dch, &dlen, &di, 2)
-				if err != nil {
-					return nil, err
-				}
-				RR, err := strconv.Atoi(field)
-				if err != nil {
-					return nil, err
-				}
-				year = toRRRR(now.Year(), RR)
-				dt_flag |= dt_flag_year
-			} else {
-				return nil, errors.New("格式 年 已经重复")
-			}
-		case DCH_RRRR:
-			if dt_flag&dt_flag_year == 0 {
-				field, err := parseDch(&dch, &dlen, &di, 4)
-				if err != nil {
-					return nil, err
-				}
-				year, err = strconv.Atoi(field)
-				if err != nil {
-					return nil, err
-				}
-				dt_flag |= dt_flag_year
-			} else {
-				return nil, errors.New("格式 年 已经重复")
-			}
-		case DCH_SS:
-			if dt_flag&dt_flag_second == 0 {
-				field, err := parseDch(&dch, &dlen, &di, 2)
-				if err != nil {
-					return nil, err
-				}
-				sec, err = strconv.Atoi(field)
-				if err != nil {
-					return nil, err
-				}
-				dt_flag |= dt_flag_second
-			} else {
-				return nil, errors.New("格式 秒 已经重复")
-			}
-		case DCH_Y_YYY:
-			if dt_flag&dt_flag_year == 0 {
+			case DCH_Y_YYY:
+				if dt_flag&dt_flag_year == 0 {
 
-				field, err := parseDch(&dch, &dlen, &di, 5)
-				if err != nil {
-					return nil, err
-				}
-				year, err = strconv.Atoi(field[0:1] + field[2:5])
-				if err != nil {
-					return nil, err
-				}
-				dt_flag |= dt_flag_year
-			} else {
-				return nil, errors.New("格式 年 已经重复")
-			}
-		case DCH_YYYY:
-			if dt_flag&dt_flag_year == 0 {
-				field, err := parseDch(&dch, &dlen, &di, 4)
-				if err != nil {
-					return nil, err
-				}
-				year, err = strconv.Atoi(field)
-				if err != nil {
-					return nil, err
-				}
-				dt_flag |= dt_flag_year
-			} else {
-				return nil, errors.New("格式 年 已经重复")
-			}
-		case DCH_YYY:
-			if dt_flag&dt_flag_year == 0 {
-				field, err := parseDch(&dch, &dlen, &di, 3)
-				if err != nil {
-					return nil, err
-				}
-				year, err = strconv.Atoi(strconv.Itoa(now.Year())[0:1] + field)
-				if err != nil {
-					return nil, err
-				}
-				dt_flag |= dt_flag_year
-			} else {
-				return nil, errors.New("格式 年 已经重复")
-			}
-		case DCH_YY:
-			if dt_flag&dt_flag_year == 0 {
-				field, err := parseDch(&dch, &dlen, &di, 2)
-				if err != nil {
-					return nil, err
-				}
-				year, err = strconv.Atoi(strconv.Itoa(now.Year())[0:2] + field)
-				if err != nil {
-					return nil, err
-				}
-				dt_flag |= dt_flag_year
-			} else {
-				return nil, errors.New("格式 年 已经重复")
-			}
-		case DCH_Y:
-			if dt_flag&dt_flag_year == 0 {
-				field, err := parseDch(&dch, &dlen, &di, 1)
-				if err != nil {
-					return nil, err
-				}
-				year, err = strconv.Atoi(strconv.Itoa(now.Year())[0:3] + field)
-				if err != nil {
-					return nil, err
-				}
-				dt_flag |= dt_flag_year
-			} else {
-				return nil, errors.New("格式 年 已经重复")
-			}
-		case DCH_TZH:
-			if tp == dt_type_timestamp_tz {
-				if dt_flag&dt_flag_tzr == 0 && dt_flag&dt_flag_tzh == 0 {
-					// TODO
-					dt_flag |= dt_flag_tzh
+					field, err := parseDch(&dch, &dlen, &di, 5)
+					if err != nil {
+						return nil, err
+					}
+					year, err = strconv.Atoi(field[0:1] + field[2:5])
+					if err != nil {
+						return nil, err
+					}
+					dt_flag |= dt_flag_year
 				} else {
-					return nil, errors.New("格式 时区的小时 已经重复")
+					return nil, errors.New("格式 年 已经重复")
 				}
-			} else {
-				return nil, errors.New("只有带时区的时间戳类型支持时区")
-			}
-		case DCH_TZM:
-			if tp == dt_type_timestamp_tz {
-				if dt_flag&dt_flag_tzr == 0 && dt_flag&dt_flag_tzh == 0 {
-					// TODO
-					dt_flag |= dt_flag_tzm
+			case DCH_YYYY:
+				if dt_flag&dt_flag_year == 0 {
+					field, err := parseDch(&dch, &dlen, &di, 4)
+					if err != nil {
+						return nil, err
+					}
+					year, err = strconv.Atoi(field)
+					if err != nil {
+						return nil, err
+					}
+					dt_flag |= dt_flag_year
 				} else {
-					return nil, errors.New("格式 时区的分钟 已经重复")
+					return nil, errors.New("格式 年 已经重复")
 				}
-			} else {
-				return nil, errors.New("只有带时区的时间戳类型支持时区")
-			}
-		case DCH_TZR:
-			if tp == dt_type_timestamp_tz {
-				if dt_flag&dt_flag_tzr == 0 && dt_flag&dt_flag_tzh == 0 && dt_flag&dt_flag_tzm == 0 {
-					// TODO
-					dt_flag |= dt_flag_tzr
+			case DCH_YYY:
+				if dt_flag&dt_flag_year == 0 {
+					field, err := parseDch(&dch, &dlen, &di, 3)
+					if err != nil {
+						return nil, err
+					}
+					year, err = strconv.Atoi(strconv.Itoa(now.Year())[0:1] + field)
+					if err != nil {
+						return nil, err
+					}
+					dt_flag |= dt_flag_year
 				} else {
-					return nil, errors.New("格式 时区 已经重复")
+					return nil, errors.New("格式 年 已经重复")
 				}
-			} else {
-				return nil, errors.New("只有带时区的时间戳类型支持时区")
-			}
-		case DCH_FF1:
-			if tp != dt_type_date {
-				if dt_flag&dt_flag_nansec == 0 {
-					// TODO
-					dt_flag |= dt_flag_nansec
+			case DCH_YY:
+				if dt_flag&dt_flag_year == 0 {
+					field, err := parseDch(&dch, &dlen, &di, 2)
+					if err != nil {
+						return nil, err
+					}
+					year, err = strconv.Atoi(strconv.Itoa(now.Year())[0:2] + field)
+					if err != nil {
+						return nil, err
+					}
+					dt_flag |= dt_flag_year
 				} else {
-					return nil, errors.New("格式 纳秒 已经重复")
+					return nil, errors.New("格式 年 已经重复")
 				}
-			} else {
-				return nil, errors.New("日期类型不支持小数秒")
-			}
-		case DCH_FF2:
-			if tp != dt_type_date {
-				if dt_flag&dt_flag_nansec == 0 {
-					// TODO
-					dt_flag |= dt_flag_nansec
+			case DCH_Y:
+				if dt_flag&dt_flag_year == 0 {
+					field, err := parseDch(&dch, &dlen, &di, 1)
+					if err != nil {
+						return nil, err
+					}
+					year, err = strconv.Atoi(strconv.Itoa(now.Year())[0:3] + field)
+					if err != nil {
+						return nil, err
+					}
+					dt_flag |= dt_flag_year
 				} else {
-					return nil, errors.New("格式 纳秒 已经重复")
+					return nil, errors.New("格式 年 已经重复")
 				}
-			} else {
-				return nil, errors.New("日期类型不支持小数秒")
-			}
-		case DCH_FF3:
-			if tp != dt_type_date {
-				if dt_flag&dt_flag_nansec == 0 {
-					// TODO
-					dt_flag |= dt_flag_nansec
+			case DCH_TZH:
+				if tp == dt_type_timestamp_tz {
+					if dt_flag&dt_flag_tzr == 0 && dt_flag&dt_flag_tzh == 0 {
+						// TODO
+						dt_flag |= dt_flag_tzh
+					} else {
+						return nil, errors.New("格式 时区的小时 已经重复")
+					}
 				} else {
-					return nil, errors.New("格式 纳秒 已经重复")
+					return nil, errors.New("只有带时区的时间戳类型支持时区")
 				}
-			} else {
-				return nil, errors.New("日期类型不支持小数秒")
-			}
-		case DCH_FF4:
-			if tp != dt_type_date {
-				if dt_flag&dt_flag_nansec == 0 {
-					// TODO
-					dt_flag |= dt_flag_nansec
+			case DCH_TZM:
+				if tp == dt_type_timestamp_tz {
+					if dt_flag&dt_flag_tzr == 0 && dt_flag&dt_flag_tzh == 0 {
+						// TODO
+						dt_flag |= dt_flag_tzm
+					} else {
+						return nil, errors.New("格式 时区的分钟 已经重复")
+					}
 				} else {
-					return nil, errors.New("格式 纳秒 已经重复")
+					return nil, errors.New("只有带时区的时间戳类型支持时区")
 				}
-			} else {
-				return nil, errors.New("日期类型不支持小数秒")
-			}
-		case DCH_FF5:
-			if tp != dt_type_date {
-				if dt_flag&dt_flag_nansec == 0 {
-					// TODO
-					dt_flag |= dt_flag_nansec
+			case DCH_TZR:
+				if tp == dt_type_timestamp_tz {
+					if dt_flag&dt_flag_tzr == 0 && dt_flag&dt_flag_tzh == 0 && dt_flag&dt_flag_tzm == 0 {
+						// TODO
+						dt_flag |= dt_flag_tzr
+					} else {
+						return nil, errors.New("格式 时区 已经重复")
+					}
 				} else {
-					return nil, errors.New("格式 纳秒 已经重复")
+					return nil, errors.New("只有带时区的时间戳类型支持时区")
 				}
-			} else {
-				return nil, errors.New("日期类型不支持小数秒")
-			}
-		case DCH_FF6:
-			if tp != dt_type_date {
-				if dt_flag&dt_flag_nansec == 0 {
-					// TODO
-					dt_flag |= dt_flag_nansec
+			case DCH_FF1:
+				if tp != dt_type_date {
+					if dt_flag&dt_flag_nansec == 0 {
+						// TODO
+						dt_flag |= dt_flag_nansec
+					} else {
+						return nil, errors.New("格式 纳秒 已经重复")
+					}
 				} else {
-					return nil, errors.New("格式 纳秒 已经重复")
+					return nil, errors.New("日期类型不支持小数秒")
 				}
-			} else {
-				return nil, errors.New("日期类型不支持小数秒")
-			}
-		case DCH_FF7:
-			if tp != dt_type_date {
-				if dt_flag&dt_flag_nansec == 0 {
-					// TODO
-					dt_flag |= dt_flag_nansec
+			case DCH_FF2:
+				if tp != dt_type_date {
+					if dt_flag&dt_flag_nansec == 0 {
+						// TODO
+						dt_flag |= dt_flag_nansec
+					} else {
+						return nil, errors.New("格式 纳秒 已经重复")
+					}
 				} else {
-					return nil, errors.New("格式 纳秒 已经重复")
+					return nil, errors.New("日期类型不支持小数秒")
 				}
-			} else {
-				return nil, errors.New("日期类型不支持小数秒")
-			}
-		case DCH_FF8:
-			if tp != dt_type_date {
-				if dt_flag&dt_flag_nansec == 0 {
-					// TODO
-					dt_flag |= dt_flag_nansec
+			case DCH_FF3:
+				if tp != dt_type_date {
+					if dt_flag&dt_flag_nansec == 0 {
+						// TODO
+						dt_flag |= dt_flag_nansec
+					} else {
+						return nil, errors.New("格式 纳秒 已经重复")
+					}
 				} else {
-					return nil, errors.New("格式 纳秒 已经重复")
+					return nil, errors.New("日期类型不支持小数秒")
 				}
-			} else {
-				return nil, errors.New("日期类型不支持小数秒")
-			}
-		case DCH_FF9:
-			if tp != dt_type_date {
-				if dt_flag&dt_flag_nansec == 0 {
-					// TODO
-					dt_flag |= dt_flag_nansec
+			case DCH_FF4:
+				if tp != dt_type_date {
+					if dt_flag&dt_flag_nansec == 0 {
+						// TODO
+						dt_flag |= dt_flag_nansec
+					} else {
+						return nil, errors.New("格式 纳秒 已经重复")
+					}
 				} else {
-					return nil, errors.New("格式 纳秒 已经重复")
+					return nil, errors.New("日期类型不支持小数秒")
 				}
-			} else {
-				return nil, errors.New("日期类型不支持小数秒")
-			}
-		case DCH_FF:
-			if tp != dt_type_date {
-				if dt_flag&dt_flag_nansec == 0 {
-					// TODO
-					dt_flag |= dt_flag_nansec
+			case DCH_FF5:
+				if tp != dt_type_date {
+					if dt_flag&dt_flag_nansec == 0 {
+						// TODO
+						dt_flag |= dt_flag_nansec
+					} else {
+						return nil, errors.New("格式 纳秒 已经重复")
+					}
 				} else {
-					return nil, errors.New("格式 纳秒 已经重复")
+					return nil, errors.New("日期类型不支持小数秒")
 				}
-			} else {
-				return nil, errors.New("日期类型不支持小数秒")
+			case DCH_FF6:
+				if tp != dt_type_date {
+					if dt_flag&dt_flag_nansec == 0 {
+						// TODO
+						dt_flag |= dt_flag_nansec
+					} else {
+						return nil, errors.New("格式 纳秒 已经重复")
+					}
+				} else {
+					return nil, errors.New("日期类型不支持小数秒")
+				}
+			case DCH_FF7:
+				if tp != dt_type_date {
+					if dt_flag&dt_flag_nansec == 0 {
+						// TODO
+						dt_flag |= dt_flag_nansec
+					} else {
+						return nil, errors.New("格式 纳秒 已经重复")
+					}
+				} else {
+					return nil, errors.New("日期类型不支持小数秒")
+				}
+			case DCH_FF8:
+				if tp != dt_type_date {
+					if dt_flag&dt_flag_nansec == 0 {
+						// TODO
+						dt_flag |= dt_flag_nansec
+					} else {
+						return nil, errors.New("格式 纳秒 已经重复")
+					}
+				} else {
+					return nil, errors.New("日期类型不支持小数秒")
+				}
+			case DCH_FF9:
+				if tp != dt_type_date {
+					if dt_flag&dt_flag_nansec == 0 {
+						// TODO
+						dt_flag |= dt_flag_nansec
+					} else {
+						return nil, errors.New("格式 纳秒 已经重复")
+					}
+				} else {
+					return nil, errors.New("日期类型不支持小数秒")
+				}
+			case DCH_FF:
+				if tp != dt_type_date {
+					if dt_flag&dt_flag_nansec == 0 {
+						// TODO
+						dt_flag |= dt_flag_nansec
+					} else {
+						return nil, errors.New("格式 纳秒 已经重复")
+					}
+				} else {
+					return nil, errors.New("日期类型不支持小数秒")
+				}
+			// FIXME not support
+			//case DCH_AD:
+			//	if dItems[ki] != NLS_AD {
+			//		return nil, errors.New("格式字符不匹配")
+			//	}
+			//case DCH_A_D_:
+			//	if dItems[ki] != NLS_A_D_ {
+			//		return nil, errors.New("格式字符不匹配")
+			//	}
+			//case DCH_AM:
+			//	if dItems[ki] != NLS_AM {
+			//		return nil, errors.New("格式字符不匹配")
+			//	}
+			//case DCH_A_M_:
+			//	if dItems[ki] != NLS_A_M_ {
+			//		return nil, errors.New("格式字符不匹配")
+			//	}
+			//case DCH_PM:
+			//case DCH_P_M_:
+			//case DCH_BC:
+			//	if dItems[ki] != NLS_BC {
+			//		return nil, errors.New("格式字符不匹配")
+			//	}
+			//case DCH_B_C_:
+			//	if dItems[ki] != NLS_B_C_ {
+			//		return nil, errors.New("格式字符不匹配")
+			//	}
+			default:
+				return nil, errors.New(not_support_err)
 			}
-		// FIXME 暂时不支持
-		//case DCH_AD:
-		//	if dItems[ki] != NLS_AD {
-		//		return nil, errors.New("格式字符不匹配")
-		//	}
-		//case DCH_A_D_:
-		//	if dItems[ki] != NLS_A_D_ {
-		//		return nil, errors.New("格式字符不匹配")
-		//	}
-		//case DCH_AM:
-		//	if dItems[ki] != NLS_AM {
-		//		return nil, errors.New("格式字符不匹配")
-		//	}
-		//case DCH_A_M_:
-		//	if dItems[ki] != NLS_A_M_ {
-		//		return nil, errors.New("格式字符不匹配")
-		//	}
-		//case DCH_PM:
-		//case DCH_P_M_:
-		//case DCH_BC:
-		//	if dItems[ki] != NLS_BC {
-		//		return nil, errors.New("格式字符不匹配")
-		//	}
-		//case DCH_B_C_:
-		//	if dItems[ki] != NLS_B_C_ {
-		//		return nil, errors.New("格式字符不匹配")
-		//	}
-		default:
-			return nil, errors.New(not_support_err)
+		} else {
+			return nil, errors.New("格式与参数长度不匹配")
 		}
 	}
 
@@ -1321,6 +1360,7 @@ func toDatetime(dch string, format string, tp dtType) (*time.Time, error) {
 		day = 1
 	}
 
+	// TODO 校验时间数值
 	t := time.Date(year, month, day, hour, min, sec, nsec, tzr)
 	return &t, nil
 }
@@ -1329,11 +1369,29 @@ func parseDchFX(dch *string, dlen *int, di *int, size int) (string, error) {
 	start := *di
 	*di += size
 	if *di > *dlen {
-		return "", errors.New("格式长度不匹配")
+		return "", errors.New("严格模式下,格式长度不匹配")
 	}
 	return (*dch)[start:*di], nil
 }
 
+func readField(dch *string, dlen *int, di *int) string {
+	tmp := bytes.Buffer{}
+
+	for ; *di < *dlen; *di++ {
+		if (*dch)[*di] == ' ' ||
+			(*dch)[*di] == '-' ||
+			(*dch)[*di] == ':' ||
+			(*dch)[*di] == ',' ||
+			(*dch)[*di] == '.' ||
+			(*dch)[*di] == '/' ||
+			(*dch)[*di] == ';' {
+			return tmp.String()
+		} else {
+			tmp.WriteByte((*dch)[*di])
+		}
+	}
+	return empty_str
+}
 func parseDchNotFX(dch *string, dlen *int, di *int, size int) (string, error) {
 	tmp := bytes.Buffer{}
 	for ; *di < *dlen; *di++ {
@@ -1353,7 +1411,6 @@ func parseDchNotFX(dch *string, dlen *int, di *int, size int) (string, error) {
 			return tmp.String(), nil
 		}
 	}
-
 	return empty_str, errors.New("未找到格式对应的匹配项")
 }
 
@@ -1381,7 +1438,7 @@ func ToChar(numStr string, numFloat float64, format string) (string, error) {
 	}
 	log.Printf("%#v\n", numFmtDesc)
 
-	numParamDesc, err := parseNumParam(numStr)
+	numParamDesc, err := parseNum(numStr)
 	if err != nil {
 		return empty_str, err
 	}
@@ -1412,7 +1469,7 @@ func ToChar(numStr string, numFloat float64, format string) (string, error) {
 		// 分隔符: 小数点
 		// 分隔符后半部分: 0 9
 		// 右符号
-		outputDecimal(numParamDesc, numFmtDesc, negative, &result)
+		outputDecimal(numParamDesc, numFmtDesc, &result)
 		// 右符号
 		if rightSign != signEmpty {
 			if numFmtDesc.matchMode != matchModeFm {
@@ -1503,7 +1560,7 @@ func decorateSign(negative bool, signMode signMode) (sign, sign) {
 	return leftSign, rightSign
 }
 
-func outputDecimal(numParamDesc *NumParamDesc, numFmtDesc *NumFmtDesc, negative bool, result *bytes.Buffer) {
+func outputDecimal(numParamDesc *numParamDesc, numFmtDesc *numFmtDesc, result *bytes.Buffer) {
 	// 分隔符前半部分: 0 9 逗号
 	pPreLen := len(numParamDesc.preDec)
 	fPreLen := len(numFmtDesc.preSep)
@@ -1790,6 +1847,7 @@ func parseFmt(format string) ([]dchKeyword, []string, int, error) {
 					if '"' == format[fi] {
 						// DCH 右双引号
 						quoted = append(quoted, tmp.String())
+						fi++
 						break
 					} else {
 						// DCH 双引号中的内容
@@ -1999,9 +2057,13 @@ func parsePrefixF(fi *int, flen int, format string, flag *int) (dchKeyword, erro
 		case 'X', 'x':
 			// TODO 最后处理
 			*flag |= mode_flag_fx
+			keyword = DCH_FX
+			*fi++
 		case 'M', 'm':
 			// TODO 最后处理
 			*flag |= mode_flag_fm
+			keyword = DCH_FM
+			*fi++
 		case 'F', 'f':
 			*fi++
 			if *fi < flen {
@@ -2036,6 +2098,7 @@ func parsePrefixF(fi *int, flen int, format string, flag *int) (dchKeyword, erro
 				default:
 					keyword = DCH_FF
 				}
+				*fi++
 			} else {
 				keyword = DCH_FF
 			}
@@ -2218,6 +2281,7 @@ func parsePrefixS(fi *int, flen int, format string, flag *int) (dchKeyword, erro
 		case 'P', 'p':
 			// DCH SP TODO 最后处理
 			*flag |= mode_flag_sp
+			keyword = DCH_SP
 			*fi++
 		case 'S', 's':
 			*fi++
@@ -2290,6 +2354,8 @@ func parsePrefixT(fi *int, flen int, format string, flag *int) (dchKeyword, erro
 			// DCH TH TODO 最后处理
 			//keyword = DCH_TH
 			*flag |= mode_flag_th
+			keyword = DCH_TH
+			*fi++
 		} else {
 			return DCH_EMPTY, errors.New("格式错误")
 		}

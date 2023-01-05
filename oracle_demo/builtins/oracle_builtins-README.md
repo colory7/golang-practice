@@ -575,7 +575,40 @@ SELECT to_char(TIMESTAMP '2023-10-29 01:30:56.321654789 ','DDSPTH') FROM DUAL;
 
 ## 函数实现分析
 ### to_number 函数
-#### 输出模式
+#### 输出格式
+    十进制 浮点数
+    十六进制
+        X
+        参数 大于0的正整数, 浮点数mod取整
+        输出模式 十六进制
+
+#### to_number测试用例
+```oracle
+select TO_NUMBER('12,4,548-', '99G9G999S') from dual;
+select TO_NUMBER('12,4,54.8CNY', '99G9G99.9C') from dual;
+select TO_NUMBER('12,4,54CNY8', '99G9G99C9') from dual;
+select TO_NUMBER('12,4,548', '99G9G99B9') from dual;
+select TO_NUMBER('1', '9EEEE') from dual;
+select TO_NUMBER('1,2', '9,9EEEE') from dual;
+select TO_NUMBER('12', '99EEEE') from dual;
+select TO_NUMBER('12,4,548.327CNY-', '99G9G999.999CS') from dual;
+select TO_NUMBER('12,4,548.327', '99G9G999.999') from dual;
+select TO_NUMBER('1', 'TM') from dual;
+select TO_NUMBER('1', 'XXX') from dual;
+select TO_NUMBER('1,1', 'XXX') from dual;
+select TO_NUMBER('1.0', 'XXX') from dual;
+select TO_NUMBER('1', 'RN') from dual;
+select TO_NUMBER('16AA', 'XXXXXXXX') from dual;
+select TO_NUMBER('1ABC3EDEF', 'XXXXXXXXXX') from dual;
+```
+
+### to_binary_float
+### to_binary_double
+### to_date 
+### to_timestamp 
+### to_timestamp_tz 
+### to_char 
+#### 输出格式
     十进制
         左符号 + - < 空
         货币符号
@@ -605,11 +638,7 @@ SELECT to_char(TIMESTAMP '2023-10-29 01:30:56.321654789 ','DDSPTH') FROM DUAL;
         TM TM9
     最小文本 科学计数
         TME TMe
+#### to_char测试用例
+```oracle
 
-
-### to_binary_float
-### to_binary_double
-### to_date 
-### to_timestamp 
-### to_timestamp_tz 
-### to_char 
+```

@@ -1,4 +1,4 @@
-package oracle_demo
+package builtins
 
 import (
 	"bytes"
@@ -6,6 +6,105 @@ import (
 	"strconv"
 	"testing"
 	"time"
+)
+
+// ASCII Table
+const (
+	ASCII_SPACE                = ' '
+	ASCII_EXCLAMATION          = '!'
+	ASCII_QUOTATION            = '"'
+	ASCII_NUMBER_SIGN          = '#'
+	ASCII_DOLLAR               = '$'
+	ASCII_PERCENT              = '%'
+	ASCII_AMPERSAND            = '&'
+	ASCII_APOSTROPHE           = '\''
+	ASCII_LEFT_PARENTHESIS     = '('
+	ASCII_RIGHT_PARENTHESIS    = ')'
+	ASCII_ASTERISK             = '*'
+	ASCII_PLUS                 = '+'
+	ASCII_COMMA                = ','
+	ASCII_HYPHEN               = '-'
+	ASCII_PERIOD               = '.'
+	ASCII_SLASH                = '/'
+	ASCII_0                    = '0'
+	ASCII_1                    = '1'
+	ASCII_2                    = '2'
+	ASCII_3                    = '3'
+	ASCII_4                    = '4'
+	ASCII_5                    = '5'
+	ASCII_6                    = '6'
+	ASCII_7                    = '7'
+	ASCII_8                    = '8'
+	ASCII_9                    = '9'
+	ASCII_COLON                = ':'
+	ASCII_SEMICOLON            = ';'
+	ASCII_LT                   = '<'
+	ASCII_EQ                   = '='
+	ASCII_GT                   = '>'
+	ASCII_QUESTION             = '?'
+	ASCII_AT                   = '@'
+	ASCII_A                    = 'A'
+	ASCII_B                    = 'B'
+	ASCII_C                    = 'C'
+	ASCII_D                    = 'D'
+	ASCII_E                    = 'E'
+	ASCII_F                    = 'F'
+	ASCII_G                    = 'G'
+	ASCII_H                    = 'H'
+	ASCII_I                    = 'I'
+	ASCII_J                    = 'J'
+	ASCII_K                    = 'K'
+	ASCII_L                    = 'L'
+	ASCII_M                    = 'M'
+	ASCII_N                    = 'N'
+	ASCII_O                    = 'O'
+	ASCII_P                    = 'P'
+	ASCII_Q                    = 'Q'
+	ASCII_R                    = 'R'
+	ASCII_S                    = 'S'
+	ASCII_T                    = 'T'
+	ASCII_U                    = 'U'
+	ASCII_V                    = 'V'
+	ASCII_W                    = 'W'
+	ASCII_X                    = 'X'
+	ASCII_Y                    = 'Y'
+	ASCII_Z                    = 'Z'
+	ASCII_LEFT_SQUARE_BRACKET  = '['
+	ASCII_BACKSLASH            = '\\'
+	ASCII_RIGHT_SQUARE_BRACKET = ']'
+	ASCII_CARET                = '^'
+	ASCII_UNDERSCORE           = '_'
+	ASCII_GRAVE_ACCENT         = '`'
+	ASCII_a                    = 'a'
+	ASCII_b                    = 'b'
+	ASCII_c                    = 'c'
+	ASCII_d                    = 'd'
+	ASCII_e                    = 'e'
+	ASCII_f                    = 'f'
+	ASCII_g                    = 'g'
+	ASCII_h                    = 'h'
+	ASCII_i                    = 'i'
+	ASCII_j                    = 'j'
+	ASCII_k                    = 'k'
+	ASCII_l                    = 'l'
+	ASCII_m                    = 'm'
+	ASCII_n                    = 'n'
+	ASCII_o                    = 'o'
+	ASCII_p                    = 'p'
+	ASCII_q                    = 'q'
+	ASCII_r                    = 'r'
+	ASCII_s                    = 's'
+	ASCII_t                    = 't'
+	ASCII_u                    = 'u'
+	ASCII_v                    = 'v'
+	ASCII_w                    = 'w'
+	ASCII_x                    = 'x'
+	ASCII_y                    = 'y'
+	ASCII_z                    = 'z'
+	ASCII_LEFT_CURLY_BRACE     = '{'
+	ASCII_VERTICAL_BAR         = '|'
+	ASCII_RIGHT_CURLY_BRACE    = '}'
+	ASCII_TILDE                = '~'
 )
 
 func TestToDate(txx *testing.T) {
@@ -80,17 +179,6 @@ func TestToChar2(t *testing.T) {
 		panic(err)
 	}
 	fmt.Println(str)
-}
-
-func TestToNumber(t *testing.T) {
-	numParam := "123456"
-	format := "999999EEEE"
-
-	numResult, err := ToNumber(numParam, format)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(numResult)
 }
 
 // select to_char(-123.56,'L9,999.999') from dual;
