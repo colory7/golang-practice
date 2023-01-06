@@ -1444,22 +1444,7 @@ func parseDchFM(dch *string, dlen *int, di *int, size int) (string, error) {
 	return empty_str, errors.New("未找到格式对应的匹配项")
 }
 
-// 数字类型 转 格式化字符串
-func ToCharByNum(numFloat float64, format string) (string, error) {
-	numStr := strconv.FormatFloat(numFloat, 'f', -1, 64)
-	return ToChar(numStr, numFloat, format)
-}
-
-// 字符串类型 转 格式化字符串
-func ToCharByStr(numStr string, format string) (string, error) {
-	numFloat, err := strconv.ParseFloat(numStr, 64)
-	if err != nil {
-		return empty_str, err
-	}
-	return ToChar(numStr, numFloat, format)
-}
-
-func ToChar(numStr string, numFloat float64, format string) (string, error) {
+func toChar(numStr string, numFloat float64, format string) (string, error) {
 	negative := numFloat < 0
 	numFloat = math.Abs(numFloat)
 	numFmtDesc, err := parseNumFormat(format)
@@ -1632,14 +1617,30 @@ func outputDecimal(numParamDesc *numParamDesc, numFmtDesc *numFmtDesc, result *b
 	}
 }
 
+// 数字类型 转 格式化字符串
+func ToCharByNum(numFloat float64, format string) (string, error) {
+	numStr := strconv.FormatFloat(numFloat, 'f', -1, 64)
+	return toChar(numStr, numFloat, format)
+}
+
+// 字符串类型 转 格式化字符串
+func ToCharByStr(numStr string, format string) (string, error) {
+	numFloat, err := strconv.ParseFloat(numStr, 64)
+	if err != nil {
+		return empty_str, err
+	}
+	return toChar(numStr, numFloat, format)
+}
+
+// 时间类型 转 格式化字符串
 func ToCharByDatetime(t time.Time, format string) (string, error) {
-	fmKeywords, quoted, aux_flag, err := parseFmt(format)
+	fmKeywords, quoted, _, err := parseFmt(format)
 	if err != nil {
 		return empty_str, nil
 	}
 
-	//fixme
-	println(aux_flag)
+	//SP TH
+	//fmt.Println(auxFlag)
 
 	result := bytes.Buffer{}
 
