@@ -605,8 +605,71 @@ select TO_NUMBER('1ABC3EDEF', 'XXXXXXXXXX') from dual;
 ### to_binary_float
 ### to_binary_double
 ### to_date 
+```oracle
+-- 年 月 日 时 分 秒
+-- 正向案例
+SELECT TO_DATE('2008 05 20','YYYY MM DD') FROM DUAL;
+SELECT TO_DATE('2008-05-20','YYYY-MM-DD') FROM DUAL;
+select TO_DATE('09:26:50','HH:MI:SS') from dual;
+select TO_DATE('23--26-50','HH24--MI-SS') from dual;
+select TO_DATE('2023-01-04 09:26:50','YYYY-MM-DD HH:MI:SS') from dual;
+select TO_DATE('2023-1月-04 09:26:50','YYYY-MON-DD HH:MI:SS') from dual;
+select TO_DATE('2023-1月-04 09:26:50','FMYYYY-MON-DD HH:MI:SS') from dual;
+select TO_DATE('2023-1月-04 09:26:50','FXYYYY-MON-DD HH:MI:SS') from dual;
+select TO_DATE('2023abcdef10..29','YYYY"abcd""ef"MM,,DD') from dual;
+select TO_DATE('2023-1月-04 09:26:50', 'FXYYYY-MON-DD HH:MI:SS') from dual;
+select TO_DATE('2023-1月-04 09:26:50', 'YYYY-MON-DD HH:MI:SS') from dual;
+select TO_DATE('2023-1月-04 09:26:50', 'YYYY-MON-DD,HH:MI:SS') from dual;
+select TO_DATE('2023-1月-04 09:26:50', 'YYYY-MON-DD.HH:MI:SS') from dual;
+select TO_DATE('2023-1月-04 09:26:50', 'YYYY-MON-DD/HH:MI:SS') from dual;
+
+-- 反向案例
+select TO_DATE('2023abcdef10..29','FXYYYY"abcd""ef"MM,,DD') from dual;
+select TO_DATE('2023-1月-04 09:26:50', 'FXYYYY-MON-DD/HH:MI:SS') from dual;
+```
 ### to_timestamp 
-### to_timestamp_tz 
+```oracle
+-- 年 月 日 时 分 秒 毫秒 微妙 纳秒
+-- 正向案例
+SELECT TO_TIMESTAMP('2008 05 20','YYYY MM DD') FROM DUAL;
+SELECT TO_TIMESTAMP('2008-05-20','YYYY-MM-DD') FROM DUAL;
+select TO_TIMESTAMP('09:26:50','HH:MI:SS') from dual;
+select TO_TIMESTAMP('23--26-50','HH24--MI-SS') from dual;
+select TO_TIMESTAMP('2023-01-04 09:26:50','YYYY-MM-DD HH:MI:SS') from dual;
+select TO_TIMESTAMP('2023-1月-04 09:26:50','YYYY-MON-DD HH:MI:SS') from dual;
+select TO_TIMESTAMP('2023-1月-04 09:26:50','FMYYYY-MON-DD HH:MI:SS') from dual;
+select TO_TIMESTAMP('2023-1月-04 09:26:50','FXYYYY-MON-DD HH:MI:SS') from dual;
+select TO_TIMESTAMP('2023-01-04 09:26:50.231456897','YYYY-MM-DD HH:MI:SS.FF9') from dual;
+select TO_TIMESTAMP('2023-01-04 09:26:50.2314568','YYYY-MM-DD HH:MI:SS.FF7') from dual;
+select TO_TIMESTAMP('2023-01-04 09:26:50.23145','YYYY-MM-DD HH:MI:SS.FF5') from dual;
+select TO_TIMESTAMP('2023-01-04 09:26:50.231','YYYY-MM-DD HH:MI:SS.FF5') from dual;
+
+-- 反向案例
+select TO_TIMESTAMP('13:26:50','HH:MI:SS') from dual;
+select TO_TIMESTAMP('25:26:50','HH24:MI:SS') from dual;
+select TO_TIMESTAMP('2023-01-04 09:26:50.231456897','YYYY-MM-DD HH:MI:SS.FF7') from dual;
+select TO_TIMESTAMP('2023-01-04 09:26:50.231456897','YYYY-MM-DD HH:MI:SS.FF5') from dual;
+```
+
+### to_timestamp_tz
+```oracle
+-- 正向案例
+select TO_TIMESTAMP_TZ('2023-01-04 09:26:50.231456897 09','YYYY-MM-DD HH:MI:SS.FF9 TZH') from dual;
+select TO_TIMESTAMP_TZ('2023-01-04 09:26:50.231456897 0902','YYYY-MM-DD HH:MI:SS.FF9 TZH:TZM') from dual;
+select TO_TIMESTAMP_TZ('2023-01-04 09:26:50.231456897 +09:02','YYYY-MM-DD HH:MI:SS.FF9 TZH:TZM') from dual;
+select TO_TIMESTAMP_TZ('2023-01-04 09:26:50.231456897 Asia/Shanghai','YYYY-MM-DD HH:MI:SS.FF9 TZR') from dual;
+select TO_TIMESTAMP_TZ('2023-01-04 09:26:50.231456897 Asia/Urumqi','YYYY-MM-DD HH:MI:SS.FF9 TZR') from dual;
+select TO_TIMESTAMP_TZ('2023-01-04 09:26:50.231456897 +09:03','YYYY-MM-DD HH:MI:SS.FF9 TZR') from dual;
+select TO_TIMESTAMP_TZ('2023-01-04 09:26:50.231456897 CST','YYYY-MM-DD HH:MI:SS.FF9 TZR') from dual;
+select TO_TIMESTAMP_TZ('2023-01-04 09:26:50.231456897 GMT','YYYY-MM-DD HH:MI:SS.FF9 TZR') from dual;
+select TO_TIMESTAMP_TZ('2023-01-04 09:26:50.231456897 UTC','YYYY-MM-DD HH:MI:SS.FF9 TZR') from dual;
+select TO_TIMESTAMP_TZ('2023-01-04 09:26:50.231456897 PST','YYYY-MM-DD HH:MI:SS.FF9 TZR') from dual;
+
+-- 反向案例
+select TO_TIMESTAMP_TZ('2023-01-04 09:26:50.231456897 EDT','YYYY-MM-DD HH:MI:SS.FF9 TZR') from dual;
+select TO_TIMESTAMP_TZ('2023-01-04 09:26:50.231456897 aaa','YYYY-MM-DD HH:MI:SS.FF9 TZR') from dual;
+select TO_TIMESTAMP_TZ('2023-01-04 09:26:50.231456897 -0902','YYYY-MM-DD HH:MI:SS.FF9 TZH:TZM') from dual;
+```
 ### to_char 
 #### 输出格式
     十进制
@@ -639,6 +702,4 @@ select TO_NUMBER('1ABC3EDEF', 'XXXXXXXXXX') from dual;
     最小文本 科学计数
         TME TMe
 #### to_char测试用例
-```oracle
-
-```
+略
