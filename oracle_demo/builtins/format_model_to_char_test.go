@@ -7,6 +7,11 @@ import (
 	"time"
 )
 
+var timestampFormat = "2006-01-02 15:04:05.999999999"
+var dateFormat = "2006-01-02 15:04:05.999999999"
+var timestampZoneFormat = "2006-01-02 15:04:05.999999999 -0700"
+var timestampZoneFormat2 = "2006-01-02 15:04:05.999999999 MST"
+
 func TestSuiteToCharByStr(t *testing.T) {
 	tests := []struct {
 		i         int
@@ -421,7 +426,7 @@ func TestSuiteToCharByNum(t *testing.T) {
 	}
 }
 
-func TestSuiteToCharByTime(t *testing.T) {
+func TestSuiteToCharByTimestamp(t *testing.T) {
 	tests := []struct {
 		i         int
 		dt        string
@@ -430,11 +435,127 @@ func TestSuiteToCharByTime(t *testing.T) {
 	}{
 		{1, "2023-10-29 01:30:56.321654789", "YYYY", false},
 		{1, "2023-10-29 01:30:56.321654789", "DD", false},
+		{1, "2023-10-29 01:30:56", "YYYY-YYYY", false},
+		{1, "2023-10-29 01:30:56", "YYYY////MM//DD", false},
+		{1, "2023-10-29 01:30:56", "YYYY,,,,,MM//DD", false},
+		{1, "2023-10-29 01:30:56", "YYYY....MM..DD", false},
+		{1, "2023-10-29 01:30:56", "YYYY;;;;MM..DD", false},
+		{1, "2023-10-29 01:30:56", "YYYY::::MM..DD", false},
+		{1, "2023-10-29 01:30:56", "YYYY\"abcd\"MM,,DD", false},
+		{1, "2023-10-29 01:30:56.321654789", "AD yyyy-mm-dd hh:mm:ss", false},
+		{1, "2023-10-29 01:30:56.321654789", "A.D. yyyy-mm-dd hh:mm:ss", false},
+		{1, "2023-10-29 01:30:56.321654789", "AM yyyy-mm-dd hh:mm:ss", false},
+		{1, "2023-10-29 01:30:56.321654789", "A.M. yyyy-mm-dd hh:mm:ss", false},
+		{1, "2023-10-29 01:30:56.321654789", "BC yyyy-mm-dd hh:mm:ss", false},
+		{1, "2023-10-29 01:30:56.321654789", "B.C. yyyy-mm-dd hh:mm:ss", false},
+		{1, "2023-10-29 01:30:56.321654789", "CC", false},
+		{1, "2023-10-29 01:30:56.321654789", "SCC", false},
+		{1, "2023-10-29 01:30:56.321654789", "D", false},
+		{1, "2023-10-29 01:30:56.321654789", "DD", false},
+		{1, "2023-10-29 01:30:56.321654789", "DDD", false},
+		{1, "2023-10-29 01:30:56.321654789", "Day, DD HH12:MI:SS", false},
+		{1, "2023-10-29 01:30:56.321654789", "FMDay, FMDD HH12:MI:SS", false},
+		{1, "2023-10-29 01:30:56.321654789", "dd", false},
+		{1, "2023-10-29 01:30:56.321654789", "ddd", false},
+		{1, "2023-10-29 01:30:56.321654789", "DL", false},
+		{1, "2023-10-29 01:30:56.321654789", "DS", false},
+		{1, "2023-10-29 01:30:56.321654789", "DY", false},
+		{1, "2023-10-29 01:30:56.321654789", "SS.FF1", false},
+		{1, "2023-10-29 01:30:56.321654789", "SS.FF2", false},
+		{1, "2023-10-29 01:30:56.321654789", "SS.FF3", false},
+		{1, "2023-10-29 01:30:56.321654789", "SS.FF4", false},
+		{1, "2023-10-29 01:30:56.321654789", "SS.FF5", false},
+		{1, "2023-10-29 01:30:56.321654789", "SS.FF6", false},
+		{1, "2023-10-29 01:30:56.321654789", "SS.FF7", false},
+		{1, "2023-10-29 01:30:56.321654789", "SS.FF8", false},
+		{1, "2023-10-29 01:30:56.321654789", "SS.FF9", false},
+		{1, "2023-10-29 01:30:56.321654789", "fmDDTH", false},
+		{1, "2023-10-29 01:30:56.321654789", "hh", false},
+		{1, "2023-10-29 01:30:56.321654789", "hh12", false},
+		{1, "2023-10-29 01:30:56.321654789", "hh24", false},
+		{1, "2023-01-01 09:26:50.124", "IW", false},
+		{1, "2023-01-02 09:26:50.124", "IW", false},
+		{1, "2023-01-03 09:26:50.124", "IW", false},
+		{1, "2023-01-04 09:26:50.124", "IW", false},
+		{1, "2023-01-01 09:26:50.124", "IYYY", false},
+		{1, "2023-01-02 09:26:50.124", "IYYY", false},
+		{1, "2023-01-03 09:26:50.124", "IYYY", false},
+		{1, "2023-01-04 09:26:50.124", "IYYY", false},
+		{1, "2023-01-01 09:26:50.124", "IYY", false},
+		{1, "2023-01-02 09:26:50.124", "IYY", false},
+		{1, "2023-01-03 09:26:50.124", "IYY", false},
+		{1, "2023-01-04 09:26:50.124", "IYY", false},
+		{1, "2023-01-01 09:26:50.124", "IY", false},
+		{1, "2023-01-02 09:26:50.124", "IY", false},
+		{1, "2023-01-03 09:26:50.124", "IY", false},
+		{1, "2023-01-04 09:26:50.124", "IY", false},
+		{1, "2023-01-01 09:26:50.124", "I", false},
+		{1, "2023-01-02 09:26:50.124", "I", false},
+		{1, "2023-01-03 09:26:50.124", "I", false},
+		{1, "2023-01-04 09:26:50.124", "I", false},
+		{1, "2023-10-29 01:30:56.321654789", "J", false},
+		{1, "2023-01-04 09:26:50.124", "mi", false},
+		{1, "2023-01-04 09:26:50.124", "MM", false},
+		{1, "2023-01-04 09:26:50.124", "MON", false},
+		{1, "2023-01-04 09:26:50.124", "MONTH", false},
+		{1, "2023-10-29 01:30:56.321654789", "YYYY-MM-DD PM hh24:mi:ss", false},
+		{1, "2023-10-29 01:30:56.321654789", "YYYY-MM-DD P.M. hh24:mi:ss", false},
+		{1, "2023-01-04 09:26:50.124", "Q", false},
+		{1, "2023-01-04 09:26:50.124", "RM", false},
+		{1, "2023-10-29 01:30:56.321654789", "ss", false},
+		{1, "1999-10-29 01:30:56.321654789 US/Pacific PDT", "SS", false},
+		{1, "1999-10-29 01:30:56.476589 US/Pacific PDT", "SSSSS", false},
+		{1, "1999-10-29 01:30:56.76589 US/Pacific PDT", "SSSSS", false},
+		{1, "1999-10-29 01:30:56.321654789 US/Pacific PDT", "WW", false},
+		{1, "1999-10-29 01:30:56.321654789 US/Pacific PDT", "WW", false},
+		{1, "1999-10-29 01:30:56.321654789 US/Pacific PDT", "HH:MI:SSXFF", false},
+		{1, "1999-10-29 01:30:56.321654789 US/Pacific PDT", "Y,YYY", false},
+		{1, "1987-10-29 01:30:56.321654789", "YYYY", false},
+		{1, "2023-01-04 09:26:50.124", "Year", false},
+		{1, "1987-10-29 01:30:56.321654789", "YYY", false},
+		{1, "1987-10-29 01:30:56.321654789", "YY", false},
+		{1, "1987-10-29 01:30:56.321654789 ", "Y", false},
+		{1, "1987-10-29 01:30:56.321654789", "YYYY-MM-DD", false},
+		{1, "1987-10-29 01:30:56.321654789", "Year-MM-DD", false},
+		{1, "1987-10-29 01:30:56.321654789", "YYYYMMDD", false},
+		{1, "1987-10-29 01:30:56.321654789", "YYYY MM DD", false},
+		{1, "1987-10-29 01:30:56.321654789", "YYYY--MM DD", false},
+		{1, "1987-10-29 01:30:56.321654789", "MM DD YYYY", false},
+		{1, "1987-10-29 01:30:56.321654789", "MM YYYY DD", false},
+		{1, "1987-10-29 01:30:56.321654789", "MM DD YYYY", false},
+		{1, "1987-10-29 01:30:56.321654789", "DD MM-YYYY", false},
+		{1, "1987-10-29 01:30:56.321654789", "DD MM-YYYY", false},
+		{1, "1987-10-29 01:30:56.321654789", "DD YYYY--MM", false},
+		{1, "1999-10-29 01:30:56.321654789 US/Pacific PDT", "TZR", false},
+		{1, "1987-10-29 01:30:56.321654789", "SYYYY", false},
+		{1, "1987-10-29 01:30:56.321654789", "MM/YY", false},
+		{1, "1987-10-29 01:30:56.321654789", "DD/MM/YY", false},
+		{1, "1987-10-29 01:30:56.321654789", "YYYY/MM/DD", false},
+		{1, "2023-10-29 01:30:56.321654789", "DDTH", false},
+		{1, "2023-10-29 01:30:56.321654789", "DDSP", false},
+		{1, "2023-10-29 01:30:56.321654789", "DDTHSP", false},
+		{1, "2023-10-29 01:30:56.321654789 ", "DDSPTH", false},
+		{1, "2023-10-29 01:30:56.321654789 ", "DDSPTH", false},
+		{1, "2023-10-29 01:30:56.321654789", "YYYYMMDDTH", false},
+		{1, "2023-10-29 01:30:56.321654789", "YYYYMMDDSP", false},
+		{1, "2023-10-29 01:30:56.321654789", "YYYYMMDDTHSP", false},
+		{1, "2023-10-29 01:30:56.321654789 ", "YYYYMMDDSPTH", false},
+		{1, "2023-10-29 01:30:56.321654789 ", "YYYYMMDDSPTH", false},
+		{1, "2023-10-29 01:30:56.321654789", "YYYY-MMD-DTH", false},
+		{1, "2023-10-29 01:30:56.321654789", "YYYY-MM-DDSP", false},
+		{1, "2023-10-29 01:30:56.321654789", "YYYY-MM-DDTHSP", false},
+		{1, "2023-10-29 01:30:56.321654789 ", "YYYY-MM-DDSPTH", false},
+		{1, "2023-10-29 01:30:56.321654789 ", "YYYY-MM-DDSPTH", false},
+		{1, "2023-10-29 01:30:56.321654789", "YYYY/MM-DDTH", false},
+		{1, "2023-10-29 01:30:56.321654789", "YYYY/MM-DDSP", false},
+		{1, "2023-10-29 01:30:56.321654789", "YYYY/MM-DDTHSP", false},
+		{1, "2023-10-29 01:30:56.321654789 ", "YYYY/MM-DDSPTH", false},
+		{1, "2023-10-29 01:30:56.321654789 ", "YYYY/MM-DDSPTH", false},
 	}
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%d", test.i), func(t *testing.T) {
-			dt, err := parseTime(test.dt)
+			dt, err := parseTimestamp(test.dt)
 			if err != nil {
 				panic(err)
 			}
@@ -452,10 +573,103 @@ func TestSuiteToCharByTime(t *testing.T) {
 	}
 }
 
-var timeFormat = "2006-01-02 15:04:05.999999999"
+func TestSuiteToCharByDate(t *testing.T) {
+	tests := []struct {
+		i         int
+		dt        string
+		format    string
+		exception bool
+	}{
+		{1, "2000-01-01", "SCC", false},
+		{1, "2001-01-01", "SCC", false},
+		{1, "2000-01-01", "SYEAR", false},
+		{1, "-2000-01-01", "SYEAR", false},
+		{1, "2000-01-01", "AD SYEAR", false},
+		{1, "-2000-01-01", "AD SYEAR", false},
+		{1, "1987-02-07", "MM/YY", false},
+		{1, "1987-02-07", "MM/YY", false},
+		{1, "1987-02-07", "MM/YY", false},
+		{1, "1987-02-07", "MM/Y", false},
+		{1, "2000-01-01", "YEAR", false},
+		{1, "-2000-01-01", "YEAR", false},
+		{1, "2000-01-01", "AD YEAR", false},
+		{1, "-2000-01-01", "AD YEAR", false},
+		{1, "1998-01-04", "DD-MM-RR", false},
+		{1, "2017-01-04", "DD-MM-RR", false},
+	}
 
-func parseTime(timeStr string) (time.Time, error) {
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%d", test.i), func(t *testing.T) {
+			dt, err := parseDate(test.dt)
+			if err != nil {
+				panic(err)
+			}
+			tm, err := ToCharByDatetime(dt, test.format)
+			if test.exception {
+				assert.Error(t, err)
+				//fmt.Println(err)
+			} else {
+				if err != nil {
+					assert.NoError(t, err)
+				}
+				fmt.Println(tm)
+			}
+		})
+	}
+}
+
+func TestSuiteToCharByTimestampZone(t *testing.T) {
+	tests := []struct {
+		i         int
+		dt        string
+		format    string
+		exception bool
+	}{
+		{1, "1999-10-29 01:30:00 US/Pacific", "TS", false},
+		{1, "1999-10-29 01:30:00 US/Pacific", "TZD", false},
+		{1, "1999-10-29 01:30:00 US/Pacific", "TZH", false},
+		{1, "1999-10-29 01:30:00 US/Pacific", "TZM", false},
+		{1, "1999-10-29 01:30:00 US/Pacific", "TZR", false},
+		{1, "1999-10-29 01:30:00 +0902", "TS", false},
+		{1, "1999-10-29 01:30:00 +0902", "TZD", false},
+		{1, "1999-10-29 01:30:00 +0902", "TZH", false},
+		{1, "1999-10-29 01:30:00 +0902", "TZM", false},
+		{1, "1999-10-29 01:30:00 +0902", "TZR", false},
+		{1, "1999-10-29 01:30:00 -0608", "TS", false},
+		{1, "1999-10-29 01:30:00 -0608", "TZD", false},
+		{1, "1999-10-29 01:30:00 -0608", "TZH", false},
+		{1, "1999-10-29 01:30:00 -0608", "TZM", false},
+		{1, "1999-10-29 01:30:00 -0608", "TZM", false},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%d", test.i), func(t *testing.T) {
+			dt, err := parseDate(test.dt)
+			if err != nil {
+				panic(err)
+			}
+			tm, err := ToCharByDatetime(dt, test.format)
+			if test.exception {
+				assert.Error(t, err)
+				//fmt.Println(err)
+			} else {
+				if err != nil {
+					assert.NoError(t, err)
+				}
+				fmt.Println(tm)
+			}
+		})
+	}
+}
+
+func parseDate(timeStr string) (time.Time, error) {
 	fmt.Println("timeStr:", timeStr)
-	t, err := time.Parse(timeFormat, timeStr)
+	t, err := time.Parse(dateFormat, timeStr)
+	return t, err
+}
+
+func parseTimestamp(timeStr string) (time.Time, error) {
+	fmt.Println("timeStr:", timeStr)
+	t, err := time.Parse(timestampFormat, timeStr)
 	return t, err
 }

@@ -484,8 +484,6 @@ func parseNumFormat(format string) (*numFmtDesc, error) {
 						case ',', 'G', 'g':
 							if fi == 0 {
 								return nil, errors.New("cannot begin with a comma")
-							} else if fi == li {
-								return fmtDesc, errors.New("comma cannot appear on the right most side of a number")
 							} else if readDec {
 								return fmtDesc, errors.New("the comma cannot appear on the right side of the period")
 							}
