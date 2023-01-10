@@ -13,6 +13,9 @@ func TestSuiteToNumber(t *testing.T) {
 		format    string
 		exception bool
 	}{
+		{1, "123.45", "B999.99", false},
+		{1, "123.02", "B999.99", false},
+		{1, "123.0", "B999.99", false},
 		{1, "34,50", "999,99", false},
 		{1, "12,4,548", "99G9G99B9", false},
 		{1, "3450", "99999,", true},
@@ -21,6 +24,8 @@ func TestSuiteToNumber(t *testing.T) {
 		{1, "12,4,548.689", "9G9G99B9.999", true},
 		{1, "12,4,548.689", "999G9G99B9D999", false},
 		{1, "12,4,548.689", "RN", true},
+		{1, "12,4,548", "RN", true},
+		{1, "4548", "RN", true},
 		{1, "12,4,548", "XXXXXX", false},
 		{1, "1ABC3EDEF", "XXXXXXxXXXX", false},
 		{1, "11", "XXXXXX", false},

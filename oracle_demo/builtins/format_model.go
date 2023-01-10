@@ -27,10 +27,13 @@ const (
 	num_fmt_part_err             = "Datetime Format error, some formats do not match near "
 	not_support_err              = "not support "
 	format_conflict_err          = "format conflict with "
-	format_err                   = "format err "
+	format_length_err            = "format conflict with "
+	format_err                   = "Format length error "
 	unreachable_err              = "unreachable code"
 	format_length_smaller_err    = "format length is smaller than output length"
 	format_param_not_matched_err = "format and parameter mismatch error"
+	duplicate_error              = "duplicate error "
+	out_of_range_error           = "out of range error "
 	// 非法字符,超出格式关键词范围
 	out_keyword_range_err = "Illegal character, not in the range of Format Model keyword "
 	// 非法字符,超出ASCII[32-126]字符范围
@@ -134,19 +137,18 @@ var NLS_MONTHS_REVERSE = map[string]time.Month{
 
 // 日期类型相关变量
 const (
-	SPACE       = " "
-	ASSIC_SPACE = ' '
-	NLS_AD      = "公元"
-	NLS_A_D_    = "公元"
-	NLS_AM      = "上午"
-	NLS_A_M_    = "上午"
-	NLS_BC      = "公元前"
-	NLS_B_C_    = "公元前"
-	NLS_PM      = "下午"
-	NLS_P_M_    = "下午"
-	NLS_DL      = "YYYY\"年\"MM\"月\"DD\"日\" DAY"
-	NLS_DS      = "YYYY-MM-DD"
-	NLS_X       = "."
+	SPACE                           = " "
+	ASSIC_SPACE                     = ' '
+	NLS_AD                          = "公元"
+	NLS_AM                          = "上午"
+	NLS_BC                          = "公元前"
+	NLS_PM                          = "下午"
+	NLS_DL                          = "YYYY\"年\"MM\"月\"DD\"日\" DAY"
+	NLS_DS                          = "YYYY-MM-DD"
+	NLS_TIMESTAMP_TZ_FORMAT_DEFAULT = "DD-MON-YY HH.MI.SS.FF AM TZR"
+	NLS_TIMESTAMP_FORMAT_DEFAULT    = "DD-MON-YY HH.MI.SS.FF AM"
+	NLS_DATE_FORMAT_DEFAULT         = "DD-MON-YY"
+	NLS_X                           = "."
 
 	empty_str   = ""
 	empty_int   = 0
@@ -320,13 +322,13 @@ func (numParam *numParamDesc) string() (string, error) {
 		result.WriteByte(byte(signMinus))
 	} else if numParam.nSign == signEmpty {
 	} else {
-		return empty_str, errors.New("sign属性格式错误")
+		return empty_str, errors.New(format_err + "sign")
 	}
 
 	if empty_str != numParam.preDec {
 		result.WriteString(numParam.preDec)
 	} else {
-		return empty_str, errors.New("格式错误,整数部分是空的")
+		return empty_str, errors.New(format_err + "The integer part is empty")
 	}
 
 	if numParam.postDec != empty_str {
@@ -343,7 +345,7 @@ func (numParam *numParamDesc) string() (string, error) {
 			result.WriteByte(byte(signMinus))
 		} else if numParam.nSign == signEmpty {
 		} else {
-			return empty_str, errors.New("eSign属性格式错误")
+			return empty_str, errors.New(format_err + "eSign")
 		}
 		result.WriteString(fmt.Sprint(numParam.eExponent))
 	}
@@ -647,6 +649,7 @@ func parseNum(num string) (*numParamDesc, error) {
 	readCurrency := false
 	var preBuf = bytes.Buffer{}
 	var postBuf = bytes.Buffer{}
+	li := len(num) - 1
 	for i := 0; i < len(num); i++ {
 		c := num[i]
 		switch c {
@@ -663,7 +666,7 @@ func parseNum(num string) (*numParamDesc, error) {
 			if readDec == false {
 				readDec = true
 			} else {
-				return paramDesc, errors.New("多个符号 " + ".")
+				return paramDesc, errors.New(format_conflict_err + ".")
 			}
 		case 'e', 'E':
 			i++
@@ -693,30 +696,29 @@ func parseNum(num string) (*numParamDesc, error) {
 			}
 			paramDesc.eExponent = exponentNum
 		case '-':
-			if i == 0 {
+			if i == 0 || i == li {
 				paramDesc.nSign = signMinus
 			} else {
 				return paramDesc, errors.New("position error " + "-")
 			}
 		case '+':
-			if i == 0 {
+			if i == 0 || i == li {
 				paramDesc.nSign = signPlus
 			} else {
 				return paramDesc, errors.New("position error " + "+")
 			}
 		case ',':
 			if readDec {
-				postBuf.WriteByte(c)
+				return nil, errors.New(not_support_err)
 			} else {
 				preBuf.WriteByte(c)
 			}
-			readCurrency = true
 		// 货币符号
 		case '$',
 			'C', 'c',
 			'¥':
 			if readCurrency {
-				return paramDesc, errors.New("currency symbol duplicate error ")
+				return paramDesc, errors.New(duplicate_error + "currency symbol")
 			} else {
 				if readDec {
 					postBuf.WriteByte(c)
@@ -761,24 +763,25 @@ func ToNumber(num string, format string) (float64, error) {
 	}
 	log.Printf("%#v\n", numFmtDesc)
 
-	var numDesc = &numParamDesc{}
+	var numParmDesc = &numParamDesc{}
 	if numFmtDesc.outputMode == outputModeEmpty {
-		numDesc, err = parseNum(num)
+		numParmDesc, err = parseNum(num)
 		if err != nil {
 			return empty_float, err
 		}
-		log.Printf("%#v\n", numDesc)
+		log.Printf("%#v\n", numParmDesc)
 	} else if numFmtDesc.outputMode == outputModeX {
 	} else {
 		return empty_float, errors.New(not_support_err)
 	}
 
 	numTidy := bytes.Buffer{}
-
+	fPostSepLen := len(numFmtDesc.postSep)
+	pPostDecLen := len(numParmDesc.postDec)
 	switch numFmtDesc.outputMode {
 	// 十进制
 	case outputModeEmpty:
-		var preDiff = len(numFmtDesc.preSep) - len(numDesc.preDec)
+		var preDiff = len(numFmtDesc.preSep) - len(numParmDesc.preDec)
 		if preDiff < 0 {
 			return empty_float, errors.New(format_length_smaller_err)
 		}
@@ -791,10 +794,10 @@ func ToNumber(num string, format string) (float64, error) {
 			for ; fi < len(numFmtDesc.preSep); fi++ {
 				switch numFmtDesc.preSep[fi] {
 				case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-					numTidy.WriteByte(numDesc.preDec[pi])
+					numTidy.WriteByte(numParmDesc.preDec[pi])
 				case ',':
 					// 校验逗号位置
-					if numDesc.preDec[pi] != ',' {
+					if numParmDesc.preDec[pi] != ',' {
 						return empty_float, errors.New(format_param_not_matched_err)
 					}
 				default:
@@ -803,12 +806,15 @@ func ToNumber(num string, format string) (float64, error) {
 				pi++
 			}
 		}
-		if len(numFmtDesc.postSep) >= len(numDesc.postDec) {
-			for k := 0; k < len(numDesc.postDec); k++ {
-				numTidy.WriteByte(numDesc.postDec[k])
-			}
-		} else {
+
+		if fPostSepLen < pPostDecLen {
 			return empty_float, errors.New(format_length_smaller_err)
+		}
+		if pPostDecLen != 0 {
+			numTidy.WriteByte('.')
+			for k := 0; k < len(numParmDesc.postDec); k++ {
+				numTidy.WriteByte(numParmDesc.postDec[k])
+			}
 		}
 		f, err := strconv.ParseFloat(numTidy.String(), 64)
 		if err != nil {
@@ -898,16 +904,16 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 						return nil, err
 					}
 					if field != quoted[qi] {
-						return nil, errors.New("引号内容不匹配")
+						return nil, errors.New("quote content does not match")
 					}
 					qi++
 				} else {
-					return nil, errors.New("引号数量不匹配")
+					return nil, errors.New("number of quotes does not match")
 				}
 			case DCH_SPACE:
 				if auxFlag == mode_flag_fx {
 					if dch[di] != ' ' {
-						return nil, errors.New("严格模式下` `不匹配")
+						return nil, errors.New("space mismatch in strict mode")
 					}
 				} else if !(dch[di] == ' ' ||
 					dch[di] == '-' ||
@@ -922,7 +928,7 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 			case DCH_MINUS:
 				if auxFlag == mode_flag_fx {
 					if dch[di] != '-' {
-						return nil, errors.New("严格模式下`-`不匹配")
+						return nil, errors.New("minus mismatch in strict mode")
 					}
 				} else if !(dch[di] == ' ' ||
 					dch[di] == '-' ||
@@ -936,8 +942,8 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 				di++
 			case DCH_SLASH:
 				if auxFlag == mode_flag_fx {
-					if dch[di] != '-' {
-						return nil, errors.New("严格模式下`/`不匹配")
+					if dch[di] != '/' {
+						return nil, errors.New("slash mismatch in strict mode")
 					}
 				} else if !(dch[di] == ' ' ||
 					dch[di] == '-' ||
@@ -951,8 +957,8 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 				di++
 			case DCH_COMMA:
 				if auxFlag == mode_flag_fx {
-					if dch[di] != '-' {
-						return nil, errors.New("严格模式下`,`不匹配")
+					if dch[di] != ',' {
+						return nil, errors.New("comma mismatch in strict mode")
 					}
 				} else if !(dch[di] == ' ' ||
 					dch[di] == '-' ||
@@ -961,13 +967,13 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 					dch[di] == '.' ||
 					dch[di] == '/' ||
 					dch[di] == ';') {
-					return nil, errors.New("colon mismatch")
+					return nil, errors.New("comma mismatch")
 				}
 				di++
 			case DCH_DEC:
 				if auxFlag == mode_flag_fx {
-					if dch[di] != '-' {
-						return nil, errors.New("严格模式下`.`不匹配")
+					if dch[di] != '.' {
+						return nil, errors.New("period mismatch in strict mode")
 					}
 				} else if !(dch[di] == ' ' ||
 					dch[di] == '-' ||
@@ -976,13 +982,13 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 					dch[di] == '.' ||
 					dch[di] == '/' ||
 					dch[di] == ';') {
-					return nil, errors.New("colon mismatch")
+					return nil, errors.New("period mismatch")
 				}
 				di++
 			case DCH_COLON:
 				if auxFlag == mode_flag_fx {
-					if dch[di] != '-' {
-						return nil, errors.New("严格模式下`:`不匹配")
+					if dch[di] != ':' {
+						return nil, errors.New("colon mismatch in strict mode")
 					}
 				} else if !(dch[di] == ' ' ||
 					dch[di] == '-' ||
@@ -996,8 +1002,8 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 				di++
 			case DCH_SEMICOLON:
 				if auxFlag == mode_flag_fx {
-					if dch[di] != '-' {
-						return nil, errors.New("严格模式下`;`不匹配")
+					if dch[di] != ';' {
+						return nil, errors.New("semicolon mismatch in strict mode")
 					}
 					di++
 				} else if !(dch[di] == ' ' ||
@@ -1022,7 +1028,7 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 					}
 					dtFlag |= dt_flag_day
 				} else {
-					return nil, errors.New("格式 日 已经重复")
+					return nil, errors.New(duplicate_error + "day")
 				}
 			case DCH_HH12, DCH_HH:
 				if dtFlag&dt_flag_hour == 0 {
@@ -1032,14 +1038,14 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 					}
 					hour, err = strconv.Atoi(field)
 					if hour == 0 || hour > 12 {
-						return nil, errors.New("小时范围为 1-12")
+						return nil, errors.New(out_of_range_error + "1-12")
 					}
 					if err != nil {
 						return nil, err
 					}
 					dtFlag |= dt_flag_hour
 				} else {
-					return nil, errors.New("格式 小时 已经重复")
+					return nil, errors.New(duplicate_error + "hour")
 				}
 			case DCH_HH24:
 				if dtFlag&dt_flag_hour == 0 {
@@ -1049,14 +1055,14 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 					}
 					hour, err = strconv.Atoi(field)
 					if hour > 23 {
-						return nil, errors.New("小时范围为 0-23")
+						return nil, errors.New(out_of_range_error + "0-23")
 					}
 					if err != nil {
 						return nil, err
 					}
 					dtFlag |= dt_flag_hour
 				} else {
-					return nil, errors.New("格式 小时 已经重复")
+					return nil, errors.New(duplicate_error + "hour")
 				}
 			case DCH_MI:
 				if dtFlag&dt_flag_minute == 0 {
@@ -1066,14 +1072,14 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 					}
 					min, err = strconv.Atoi(field)
 					if min > 59 {
-						return nil, errors.New("分钟范围为 0-59")
+						return nil, errors.New(out_of_range_error + "0-59")
 					}
 					if err != nil {
 						return nil, err
 					}
 					dtFlag |= dt_flag_minute
 				} else {
-					return nil, errors.New("格式 分钟 已经重复")
+					return nil, errors.New(duplicate_error + "minute")
 				}
 			case DCH_MM:
 				if dtFlag&dt_flag_month == 0 {
@@ -1084,25 +1090,25 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 					mon, err := strconv.Atoi(field)
 					month = time.Month(mon)
 					if month == 0 || month > 12 {
-						return nil, errors.New("月范围为 1-12")
+						return nil, errors.New(out_of_range_error + "1-12")
 					}
 					if err != nil {
 						return nil, err
 					}
 					dtFlag |= dt_flag_month
 				} else {
-					return nil, errors.New("格式 月 已经重复")
+					return nil, errors.New(duplicate_error + "month")
 				}
 			case DCH_MONTH, DCH_MON:
 				if dtFlag&dt_flag_month == 0 {
 					field := parseDchBySep(&dch, &dLen, &di)
 					month = NLS_MONTHS_REVERSE[field]
 					if month == 0 || month > 12 {
-						return nil, errors.New("月范围为 1-12")
+						return nil, errors.New(out_of_range_error + "1-12")
 					}
 					dtFlag |= dt_flag_month
 				} else {
-					return nil, errors.New("格式 月 已经重复")
+					return nil, errors.New(duplicate_error + "month")
 				}
 			case DCH_RR:
 				if dtFlag&dt_flag_year == 0 {
@@ -1117,7 +1123,7 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 					year = toRRRR(now.Year(), RR)
 					dtFlag |= dt_flag_year
 				} else {
-					return nil, errors.New("格式 年 已经重复")
+					return nil, errors.New(duplicate_error + "year")
 				}
 			case DCH_RRRR:
 				if dtFlag&dt_flag_year == 0 {
@@ -1131,7 +1137,7 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 					}
 					dtFlag |= dt_flag_year
 				} else {
-					return nil, errors.New("格式 年 已经重复")
+					return nil, errors.New(duplicate_error + "year")
 				}
 			case DCH_SS:
 				if dtFlag&dt_flag_second == 0 {
@@ -1141,14 +1147,14 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 					}
 					sec, err = strconv.Atoi(field)
 					if sec > 59 {
-						return nil, errors.New("秒范围为 0-59")
+						return nil, errors.New(out_of_range_error + "0-59")
 					}
 					if err != nil {
 						return nil, err
 					}
 					dtFlag |= dt_flag_second
 				} else {
-					return nil, errors.New("格式 秒 已经重复")
+					return nil, errors.New(duplicate_error + "second")
 				}
 			case DCH_Y_YYY:
 				if dtFlag&dt_flag_year == 0 {
@@ -1163,7 +1169,7 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 					}
 					dtFlag |= dt_flag_year
 				} else {
-					return nil, errors.New("格式 年 已经重复")
+					return nil, errors.New(duplicate_error + "year")
 				}
 			case DCH_YYYY:
 				if dtFlag&dt_flag_year == 0 {
@@ -1177,7 +1183,7 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 					}
 					dtFlag |= dt_flag_year
 				} else {
-					return nil, errors.New("格式 年 已经重复")
+					return nil, errors.New(duplicate_error + "year")
 				}
 			case DCH_YYY:
 				if dtFlag&dt_flag_year == 0 {
@@ -1191,7 +1197,7 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 					}
 					dtFlag |= dt_flag_year
 				} else {
-					return nil, errors.New("格式 年 已经重复")
+					return nil, errors.New(duplicate_error + "year")
 				}
 			case DCH_YY:
 				if dtFlag&dt_flag_year == 0 {
@@ -1205,7 +1211,7 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 					}
 					dtFlag |= dt_flag_year
 				} else {
-					return nil, errors.New("格式 年 已经重复")
+					return nil, errors.New(duplicate_error + "year")
 				}
 			case DCH_Y:
 				if dtFlag&dt_flag_year == 0 {
@@ -1219,7 +1225,7 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 					}
 					dtFlag |= dt_flag_year
 				} else {
-					return nil, errors.New("格式 年 已经重复")
+					return nil, errors.New(duplicate_error + "year")
 				}
 			case DCH_TZH:
 				if dtType == dt_type_timestamp_tz {
@@ -1234,10 +1240,10 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 							return nil, err
 						}
 					} else {
-						return nil, errors.New("格式 时区的小时 已经重复")
+						return nil, errors.New(duplicate_error + "timestamp timezone hour")
 					}
 				} else {
-					return nil, errors.New("只有带时区的时间戳类型支持时区")
+					return nil, errors.New("only timestamp types with time zones support time zones")
 				}
 			case DCH_TZM:
 				if dtType == dt_type_timestamp_tz {
@@ -1249,10 +1255,10 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 							return nil, err
 						}
 					} else {
-						return nil, errors.New("格式 时区的分钟 已经重复")
+						return nil, errors.New(duplicate_error + "timestamp timezone minute")
 					}
 				} else {
-					return nil, errors.New("只有带时区的时间戳类型支持时区")
+					return nil, errors.New("only timestamp types with time zones support time zones")
 				}
 			case DCH_TZR:
 				if dtType == dt_type_timestamp_tz {
@@ -1264,10 +1270,10 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 							return nil, err
 						}
 					} else {
-						return nil, errors.New("格式 时区 已经重复")
+						return nil, errors.New(duplicate_error + "timestamp timezone")
 					}
 				} else {
-					return nil, errors.New("只有带时区的时间戳类型支持时区")
+					return nil, errors.New("only timestamp types with time zones support time zones")
 				}
 			case DCH_FF1:
 				nsec, err = parseNanosecond(dtType, dtFlag, &dch, &dLen, &di, 1)
@@ -1327,12 +1333,12 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 				return nil, errors.New(not_support_err)
 			}
 		} else {
-			return nil, errors.New("格式与参数长度不匹配")
+			return nil, errors.New(format_err)
 		}
 	}
 
 	if qi != len(quoted) {
-		return nil, errors.New("引号内容未遍历完，不匹配")
+		return nil, errors.New("the quotation mark content has not been traversed completely, and does not match")
 	}
 
 	if dtFlag&dt_flag_year == 0 {
@@ -1347,20 +1353,20 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 		switch month {
 		case 1, 3, 5, 7, 8, 10, 12:
 			if day == 0 || day > 31 {
-				return nil, errors.New("该月的日范围为 1-31")
+				return nil, errors.New(out_of_range_error + "1-31")
 			}
 		case 4, 6, 9, 11:
 			if day == 0 || day > 30 {
-				return nil, errors.New("该月的日范围为 1-30")
+				return nil, errors.New(out_of_range_error + "1-30")
 			}
 		case 2:
 			if year%4 == 0 {
 				if day == 0 || day > 29 {
-					return nil, errors.New("该月的日范围为 1-29")
+					return nil, errors.New(out_of_range_error + "1-29")
 				}
 			} else {
 				if day == 0 || day > 28 {
-					return nil, errors.New("该月的日范围为 1-28")
+					return nil, errors.New(out_of_range_error + "1-28")
 				}
 			}
 		}
@@ -1382,7 +1388,7 @@ func parseDchFX(dch *string, dlen *int, di *int, size int) (string, error) {
 	start := *di
 	*di += size
 	if *di > *dlen {
-		return "", errors.New("严格模式下,格式长度不匹配")
+		return "", errors.New(format_length_err + "in strict mode")
 	}
 	return (*dch)[start:*di], nil
 }
@@ -1461,7 +1467,7 @@ func parseDchFM(dch *string, dlen *int, di *int, size int) (string, error) {
 			return tmp.String(), nil
 		}
 	}
-	return empty_str, errors.New("未找到格式对应的匹配项")
+	return empty_str, errors.New("no match found for format")
 }
 
 func toChar(numStr string, numFloat float64, format string) (string, error) {
@@ -1675,9 +1681,6 @@ func ToCharByDatetime(t time.Time, format string) (string, error) {
 		return empty_str, nil
 	}
 
-	//SP TH
-	//fmt.Println(auxFlag)
-
 	result := bytes.Buffer{}
 
 	qi := 0
@@ -1702,12 +1705,14 @@ func ToCharByDatetime(t time.Time, format string) (string, error) {
 			result.WriteByte(':')
 		case DCH_AD, DCH_A_D_:
 			result.WriteString(NLS_AD)
-		case DCH_AM, DCH_A_M_:
-			result.WriteString(NLS_AM)
-		case DCH_BC:
+		case DCH_AM, DCH_A_M_, DCH_PM, DCH_P_M_:
+			if t.Hour() >= 12 {
+				result.WriteString(NLS_PM)
+			} else {
+				result.WriteString(NLS_AM)
+			}
+		case DCH_BC, DCH_B_C_:
 			result.WriteString(NLS_BC)
-		case DCH_B_C_:
-			result.WriteString(NLS_B_C_)
 		case DCH_CC:
 			result.WriteString(strconv.Itoa((t.Year() + 99) / 100))
 		case DCH_SCC:
@@ -1812,10 +1817,6 @@ func ToCharByDatetime(t time.Time, format string) (string, error) {
 			result.WriteString(strconv.Itoa(int(t.Month())))
 		case DCH_MONTH, DCH_MON:
 			result.WriteString(NLS_MONTHS[t.Month()])
-		case DCH_P_M_:
-			result.WriteString(NLS_P_M_)
-		case DCH_PM:
-			result.WriteString(NLS_PM)
 		case DCH_Q:
 			result.WriteString(strconv.Itoa(int(t.Month()+2) / 3))
 		case DCH_RM:
@@ -2192,26 +2193,34 @@ func parsePrefixF(fi *int, flen int, format string, auxFlag *int) (dchKeyword, e
 				switch format[*fi] {
 				case '1':
 					keyword = DCH_FF1
+					*fi++
 				case '2':
 					keyword = DCH_FF2
+					*fi++
 				case '3':
 					keyword = DCH_FF3
+					*fi++
 				case '4':
 					keyword = DCH_FF4
+					*fi++
 				case '5':
 					keyword = DCH_FF5
+					*fi++
 				case '6':
 					keyword = DCH_FF6
+					*fi++
 				case '7':
 					keyword = DCH_FF7
+					*fi++
 				case '8':
 					keyword = DCH_FF8
+					*fi++
 				case '9':
 					keyword = DCH_FF9
+					*fi++
 				default:
 					keyword = DCH_FF
 				}
-				*fi++
 			} else {
 				keyword = DCH_FF
 			}
@@ -2468,19 +2477,18 @@ func parsePrefixT(fi *int, flen int, format string, auxFlag *int) (dchKeyword, e
 				// DCH TZR US/PACIFIC 时区区域
 				keyword = DCH_TZR
 			} else {
-				return DCH_EMPTY, errors.New("格式错误")
+				return DCH_EMPTY, errors.New(format_err + "T")
 			}
 		} else if format[*fi] == 'H' || format[*fi] == 'h' {
 			// DCH TH TODO 最后处理
-			//keyword = DCH_TH
 			*auxFlag = mode_flag_th
 			keyword = DCH_TH
 		} else {
-			return DCH_EMPTY, errors.New("格式错误")
+			return DCH_EMPTY, errors.New(format_err + "T")
 		}
 		*fi++
 	} else {
-		return DCH_EMPTY, errors.New("格式错误")
+		return DCH_EMPTY, errors.New(format_err + "T")
 	}
 	return keyword, nil
 }
@@ -2545,7 +2553,7 @@ func parseNanosecond(dtp dtType, dtFlag int, dch *string, dLen *int, di *int, ff
 			field := parseDchBySep(dch, dLen, di)
 			fl := len(field)
 			if fl > ffSize {
-				return empty_int, errors.New("小数秒参数比格式长度长")
+				return empty_int, errors.New("The second after the decimal point is longer than the format length")
 			}
 			i, err := strconv.Atoi(field)
 			if err != nil {
@@ -2553,10 +2561,10 @@ func parseNanosecond(dtp dtType, dtFlag int, dch *string, dLen *int, di *int, ff
 			}
 			nsec = i * int(math.Pow10(9-fl))
 		} else {
-			return empty_int, errors.New("格式 纳秒 已经重复")
+			return empty_int, errors.New("Format nanosecond has been repeated")
 		}
 	} else {
-		return empty_int, errors.New("日期类型不支持小数秒")
+		return empty_int, errors.New("The date type does not support decimal seconds")
 	}
 	return nsec, nil
 }

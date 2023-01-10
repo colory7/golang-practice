@@ -19,6 +19,7 @@ func TestSuiteToCharByStr(t *testing.T) {
 		format    string
 		exception bool
 	}{
+		{1, "123.45", "B999.99", false},
 		{1, "3450", "999,99", false},
 		{1, "3450", "99999", false},
 		{1, "3450", "99999,", false},
@@ -184,6 +185,7 @@ func TestSuiteToCharByStr(t *testing.T) {
 		{1, "1", "FMLBUSXXXX", true},
 		{1, "1", "RN", false},
 		{1, "11", "RN", false},
+		{1, "4548", "RN", false},
 		{1, "12", "LRN", true},
 		{1, "$12", "S$RN", true},
 		{1, "1", "FMLBUSRN", true},
@@ -710,10 +712,14 @@ func TestSuiteToCharByTimestampZone2(t *testing.T) {
 		{1, "1999-10-29 01:30:56.321654789 UTC", "TZR", false},
 		{1, "1999-10-29 01:30:00 UTC", "TS", false},
 		{1, "1999-10-29 01:30:00 UTC", "TZD", false},
+		{1, "1999-10-29 01:30:00 CST", "TZD", false},
 		{1, "1999-10-29 01:30:00 UTC", "TZH", false},
 		{1, "1999-10-29 01:30:00 UTC", "TZM", false},
 		{1, "1999-10-29 01:30:00 UTC", "TZR", false},
 		{1, "1999-10-29 01:30:00 CST", "TZR", false},
+		//{1, "1999-10-29 01:30:00 Local", "TZR", false},
+		{1, "1999-10-29 01:30:00 Asia/Shanghai", "TZR", false},
+		{1, "1999-10-29 01:30:00 Asia/Shanghai", "TZD", false},
 	}
 
 	for _, test := range tests {
@@ -774,4 +780,14 @@ func utcToZone(t string, zone string) (string, error) {
 
 	d = d.In(loc)
 	return d.Format(timestampFormat), nil
+}
+
+func TestToCharTimestampZone(txx *testing.T) {
+	dt := "1999-10-29 01:30:00 UTC"
+	tm, err := parseTimestampZone2(dt)
+	if err != nil {
+		panic(err)
+	}
+	dch, err := ToCharByDatetime(tm, NLS_TIMESTAMP_TZ_FORMAT_DEFAULT)
+	fmt.Println(dch)
 }
