@@ -7,8 +7,8 @@ import (
 	"time"
 )
 
+var dateFormat = "2006-01-02"
 var timestampFormat = "2006-01-02 15:04:05.999999999"
-var dateFormat = "2006-01-02 15:04:05.999999999"
 var timestampZoneFormat = "2006-01-02 15:04:05.999999999 -0700"
 var timestampZoneFormat2 = "2006-01-02 15:04:05.999999999 MST"
 
@@ -37,7 +37,7 @@ func TestSuiteToCharByStr(t *testing.T) {
 		{1, "34,50", ",99999", true},
 		{1, "34,50", "999,99", true},
 		{1, "34,50", "99999", true},
-		{1, "3450", "999,99", true},
+		{1, "3450", "999,99", false},
 		{1, "3450", "99", true},
 		{1, "3450", "9G9", true},
 		{1, "12,4,548-", "99G9G999S", true},
@@ -78,9 +78,9 @@ func TestSuiteToCharByStr(t *testing.T) {
 		{1, "1322526", "90009000009", false},
 		{1, "1322526", "900000000009", false},
 		{1, "1322526", "00000000009", false},
-		{1, "1322526", "00", false},
-		{1, "1322526", "99", false},
-		{1, "1322526", "99.9", false},
+		{1, "1322526", "00", true},
+		{1, "1322526", "99", true},
+		{1, "1322526", "99.9", true},
 		{1, "1322526", "99990999999", false},
 		{1, "1322526", "9999999999", false},
 		{1, "1322526", "99999,99999", false},
@@ -106,13 +106,13 @@ func TestSuiteToCharByStr(t *testing.T) {
 		{1, "￥123.45", "B999.99", true},
 		{1, "485", "9999MI", false},
 		{1, "-485", "9999MI", false},
-		{1, "485-", "9999MI", false},
+		{1, "485-", "9999MI", true},
 		{1, "-485", "9999MI", false},
 		{1, "-485", "9999MI", false},
-		{1, "-485", "MI9999", false},
-		{1, "-485", "99MI99", false},
-		{1, "-485", "99MI99", false},
-		{1, "485", "9999MIMI", false},
+		{1, "-485", "MI9999", true},
+		{1, "-485", "99MI99", true},
+		{1, "-485", "99MI99", true},
+		{1, "485", "9999MIMI", true},
 		{1, "485", "999PR", false},
 		{1, "-485", "999PR", false},
 		{1, "485", "PR999", true},
@@ -159,14 +159,14 @@ func TestSuiteToCharByStr(t *testing.T) {
 		{1, "-1e2", "9999999EEEE", false},
 		{1, "-1e+2", "9999999EEEE", false},
 		{1, "-1e-2", "9999999EEEE", false},
-		{1, "+123.45e2", "9999999EEEE", true},
-		{1, "+123.456", "9.9EEEE", true},
-		{1, "+123.456e2", "99999999.99EEEE", true},
-		{1, "+123.456", "9.999EEEE", true},
-		{1, "+123.456", "9.9999EEEE", true},
-		{1, "+123.456", "9.99999EEEE", true},
-		{1, "+1E+123", "9.9EEEE", true},
-		{1, "+123.456", "FM9.9EEEE", true},
+		{1, "+123.45e2", "9999999EEEE", false},
+		{1, "+123.456", "9.9EEEE", false},
+		{1, "+123.456e2", "99999999.99EEEE", false},
+		{1, "+123.456", "9.999EEEE", false},
+		{1, "+123.456", "9.9999EEEE", false},
+		{1, "+123.456", "9.99999EEEE", false},
+		{1, "+1E+123", "9.9EEEE", false},
+		{1, "+123.456", "FM9.9EEEE", false},
 		{1, "1", "9V9", false},
 		{1, "1", "99V99", false},
 		{1, "1", "9,9V9", false},
@@ -174,6 +174,7 @@ func TestSuiteToCharByStr(t *testing.T) {
 		{1, "$12", "$99V9", true},
 		{1, "17", "XXXX", false},
 		{1, "017", "XXXX", false},
+		// FIXME Oracle中支持十六进制前补0
 		{1, "17", "0XXXX", false},
 		{1, "0017", "FMXXXX", false},
 		{1, "17", "FMXXXX", false},
@@ -197,6 +198,9 @@ func TestSuiteToCharByStr(t *testing.T) {
 		{1, "12", "TMES", true},
 		{1, "1234", "tmetme", true},
 		{1, "12", "LTME", true},
+		{1, "12", "VTME", true},
+		{1, "12", "RNTME", true},
+		{1, "12", "XTME", true},
 		{1, "$12", "S$TME", true},
 		{1, "1", "FMLBUSTME", true},
 	}
@@ -224,36 +228,63 @@ func TestSuiteToCharByNum(t *testing.T) {
 		format    string
 		exception bool
 	}{
+		// FIXME FIXME 与Oracle输出不同,当前版本支持货币符号不太好
+		{1, 3450, "9,9G9G99", true},
+		{1, 2.54, "D999", true},
+		{1, 1258, "999999C99", false},
+		{1, 1258, "999999999B9L", false},
+		{1, 1258.235, "9999U99", false},
+		{1, 1258.235, "9999C9999", false},
+		{1, 1258.235, "9999$9999", false},
+		//
+		{1, 63, "XXXX", false},
+		{1, 61, "9X", false},
+		{1, 12, "SRN", false},
+		{1, 1, "SRN", false},
+		{1, -12, "rn", true},
+		{1, 1234, "9TM9", true},
+		{1, 12, "SXXXX", true},
+		{1, 1234, "0TM9", true},
+		{1, 12, "FMTM", false},
+		{1, 12, "FMtm", false},
+		{1, 12, "FMTM9", false},
+		{1, 12, "FMtM9", false},
+		{1, 12, "FMTME", false},
+		{1, 12, "FMtme", false},
+		{1, 12, "FMTM9", false},
+		{1, 12, "FMTME", false},
+		{1, 1, "STM", false},
+		{1, 1234, "9TM9", true},
+		{1, 1234, "0TM9", true},
 		{1, 3450, "999,99", false},
 		{1, 3450, "999G99", false},
 		{1, 3450, "99G9G99", false},
 		{1, 3450, "9,9,9,99", false},
-		{1, 3450, "9,9G9G99", true},
-		{1, 3450, "99999", true},
-		{1, -124548, "S999999", true},
-		{1, 3450, "999,99", true},
+		{1, 3450, "99999", false},
+		{1, -124548, "S999999", false},
+		{1, 3450, "999,99", false},
 		{1, 3450, "99", true},
 		{1, 3450, "9G9", true},
-		{1, 124548, "99G9G999", true},
-		{1, 1245.48, "99G9G9D99", true},
+		{1, 124548, "99G9G999", false},
+		{1, 1245.48, "99G9G9D99", false},
 		{1, 23.54, "99.99", false},
 		{1, 23.54, "99D99", false},
 		{1, 23.54, "99D99", false},
+		{1, 23.54, "9D99", true},
 		{1, .54, "D99", false},
-		{1, 23.54, "99D99", true},
+		{1, 23.54, "99D99", false},
 		{1, 23.54, "99D9D9", true},
-		{1, 2.54, "D999", true},
-		{1, 1, "0", true},
+		{1, 1, "0", false},
 		{1, 1322526, "0099000", false},
 		{1, 1322526, "0099000", false},
 		{1, 1322526, "9999099", false},
 		{1, 1322526, "99990999999", false},
-		{1, 1322526, "999090909999999009", true},
-		{1, 1322526, "99909090999009", true},
-		{1, 1322526, "000000000000000", true},
-		{1, 1322526, "90009000009", true},
-		{1, 1322526, "900000000009", true},
-		{1, 1322526, "00000000009", true},
+		{1, 1322526, "999090909999999009", false},
+		{1, 1322526, "99909090999009", false},
+		{1, 1322526, "000000000000000", false},
+		{1, 1322526, "90009000009", false},
+		{1, 1322526, "900000000009", false},
+		{1, 1322526, "00000000009", false},
 		{1, 1322526, "99990999999", false},
 		{1, 1322526, "9999", true},
 		{1, 123.45, "B999.99", false},
@@ -263,27 +294,22 @@ func TestSuiteToCharByNum(t *testing.T) {
 		{1, 123.45, "U99999.990", false},
 		{1, 356, "C999", false},
 		{1, 1258, "9999C", false},
-		{1, 1258, "999999C99", false},
 		{1, 1258, "9999U", false},
 		{1, 1258, "9999B", false},
 		{1, 1258, "9999L", false},
-		{1, 1258, "999B9L", false},
 		{1, 1258, "99B99", false},
-		{1, 1258.345, "9999L99", false},
-		{1, 1258.235, "9999U99", false},
-		{1, 1258.235, "9999C9999", false},
 		{1, 1258.235, "9999B9999", false},
-		{1, 1258.235, "9999$9999", false},
+		{1, 1258.345, "9999L99", false},
 		{1, 1258, "99U99U", true},
 		{1, 1258, "99B99B", true},
 		{1, 1258, "99B9B9L", true},
 		{1, 1258, "9999CL", true},
 		{1, 1258, "9999C99C99", true},
 		{1, 485, "FM999MI", false},
-		{1, 485, "999MI", true},
-		{1, -485, "999MI", true},
-		{1, -485, "999MI", true},
-		{1, 485, "999MI", true},
+		{1, 485, "999MI", false},
+		{1, -485, "999MI", false},
+		{1, -485, "999MI", false},
+		{1, 485, "999MI", false},
 		{1, 485, "999PR", false},
 		{1, -485, "999PR", false},
 		{1, 485, "PR999", true},
@@ -296,11 +322,11 @@ func TestSuiteToCharByNum(t *testing.T) {
 		{1, -258, "9SS99", true},
 		{1, -258, "S9SS99", true},
 		{1, -258, "S999", false},
-		{1, +258, "S999", true},
+		{1, +258, "S999", false},
 		{1, -258, "999PRS", true},
 		{1, 1e+2, "9999999EEEE", false},
 		{1, -1e-2, "9999999EEEE", false},
-		{1, -1e-2, "9999999EEEE", true},
+		{1, -1e-2, "9999999EEEE", false},
 		{1, 12, "99V9", false},
 		{1, 12, "99V999", false},
 		{1, 12.45, "99V9", false},
@@ -324,16 +350,13 @@ func TestSuiteToCharByNum(t *testing.T) {
 		{1, 17, "FMXXXX", false},
 		{1, 00017, "XXXX", false},
 		{1, 7, "XXXX9", true},
-		{1, 6, "9XXXX", true},
 		{1, 6, "X9", true},
-		{1, 6, "9X", true},
 		{1, 6, "LX", true},
 		{1, 6, "XS", true},
-		{1, 12, "FMX", true},
+		{1, 12, "FMX", false},
 		{1, 12, "FMXXXXMI", true},
 		{1, 12, "FMXXXXS", true},
 		{1, 12, "XXXXPR", true},
-		{1, 12, "SXXXX", true},
 		{1, 12, "XXXXMI", true},
 		{1, 1, "SX", true},
 		{1, 1, "FMLBUSXXXXMIPR", true},
@@ -343,9 +366,6 @@ func TestSuiteToCharByNum(t *testing.T) {
 		{1, 1485, "rn", false},
 		{1, 12, "FMRN", false},
 		{1, 12, "FMrn", false},
-		{1, 12, "SRN", false},
-		{1, 1, "SRN", false},
-		{1, -12, "rn", true},
 		{1, 1485, "99999RN", true},
 		{1, 1485, "LRN", true},
 		{1, 7, "RN9", true},
@@ -367,19 +387,12 @@ func TestSuiteToCharByNum(t *testing.T) {
 		{1, 12, "BTM", true},
 		{1, 1234, "TM8", true},
 		{1, 1234, "TM99", true},
-		{1, 1234, "9TM9", true},
 		{1, 1234, "LTM9", true},
-		{1, 1234, "0TM9", true},
 		{1, 1234, "$TM9", true},
 		{1, 1234, "UTM9", true},
-		{1, 12, "FMTM", true},
-		{1, 12, "FMtm", true},
-		{1, 12, "FMTM9", true},
-		{1, 12, "FMtM9", true},
 		{1, 12, "FMTMS", true},
 		{1, 12, "TMPR", true},
 		{1, 12, "TMMI", true},
-		{1, 1, "STM", true},
 		{1, 1, "TMTM", true},
 		{1, 1, "FMLBUSTMMIPR", true},
 		{1, 1234, "TME", false},
@@ -394,15 +407,9 @@ func TestSuiteToCharByNum(t *testing.T) {
 		{1, 1234, "tm9e", true},
 		{1, 1234, "TM8", true},
 		{1, 1234, "TM99", true},
-		{1, 1234, "9TM9", true},
 		{1, 1234, "LTM9", true},
-		{1, 1234, "0TM9", true},
 		{1, 1234, "$TM9", true},
 		{1, 1234, "UTM9", true},
-		{1, 12, "FMTME", true},
-		{1, 12, "FMtme", true},
-		{1, 12, "FMTM9", true},
-		{1, 12, "FMTME", true},
 		{1, 12, "FMTMES", true},
 		{1, 12, "TMEPR", true},
 		{1, 1, "FMLBUSTMEMIPR", true},
@@ -433,6 +440,49 @@ func TestSuiteToCharByTimestamp(t *testing.T) {
 		format    string
 		exception bool
 	}{
+		// FIXME 负数的年目前不支持
+		{1, "2021-01-03 01:30:56.321654789", "SYYYY", false},
+		{1, "2023-01-03 01:30:56.321654789", "SYEAR", false},
+		{1, "2023-01-03 01:30:56.321654789", "SYEAR YYYY", false},
+		//{1, "-    2023-10-29 01:30:56.321654789", "SYYYY", false},
+		//{1, "-2023-10-29 01:30:56.321654789", "BCSYYYY", false},
+		//{1, "-2023-10-29 01:30:56.321654789", "ADSYYYY", false},
+		{1, "2023-10-29 01:30:56.321654789", "fmDDTH", false},
+		{1, "2023-10-29 01:30:56.321654789", "FMDay, FMDD HH12:MI:SS", false},
+		{1, "2023-10-29 01:30:56.321654789", "YYYYTHDDSPMMSPTHDay", false},
+		{1, "2023-10-29 01:30:56.321654789", "YYYYTH-DDSP-MMSPTH-Day", false},
+		//
+		{1, "2023-10-29 01:30:56.321654789", "DS", false},
+		{1, "2023-10-29 01:30:56.321654789", "DL", false},
+		{1, "2023-10-29 01:30:56.321654789", "hh", false},
+		{1, "2023-10-29 01:30:56.321654789", "SS.FF9", false},
+		{1, "2023-02-03 04:05:06.078", "YYYY-MM-DD HH:MI:SS.ff", false},
+		{1, "2023-02-03 04:05:06.078", "YYYY-MM-DD HH24:MI:SS.ff", false},
+		{1, "2023-02-03 04:05:06.078", "YYYY-MM-DD HH12:MI:SS.ff", false},
+		{1, "2023-02-03 04:05:06.078", "YYYY-MM-DD HH12", false},
+		{1, "2023-02-03 04:05:06.078", "YYYY-MM-DD HH24", false},
+		{1, "2023-02-03 04:05:06.078", "YYYY-MM-DD HH", false},
+		{1, "2023-02-03 04:05:06.0078", "YYYY-MM-DD HH.ff", false},
+		{1, "2023-02-03 04:05:06.0078", "YYYY-MM-DD HH.ff3", false},
+		{1, "2023-02-03 04:05:06.0078", "YYYY-MM-DD HH.ff2", false},
+		{1, "2023-02-03 04:05:06.0078", "YYYY-MM-DD HH.ff1", false},
+		{1, "2023-02-03 04:05:06.00078", "YYYY-MM-DD HH.ff", false},
+		{1, "0003-02-03 04:05:06.078", "IYYY-MM-DD", false},
+		{1, "0023-02-03 04:05:06.078", "IYYY-MM-DD", false},
+		{1, "0323-02-03 04:05:06.078", "IYYY-MM-DD", false},
+		{1, "0003-02-03 04:05:06.078", "IYY-MM-DD", false},
+		{1, "0003-02-03 04:05:06.078", "IY-MM-DD", false},
+		{1, "0003-02-03 04:05:06.078", "I-MM-DD", false},
+		{1, "0003-02-03 04:05:06.078", "Y,YYY", false},
+		{1, "0003-02-03 04:05:06.078", "YYYY", false},
+		{1, "1003-02-03 04:05:06.078", "YYY", false},
+		{1, "0003-02-03 04:05:06.078", "YY", false},
+		{1, "0003-02-03 04:05:06.078", "Y", false},
+		{1, "1987-10-29 01:30:56.321654789", "DD MM-YYYY", false},
+		{1, "1987-10-29 01:30:56.321654789", "DD/MM/YY", false},
+		{1, "2023-10-29 01:30:56.321654789", "hh12", false},
+		{1, "1987-10-29 01:30:56.321654789", "DD YYYY--MM", false},
+		{1, "1987-10-29 01:30:56.321654789", "MM/YY", false},
 		{1, "2023-10-29 01:30:56.321654789", "YYYY", false},
 		{1, "2023-10-29 01:30:56.321654789", "DD", false},
 		{1, "2023-10-29 01:30:56", "YYYY-YYYY", false},
@@ -454,7 +504,6 @@ func TestSuiteToCharByTimestamp(t *testing.T) {
 		{1, "2023-10-29 01:30:56.321654789", "DD", false},
 		{1, "2023-10-29 01:30:56.321654789", "DDD", false},
 		{1, "2023-10-29 01:30:56.321654789", "Day, DD HH12:MI:SS", false},
-		{1, "2023-10-29 01:30:56.321654789", "FMDay, FMDD HH12:MI:SS", false},
 		{1, "2023-10-29 01:30:56.321654789", "dd", false},
 		{1, "2023-10-29 01:30:56.321654789", "ddd", false},
 		{1, "2023-10-29 01:30:56.321654789", "DL", false},
@@ -468,10 +517,6 @@ func TestSuiteToCharByTimestamp(t *testing.T) {
 		{1, "2023-10-29 01:30:56.321654789", "SS.FF6", false},
 		{1, "2023-10-29 01:30:56.321654789", "SS.FF7", false},
 		{1, "2023-10-29 01:30:56.321654789", "SS.FF8", false},
-		{1, "2023-10-29 01:30:56.321654789", "SS.FF9", false},
-		{1, "2023-10-29 01:30:56.321654789", "fmDDTH", false},
-		{1, "2023-10-29 01:30:56.321654789", "hh", false},
-		{1, "2023-10-29 01:30:56.321654789", "hh12", false},
 		{1, "2023-10-29 01:30:56.321654789", "hh24", false},
 		{1, "2023-01-01 09:26:50.124", "IW", false},
 		{1, "2023-01-02 09:26:50.124", "IW", false},
@@ -503,18 +548,11 @@ func TestSuiteToCharByTimestamp(t *testing.T) {
 		{1, "2023-01-04 09:26:50.124", "Q", false},
 		{1, "2023-01-04 09:26:50.124", "RM", false},
 		{1, "2023-10-29 01:30:56.321654789", "ss", false},
-		{1, "1999-10-29 01:30:56.321654789 US/Pacific PDT", "SS", false},
-		{1, "1999-10-29 01:30:56.476589 US/Pacific PDT", "SSSSS", false},
-		{1, "1999-10-29 01:30:56.76589 US/Pacific PDT", "SSSSS", false},
-		{1, "1999-10-29 01:30:56.321654789 US/Pacific PDT", "WW", false},
-		{1, "1999-10-29 01:30:56.321654789 US/Pacific PDT", "WW", false},
-		{1, "1999-10-29 01:30:56.321654789 US/Pacific PDT", "HH:MI:SSXFF", false},
-		{1, "1999-10-29 01:30:56.321654789 US/Pacific PDT", "Y,YYY", false},
 		{1, "1987-10-29 01:30:56.321654789", "YYYY", false},
 		{1, "2023-01-04 09:26:50.124", "Year", false},
 		{1, "1987-10-29 01:30:56.321654789", "YYY", false},
 		{1, "1987-10-29 01:30:56.321654789", "YY", false},
-		{1, "1987-10-29 01:30:56.321654789 ", "Y", false},
+		{1, "1987-10-29 01:30:56.321654789", "Y", false},
 		{1, "1987-10-29 01:30:56.321654789", "YYYY-MM-DD", false},
 		{1, "1987-10-29 01:30:56.321654789", "Year-MM-DD", false},
 		{1, "1987-10-29 01:30:56.321654789", "YYYYMMDD", false},
@@ -524,33 +562,29 @@ func TestSuiteToCharByTimestamp(t *testing.T) {
 		{1, "1987-10-29 01:30:56.321654789", "MM YYYY DD", false},
 		{1, "1987-10-29 01:30:56.321654789", "MM DD YYYY", false},
 		{1, "1987-10-29 01:30:56.321654789", "DD MM-YYYY", false},
-		{1, "1987-10-29 01:30:56.321654789", "DD MM-YYYY", false},
-		{1, "1987-10-29 01:30:56.321654789", "DD YYYY--MM", false},
-		{1, "1999-10-29 01:30:56.321654789 US/Pacific PDT", "TZR", false},
-		{1, "1987-10-29 01:30:56.321654789", "SYYYY", false},
-		{1, "1987-10-29 01:30:56.321654789", "MM/YY", false},
-		{1, "1987-10-29 01:30:56.321654789", "DD/MM/YY", false},
 		{1, "1987-10-29 01:30:56.321654789", "YYYY/MM/DD", false},
+		{1, "2023-10-29 01:30:56.321654789", "YYYY\"年\"MM\"月\"DD\"日\"", false},
+		{1, "2023-10-29 01:30:56.321654789", "YYYY\" 年 \"MM\" 月 \"DD\" 天\"", false},
 		{1, "2023-10-29 01:30:56.321654789", "DDTH", false},
 		{1, "2023-10-29 01:30:56.321654789", "DDSP", false},
 		{1, "2023-10-29 01:30:56.321654789", "DDTHSP", false},
-		{1, "2023-10-29 01:30:56.321654789 ", "DDSPTH", false},
-		{1, "2023-10-29 01:30:56.321654789 ", "DDSPTH", false},
+		{1, "2023-10-29 01:30:56.321654789", "DDSPTH", false},
+		{1, "2023-10-29 01:30:56.321654789", "DDSPTH", false},
 		{1, "2023-10-29 01:30:56.321654789", "YYYYMMDDTH", false},
 		{1, "2023-10-29 01:30:56.321654789", "YYYYMMDDSP", false},
 		{1, "2023-10-29 01:30:56.321654789", "YYYYMMDDTHSP", false},
-		{1, "2023-10-29 01:30:56.321654789 ", "YYYYMMDDSPTH", false},
-		{1, "2023-10-29 01:30:56.321654789 ", "YYYYMMDDSPTH", false},
+		{1, "2023-10-29 01:30:56.321654789", "YYYYMMDDSPTH", false},
+		{1, "2023-10-29 01:30:56.321654789", "YYYYMMDDSPTH", false},
 		{1, "2023-10-29 01:30:56.321654789", "YYYY-MMD-DTH", false},
 		{1, "2023-10-29 01:30:56.321654789", "YYYY-MM-DDSP", false},
 		{1, "2023-10-29 01:30:56.321654789", "YYYY-MM-DDTHSP", false},
-		{1, "2023-10-29 01:30:56.321654789 ", "YYYY-MM-DDSPTH", false},
-		{1, "2023-10-29 01:30:56.321654789 ", "YYYY-MM-DDSPTH", false},
+		{1, "2023-10-29 01:30:56.321654789", "YYYY-MM-DDSPTH", false},
+		{1, "2023-10-29 01:30:56.321654789", "YYYY-MM-DDSPTH", false},
 		{1, "2023-10-29 01:30:56.321654789", "YYYY/MM-DDTH", false},
 		{1, "2023-10-29 01:30:56.321654789", "YYYY/MM-DDSP", false},
 		{1, "2023-10-29 01:30:56.321654789", "YYYY/MM-DDTHSP", false},
-		{1, "2023-10-29 01:30:56.321654789 ", "YYYY/MM-DDSPTH", false},
-		{1, "2023-10-29 01:30:56.321654789 ", "YYYY/MM-DDSPTH", false},
+		{1, "2023-10-29 01:30:56.321654789", "YYYY/MM-DDSPTH", false},
+		{1, "2023-10-29 01:30:56.321654789", "YYYY/MM-DDSPTH", false},
 	}
 
 	for _, test := range tests {
@@ -580,6 +614,7 @@ func TestSuiteToCharByDate(t *testing.T) {
 		format    string
 		exception bool
 	}{
+		// FIXME S开头的支持负号即公元前
 		{1, "2000-01-01", "SCC", false},
 		{1, "2001-01-01", "SCC", false},
 		{1, "2000-01-01", "SYEAR", false},
@@ -625,11 +660,6 @@ func TestSuiteToCharByTimestampZone(t *testing.T) {
 		format    string
 		exception bool
 	}{
-		{1, "1999-10-29 01:30:00 US/Pacific", "TS", false},
-		{1, "1999-10-29 01:30:00 US/Pacific", "TZD", false},
-		{1, "1999-10-29 01:30:00 US/Pacific", "TZH", false},
-		{1, "1999-10-29 01:30:00 US/Pacific", "TZM", false},
-		{1, "1999-10-29 01:30:00 US/Pacific", "TZR", false},
 		{1, "1999-10-29 01:30:00 +0902", "TS", false},
 		{1, "1999-10-29 01:30:00 +0902", "TZD", false},
 		{1, "1999-10-29 01:30:00 +0902", "TZH", false},
@@ -640,11 +670,55 @@ func TestSuiteToCharByTimestampZone(t *testing.T) {
 		{1, "1999-10-29 01:30:00 -0608", "TZH", false},
 		{1, "1999-10-29 01:30:00 -0608", "TZM", false},
 		{1, "1999-10-29 01:30:00 -0608", "TZM", false},
+		{1, "1999-10-29 01:30:00 -0608", "TZH:TZM", false},
+		{1, "1999-10-29 01:30:00 -0608", "yyyy-mm-dd hi:mi:ss TZH:TZM", false},
 	}
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%d", test.i), func(t *testing.T) {
-			dt, err := parseDate(test.dt)
+			dt, err := parseTimestampZone(test.dt)
+			if err != nil {
+				panic(err)
+			}
+			tm, err := ToCharByDatetime(dt, test.format)
+			if test.exception {
+				assert.Error(t, err)
+				//fmt.Println(err)
+			} else {
+				if err != nil {
+					assert.NoError(t, err)
+				}
+				fmt.Println(tm)
+			}
+		})
+	}
+}
+
+func TestSuiteToCharByTimestampZone2(t *testing.T) {
+	tests := []struct {
+		i         int
+		dt        string
+		format    string
+		exception bool
+	}{
+		{1, "1999-10-29 01:30:56.321654789 UTC", "WW", false},
+		{1, "1999-10-29 01:30:56.321654789 UTC", "HH:MI:SSXFF", false},
+		{1, "1999-10-29 01:30:56.321654789 UTC", "Y,YYY", false},
+		{1, "1999-10-29 01:30:56.476589 UTC", "SSSSS", false},
+		{1, "1999-10-29 01:30:56.76589 UTC", "SSSSS", false},
+		{1, "1999-10-29 01:30:56.321654789 UTC", "SS", false},
+		{1, "1999-10-29 01:30:56.321654789 UTC", "TZR", false},
+		{1, "1999-10-29 01:30:00 UTC", "TS", false},
+		{1, "1999-10-29 01:30:00 UTC", "TZD", false},
+		{1, "1999-10-29 01:30:00 UTC", "TZH", false},
+		{1, "1999-10-29 01:30:00 UTC", "TZM", false},
+		{1, "1999-10-29 01:30:00 UTC", "TZR", false},
+		{1, "1999-10-29 01:30:00 CST", "TZR", false},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%d", test.i), func(t *testing.T) {
+			dt, err := parseTimestampZone2(test.dt)
 			if err != nil {
 				panic(err)
 			}
@@ -672,4 +746,32 @@ func parseTimestamp(timeStr string) (time.Time, error) {
 	fmt.Println("timeStr:", timeStr)
 	t, err := time.Parse(timestampFormat, timeStr)
 	return t, err
+}
+
+func parseTimestampZone(timeStr string) (time.Time, error) {
+	fmt.Println("timeStr:", timeStr)
+	t, err := time.Parse(timestampZoneFormat, timeStr)
+	return t, err
+}
+
+func parseTimestampZone2(timeStr string) (time.Time, error) {
+	fmt.Println("timeStr:", timeStr)
+	t, err := time.Parse(timestampZoneFormat2, timeStr)
+	return t, err
+}
+
+func utcToZone(t string, zone string) (string, error) {
+	d, err := time.Parse(timestampFormat, t)
+	if err != nil {
+		return "", err
+	}
+
+	//loc, err := time.LoadLocation("Local")
+	loc, err := time.LoadLocation(zone)
+	if err != nil {
+		return "", err
+	}
+
+	d = d.In(loc)
+	return d.Format(timestampFormat), nil
 }

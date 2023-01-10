@@ -29,7 +29,7 @@ const (
 	format_conflict_err          = "format conflict with "
 	format_err                   = "format err "
 	unreachable_err              = "unreachable code"
-	format_length_smaller_err    = "format length is smaller than parameter length"
+	format_length_smaller_err    = "format length is smaller than output length"
 	format_param_not_matched_err = "format and parameter mismatch error"
 	// 非法字符,超出格式关键词范围
 	out_keyword_range_err = "Illegal character, not in the range of Format Model keyword "
@@ -366,6 +366,7 @@ func parseNumFormat(format string) (*numFmtDesc, error) {
 
 	preSep := bytes.Buffer{}
 	postSep := bytes.Buffer{}
+	signAffixExists := false
 	for fi := 0; fi < flen; {
 		// 截取一个字符
 		c = format[fi]
@@ -388,61 +389,86 @@ func parseNumFormat(format string) (*numFmtDesc, error) {
 				}
 				fi++
 			case 'R', 'r':
-				// 判断独占 长度 FIXME
+				if fmtDesc.outputMode != outputModeEmpty {
+					return fmtDesc, errors.New(format_conflict_err + "RN")
+				}
+
+				start := fi
+				offset := 0
+				if fmtDesc.matchMode != matchModeEmpty {
+					offset = 2
+				}
+				if fmtDesc.signMode == signModeSStart {
+					fmtDesc.signMode = signModeEmpty
+					offset++
+				}
+				if start != offset {
+					return nil, errors.New(format_err + "RN")
+				}
+
 				fi++
 				if format[fi] == 'N' || format[fi] == 'n' {
-					if fmtDesc.outputMode != outputModeEmpty {
-						return fmtDesc, errors.New(format_conflict_err + "RN")
-					}
-					if flen == 4 {
-						if fmtDesc.matchMode != matchModeFm {
-							return nil, errors.New(format_conflict_err + "RN")
-						}
-					} else if flen == 2 {
-						if fmtDesc.matchMode != matchModeEmpty {
-							return nil, errors.New(format_conflict_err + "RN")
-						}
-					} else {
-						return nil, errors.New(format_conflict_err + "RN")
-					}
 					fmtDesc.outputMode = outputModeRN
 				} else {
 					return nil, errors.New(num_fmt_part_err + "R")
 				}
 				fi++
+				if fi != flen {
+					return nil, errors.New(format_err + "RN")
+				}
 			case 'T', 't':
-				if fmtDesc.outputMode == outputModeEmpty {
-					fi++
-					if format[fi] == 'M' || format[fi] == 'm' {
-						fi++
-						if fi < flen {
-							if format[fi] == 'E' || format[fi] == 'e' {
-								fmtDesc.outputMode = outputModeTME
-							} else if format[fi] == '9' {
-								fmtDesc.outputMode = outputModeTM
-							} else {
-								return nil, errors.New(format_err + "TM")
-							}
-						} else {
-							fmtDesc.outputMode = outputModeTM
-						}
-					} else {
-						return nil, errors.New(format_err + string(c))
-					}
-				} else {
+				if fmtDesc.outputMode != outputModeEmpty {
 					return nil, errors.New(format_conflict_err + "TM")
 				}
 
+				if fmtDesc.currencySymbol != currencySymbolEmpty {
+					return nil, errors.New(format_err + "TM")
+				}
+
+				start := fi
+				offset := 0
+				if fmtDesc.matchMode != matchModeEmpty {
+					offset = 2
+				}
+				if fmtDesc.signMode == signModeSStart {
+					offset++
+				}
+				if start != offset {
+					return nil, errors.New(format_err + "TM")
+				}
+
+				fi++
+				if format[fi] == 'M' || format[fi] == 'm' {
+					fi++
+					if fi < flen {
+						if format[fi] == 'E' || format[fi] == 'e' {
+							fmtDesc.outputMode = outputModeTME
+						} else if format[fi] == '9' {
+							fmtDesc.outputMode = outputModeTM
+						} else {
+							return nil, errors.New(format_err + "TM")
+						}
+						fi++
+					} else {
+						fmtDesc.outputMode = outputModeTM
+					}
+				} else {
+					return nil, errors.New(format_err + string(c))
+				}
 				if fi != flen {
 					return nil, errors.New(format_err + "TM")
-				} else {
-					break
 				}
 			case 'X', 'x':
+				// TODO: Oracle中 十六进制支持0开头
 				if fmtDesc.outputMode != outputModeEmpty {
 					return nil, errors.New(format_conflict_err + string(c))
 				}
-				fmtDesc.outputMode = outputModeX
+				if fmtDesc.signMode != signModeEmpty {
+					return fmtDesc, errors.New(format_err + "X")
+				}
+				if fmtDesc.currencySymbol != currencySymbolEmpty {
+					return fmtDesc, errors.New(format_err + "X")
+				}
 				for ; fi < flen; fi++ {
 					if format[fi] == 'X' || format[fi] == 'x' {
 						fmtDesc.preSepValidLen++
@@ -450,153 +476,156 @@ func parseNumFormat(format string) (*numFmtDesc, error) {
 						return nil, errors.New("can only have X or x in hexadecimal format")
 					}
 				}
-				break
-			default:
-				signAffixSetup := false
-				for fi < flen {
-					// 截取一个字符
-					c = format[fi]
-					if c >= 32 && c <= 127 {
-						switch c {
-						case '9':
-							if readDec || readV {
-								postSep.WriteByte('9')
-							} else {
-								preSep.WriteByte('9')
-								fmtDesc.preSepValidLen++
-							}
-							fi++
-						case '.', 'D', 'd':
-							if !readDec {
-								readDec = true
-							} else {
-								return fmtDesc, errors.New("there can only be 1 period")
-							}
-							fi++
-						case '0':
-							if readDec || readV {
-								postSep.WriteByte('0')
-							} else {
-								preSep.WriteByte('0')
-								fmtDesc.preSepValidLen++
-							}
-							fi++
-						case ',', 'G', 'g':
-							if fi == 0 {
-								return nil, errors.New("cannot begin with a comma")
-							} else if readDec {
-								return fmtDesc, errors.New("the comma cannot appear on the right side of the period")
-							}
-							preSep.WriteByte(',')
-							fi++
-						case '$':
-							if fmtDesc.currencySymbol == currencySymbolEmpty && fi == 0 {
-								fmtDesc.currencySymbol = currencySymbolDollar
-							} else {
-								return fmtDesc, errors.New(format_conflict_err + string(c))
-							}
-							fi++
-						case 'B', 'b':
-							if fmtDesc.currencySymbol == currencySymbolEmpty {
-								fmtDesc.currencySymbol = currencySymbolB
-							} else {
-								return fmtDesc, errors.New(format_conflict_err + string(c))
-							}
-							fi++
-						case 'C', 'c':
-							if fmtDesc.currencySymbol == currencySymbolEmpty {
-								return nil, errors.New(format_conflict_err + string(c))
-							} else if li != fi && 0 != fi {
-								return fmtDesc, errors.New("C can only be at the beginning or end")
-							}
-							fmtDesc.currencySymbol = currencySymbolC
-							fi++
-						case 'L', 'l':
-							if fmtDesc.currencySymbol == currencySymbolEmpty {
-								fmtDesc.currencySymbol = currencySymbolL
-							} else {
-								return nil, errors.New(format_conflict_err + string(c))
-							}
-							fi++
-						case 'U', 'u':
-							if fmtDesc.currencySymbol == currencySymbolEmpty {
-								return nil, errors.New(format_conflict_err + "U")
-							} else if li != fi && 0 != fi {
-								return fmtDesc, errors.New("U can only be at the beginning or end")
-							}
-							fmtDesc.currencySymbol = currencySymbolU
-							fi++
-						case 'M', 'm':
-							if signAffixSetup {
-								return nil, errors.New(format_conflict_err + "M")
-							} else if fi == (li - 1) {
-								return nil, errors.New("MI can only be at the end")
-							}
-
-							fi++
-							if format[fi] == 'I' || format[fi] == 'i' {
-								fmtDesc.signMode = signModeMI
-							} else {
-								return nil, errors.New(num_fmt_part_err + "M")
-							}
-							fi++
-						case 'P', 'p':
-							if signAffixSetup {
-								return nil, errors.New(format_conflict_err + "PR")
-							} else if fi != (li - 1) {
-								return fmtDesc, errors.New("PR can only be at the end")
-							}
-
-							fi++
-							if format[fi] == 'R' || format[fi] == 'r' {
-								fmtDesc.signMode = signModePR
-							} else {
-								return nil, errors.New(num_fmt_part_err + "P")
-							}
-							fi++
-						case 'S', 's':
-							if signAffixSetup {
-								return nil, errors.New(format_conflict_err + string(c))
-							} else if fi == li {
-								fmtDesc.signMode = signModeSEnd
-							} else if fi != 0 {
-								fmtDesc.signMode = signModeSStart
-							} else {
-								return fmtDesc, errors.New("S can only be at the beginning or end")
-							}
-
-							fi++
-						case 'E', 'e':
-							if fmtDesc.outputMode == outputModeEmpty {
-								start := fi + 1
-								fi = start + 3
-								if "EEE" == strings.ToUpper(format[start:fi]) {
-									fmtDesc.outputMode = outputModeEEEE
-								} else {
-									return nil, errors.New(num_fmt_part_err + string(c))
-								}
-							} else {
-								return nil, errors.New(format_conflict_err + "E")
-							}
-						case 'V', 'v':
-							if readDec {
-								return nil, errors.New(format_conflict_err + ".")
-							}
-							if fmtDesc.outputMode != outputModeEmpty {
-								return nil, errors.New(format_conflict_err + string(c))
-							} else if 0 == fi {
-								return nil, errors.New("can not start with " + string(c))
-							}
-							readV = true
-							fmtDesc.outputMode = outputModeV
-							fi++
-						default:
-							return nil, errors.New(out_keyword_range_err + string(c))
-						}
-					} else {
-						return nil, errors.New(out_ascii_range_err)
-					}
+				fmtDesc.outputMode = outputModeX
+				fi++
+			case '9':
+				if readDec || readV {
+					postSep.WriteByte('9')
+				} else {
+					preSep.WriteByte('9')
+					fmtDesc.preSepValidLen++
 				}
+				fi++
+			case '.', 'D', 'd':
+				if fi == 0 {
+					preSep.WriteByte('0')
+					fmtDesc.preSepValidLen = 1
+				}
+				if !readDec {
+					readDec = true
+				} else {
+					return fmtDesc, errors.New("there can only be 1 period")
+				}
+				fi++
+			case '0':
+				if readDec || readV {
+					postSep.WriteByte('0')
+				} else {
+					preSep.WriteByte('0')
+					fmtDesc.preSepValidLen++
+				}
+				fi++
+			case ',', 'G', 'g':
+				if fi == 0 {
+					return nil, errors.New("cannot begin with a comma")
+				} else if readDec {
+					return fmtDesc, errors.New("the comma cannot appear on the right side of the period")
+				}
+				preSep.WriteByte(',')
+				fi++
+			case '$':
+				if fmtDesc.currencySymbol == currencySymbolEmpty && fi == 0 {
+					fmtDesc.currencySymbol = currencySymbolDollar
+				} else {
+					return fmtDesc, errors.New(format_conflict_err + string(c))
+				}
+				fi++
+			case 'B', 'b':
+				if fmtDesc.currencySymbol != currencySymbolEmpty {
+					return fmtDesc, errors.New(format_conflict_err + string(c))
+				}
+				fmtDesc.currencySymbol = currencySymbolB
+				fi++
+			case 'C', 'c':
+				if fmtDesc.currencySymbol != currencySymbolEmpty {
+					return nil, errors.New(format_conflict_err + string(c))
+				}
+				if li != fi && 0 != fi {
+					return fmtDesc, errors.New("C can only be at the beginning or end")
+				}
+				fmtDesc.currencySymbol = currencySymbolC
+				fi++
+			case 'L', 'l':
+				if fmtDesc.currencySymbol != currencySymbolEmpty {
+					return nil, errors.New(format_conflict_err + string(c))
+				}
+				fmtDesc.currencySymbol = currencySymbolL
+				fi++
+			case 'U', 'u':
+				if fmtDesc.currencySymbol != currencySymbolEmpty {
+					return nil, errors.New(format_conflict_err + "U")
+				}
+				if li != fi && 0 != fi {
+					return fmtDesc, errors.New("U can only be at the beginning or end")
+				}
+				fmtDesc.currencySymbol = currencySymbolU
+				fi++
+			case 'M', 'm':
+				if signAffixExists {
+					return nil, errors.New(format_conflict_err + "M")
+				}
+				if fi != (li - 1) {
+					return nil, errors.New("MI can only be at the end")
+				}
+
+				fi++
+				if format[fi] == 'I' || format[fi] == 'i' {
+					fmtDesc.signMode = signModeMI
+				} else {
+					return nil, errors.New(num_fmt_part_err + "M")
+				}
+				signAffixExists = true
+				fi++
+			case 'P', 'p':
+				if signAffixExists {
+					return nil, errors.New(format_conflict_err + "PR")
+				}
+				if fi != (li - 1) {
+					return fmtDesc, errors.New("PR can only be at the end")
+				}
+
+				fi++
+				if format[fi] == 'R' || format[fi] == 'r' {
+					fmtDesc.signMode = signModePR
+				} else {
+					return nil, errors.New(num_fmt_part_err + "P")
+				}
+				signAffixExists = true
+				fi++
+			case 'S', 's':
+				if signAffixExists {
+					return nil, errors.New(format_conflict_err + string(c))
+				}
+				offset := 0
+				if fmtDesc.matchMode != matchModeEmpty {
+					offset = 2
+				}
+				if fi == li {
+					fmtDesc.signMode = signModeSEnd
+				} else if fi == offset {
+					fmtDesc.signMode = signModeSStart
+				} else {
+					return fmtDesc, errors.New("S can only be at the beginning or end")
+				}
+
+				signAffixExists = true
+				fi++
+			case 'E', 'e':
+				if fmtDesc.outputMode == outputModeEmpty {
+					start := fi + 1
+					fi = start + 3
+					if "EEE" == strings.ToUpper(format[start:fi]) {
+						fmtDesc.outputMode = outputModeEEEE
+					} else {
+						return nil, errors.New(num_fmt_part_err + string(c))
+					}
+				} else {
+					return nil, errors.New(format_conflict_err + "E")
+				}
+			case 'V', 'v':
+				if readDec {
+					return nil, errors.New(format_conflict_err + ".")
+				}
+				if fmtDesc.outputMode != outputModeEmpty {
+					return nil, errors.New(format_conflict_err + string(c))
+				} else if 0 == fi {
+					return nil, errors.New("can not start with " + string(c))
+				}
+				readV = true
+				fmtDesc.outputMode = outputModeV
+				fi++
+			default:
+				return nil, errors.New(out_keyword_range_err + string(c))
 			}
 		} else {
 			return nil, errors.New(out_ascii_range_err)
@@ -628,6 +657,9 @@ func parseNum(num string) (*numParamDesc, error) {
 				preBuf.WriteByte(c)
 			}
 		case '.':
+			if i == 0 {
+				preBuf.WriteByte('0')
+			}
 			if readDec == false {
 				readDec = true
 			} else {
@@ -709,20 +741,10 @@ func parseNum(num string) (*numParamDesc, error) {
 		} else {
 			paramDesc.preDec = "0"
 		}
-
 		if postBuf.Len() > 0 {
 			paramDesc.postDec = postBuf.String()
 		}
-		ff := paramDesc.preDec + "." + paramDesc.postDec
-		d, err := strconv.ParseFloat(ff, 64)
-		if err != nil {
-			return paramDesc, err
-		}
-		fff := "%" + paramDesc.preDec + "." + paramDesc.postDec + "f"
-		v := fmt.Sprintf(fff, d)
-		//FIXME
-		fmt.Println(v)
-
+		return paramDesc, nil
 	} else {
 		paramDesc.preDec = preBuf.String()
 		paramDesc.postDec = postBuf.String()
@@ -838,7 +860,7 @@ func ToTimestampTZ(dch string, format string) (*time.Time, error) {
 }
 
 func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
-	dchKeywords, quoted, auxFlag, err := parseFmt(format)
+	dchKeywords, quoted, auxFlag, err := parseDTFmt(format)
 	if err != nil {
 		return nil, err
 	}
@@ -1459,10 +1481,6 @@ func toChar(numStr string, numFloat float64, format string) (string, error) {
 
 	result := bytes.Buffer{}
 
-	if numFmtDesc.preSepValidLen < len(numParamDesc.preDec) {
-		return empty_str, errors.New("格式的整数部分的长度不能比参数的整数部分的长度小")
-	}
-
 	// 左符号
 	leftSign, rightSign := decorateSign(negative, numFmtDesc.signMode)
 	if leftSign != signEmpty {
@@ -1482,6 +1500,10 @@ func toChar(numStr string, numFloat float64, format string) (string, error) {
 		// 分隔符: 小数点
 		// 分隔符后半部分: 0 9
 		// 右符号
+		if len(numFmtDesc.preSep) < len(numParamDesc.preDec) {
+			return empty_str, errors.New(format_length_smaller_err)
+		}
+
 		outputDecimal(numParamDesc, numFmtDesc, &result)
 		// 右符号
 		if rightSign != signEmpty {
@@ -1514,6 +1536,9 @@ func toChar(numStr string, numFloat float64, format string) (string, error) {
 		// 分隔符后半部分: 0 9
 		// 右符号
 		// TODO NB: Oracle中,会对最后一位进行四舍五入
+		if len(numFmtDesc.preSep) < len(numParamDesc.preDec) {
+			return empty_str, errors.New(format_length_smaller_err)
+		}
 		result.WriteString(strconv.FormatInt(int64(numFloat*math.Pow10(len(numFmtDesc.postSep))), 10))
 		// 右符号
 		if rightSign != signEmpty {
@@ -1523,9 +1548,16 @@ func toChar(numStr string, numFloat float64, format string) (string, error) {
 		}
 	// 十六进制 X 独占
 	case outputModeX:
-		result.WriteString(strconv.FormatFloat(numFloat, 'f', -1, 64))
+		//FIXME Oracle中支持前补0
+		if negative {
+			return empty_str, errors.New(not_support_err)
+		}
+		result.WriteString(strconv.FormatUint(uint64(numFloat), 16))
 	// 罗马计数 RN 独占
 	case outputModeRN:
+		if negative {
+			return empty_str, errors.New(not_support_err)
+		}
 		result.WriteString(toRoman(int(numFloat)).String())
 	// 最小文本 TM 独占
 	case outputModeTM:
@@ -1536,7 +1568,13 @@ func toChar(numStr string, numFloat float64, format string) (string, error) {
 	default:
 		return empty_str, errors.New(not_support_err)
 	}
-	return result.String(), nil
+
+	s := result.String()
+	if numFmtDesc.outputMode == outputModeX && numFmtDesc.preSepValidLen < len(s) {
+		return empty_str, errors.New(format_length_smaller_err)
+	}
+
+	return s, nil
 }
 
 func decorateSign(negative bool, signMode signMode) (sign, sign) {
@@ -1632,7 +1670,7 @@ func ToCharByStr(numStr string, format string) (string, error) {
 
 // 时间类型 转 格式化字符串
 func ToCharByDatetime(t time.Time, format string) (string, error) {
-	fmKeywords, quoted, _, err := parseFmt(format)
+	fmKeywords, quoted, _, err := parseDTFmt(format)
 	if err != nil {
 		return empty_str, nil
 	}
@@ -1678,9 +1716,9 @@ func ToCharByDatetime(t time.Time, format string) (string, error) {
 		case DCH_DAY:
 			result.WriteString(NLS_WEEKS[t.Weekday()])
 		case DCH_DDD:
-			result.WriteString(strconv.Itoa(t.YearDay()))
+			result.WriteString(fmt.Sprintf("%03d", t.YearDay()))
 		case DCH_DD:
-			result.WriteString(strconv.Itoa(t.Day()))
+			result.WriteString(fmt.Sprintf("%02d", t.Day()))
 		case DCH_DL:
 			tmp, err := ToCharByDatetime(t, NLS_DL)
 			if err != nil {
@@ -1702,23 +1740,23 @@ func ToCharByDatetime(t time.Time, format string) (string, error) {
 		case DCH_EE:
 			return empty_str, errors.New(not_support_err)
 		case DCH_FF1:
-			result.WriteString(strconv.Itoa(t.Nanosecond() / 1e8))
+			result.WriteString(fmt.Sprintf("%1d", t.Nanosecond()/1e8))
 		case DCH_FF2:
-			result.WriteString(strconv.Itoa(t.Nanosecond() / 1e7))
+			result.WriteString(fmt.Sprintf("%02d", t.Nanosecond()/1e7))
 		case DCH_FF3:
-			result.WriteString(strconv.Itoa(t.Nanosecond() / 1e6))
+			result.WriteString(fmt.Sprintf("%03d", t.Nanosecond()/1e6))
 		case DCH_FF4:
-			result.WriteString(strconv.Itoa(t.Nanosecond() / 1e5))
+			result.WriteString(fmt.Sprintf("%04d", t.Nanosecond()/1e5))
 		case DCH_FF5:
-			result.WriteString(strconv.Itoa(t.Nanosecond() / 1e4))
+			result.WriteString(fmt.Sprintf("%05d", t.Nanosecond()/1e4))
 		case DCH_FF6:
-			result.WriteString(strconv.Itoa(t.Nanosecond() / 1e3))
+			result.WriteString(fmt.Sprintf("%06d", t.Nanosecond()/1e3))
 		case DCH_FF7:
-			result.WriteString(strconv.Itoa(t.Nanosecond() / 1e2))
+			result.WriteString(fmt.Sprintf("%07d", t.Nanosecond()/1e2))
 		case DCH_FF8:
-			result.WriteString(strconv.Itoa(t.Nanosecond() / 1e1))
+			result.WriteString(fmt.Sprintf("%08d", t.Nanosecond()/1e1))
 		case DCH_FF9, DCH_FF:
-			result.WriteString(strconv.Itoa(t.Nanosecond()))
+			result.WriteString(fmt.Sprintf("%09d", t.Nanosecond()))
 		case DCH_HH24:
 			if t.Hour() < 10 {
 				result.WriteByte('0')
@@ -1735,25 +1773,40 @@ func ToCharByDatetime(t time.Time, format string) (string, error) {
 			result.WriteString(strconv.Itoa(hour))
 		case DCH_IW:
 			_, w := t.ISOWeek()
+			if w < 1e1 {
+				result.WriteByte('0')
+			}
 			result.WriteString(strconv.Itoa(w))
 		case DCH_IYYY:
 			y, _ := t.ISOWeek()
+			if y < 1e1 {
+				result.WriteByte('0')
+			}
+			if y < 1e2 {
+				result.WriteByte('0')
+			}
+			if y < 1e3 {
+				result.WriteByte('0')
+			}
 			result.WriteString(strconv.Itoa(y))
 		case DCH_IYY:
 			y, _ := t.ISOWeek()
-			result.WriteString(strconv.Itoa(y)[1:])
+			result.WriteString(fmt.Sprintf("%04d", y)[1:])
 		case DCH_IY:
 			y, _ := t.ISOWeek()
-			result.WriteString(strconv.Itoa(y)[2:])
+			result.WriteString(fmt.Sprintf("%04d", y)[2:])
 		case DCH_I:
 			y, _ := t.ISOWeek()
-			result.WriteString(strconv.Itoa(y)[3:])
+			result.WriteByte(fmt.Sprintf("%04d", y)[3])
 		case DCH_J:
 			result.WriteString(strconv.Itoa(toJulian(t.Year(), int(t.Month()), t.Day())))
 		case DCH_MI:
+			if t.Minute() < 1e1 {
+				result.WriteByte('0')
+			}
 			result.WriteString(strconv.Itoa(t.Minute()))
 		case DCH_MM:
-			if t.Month() < 10 {
+			if t.Month() < 1e1 {
 				result.WriteByte('0')
 			}
 			result.WriteString(strconv.Itoa(int(t.Month())))
@@ -1768,12 +1821,40 @@ func ToCharByDatetime(t time.Time, format string) (string, error) {
 		case DCH_RM:
 			result.WriteString(toRoman(int(t.Month())).String())
 		case DCH_RR:
+			if t.Year() < 1e1 {
+				result.WriteByte('0')
+			}
 			result.WriteString(strconv.Itoa(t.Year())[2:])
 		case DCH_RRRR:
+			if t.Year() < 1e1 {
+				result.WriteByte('0')
+			}
+			if t.Year() < 1e2 {
+				result.WriteByte('0')
+			}
+			if t.Year() < 1e3 {
+				result.WriteByte('0')
+			}
 			result.WriteString(strconv.Itoa(t.Year()))
 		case DCH_SSSSS:
-			result.WriteString(strconv.Itoa((t.Hour()*60+t.Minute())*60 + t.Second()))
+			s := (t.Hour()*60+t.Minute())*60 + t.Second()
+			if s < 1e1 {
+				result.WriteByte('0')
+			}
+			if s < 1e2 {
+				result.WriteByte('0')
+			}
+			if s < 1e3 {
+				result.WriteByte('0')
+			}
+			if s < 1e4 {
+				result.WriteByte('0')
+			}
+			result.WriteString(strconv.Itoa(s))
 		case DCH_SS:
+			if t.Second() < 1e1 {
+				result.WriteByte('0')
+			}
 			result.WriteString(strconv.Itoa(t.Second()))
 		case DCH_TZH:
 			result.WriteString(t.Format("-07"))
@@ -1794,14 +1875,18 @@ func ToCharByDatetime(t time.Time, format string) (string, error) {
 			}
 			result.WriteString(t.Format(tsFormat))
 		case DCH_WW:
-			result.WriteString(strconv.Itoa((t.YearDay() + 6) / 7))
+			d := (t.YearDay() + 6) / 7
+			if d < 1e1 {
+				result.WriteByte('0')
+			}
+			result.WriteString(strconv.Itoa(d))
 		case DCH_W:
 			result.WriteString(strconv.Itoa((t.Day() + 6) / 7))
 		case DCH_X:
 			result.WriteString(NLS_X)
 		case DCH_Y_YYY:
-			year := strconv.Itoa(t.Year())
-			result.WriteString(year[:1] + "," + year[1:])
+			tmp := fmt.Sprintf("%04d", t.Year())
+			result.WriteString(tmp[:1] + "," + tmp[1:])
 		case DCH_YEAR:
 			result.WriteString(NumToCardinalWord(t.Year()))
 		case DCH_SYEAR:
@@ -1809,18 +1894,26 @@ func ToCharByDatetime(t time.Time, format string) (string, error) {
 			result.WriteString(SPACE)
 			result.WriteString(NumToCardinalWord(t.Year() % 100))
 		case DCH_YYYY:
-			year := strconv.Itoa(t.Year())
+			year := fmt.Sprintf("%04d", t.Year())
 			result.WriteString(year)
 		case DCH_SYYYY:
-			result.WriteString(strconv.Itoa(t.Year()))
+			year := fmt.Sprintf("%04d", t.Year())
+			result.WriteString(year)
 		case DCH_YYY:
-			year := strconv.Itoa(t.Year())
+			year := fmt.Sprintf("%04d", t.Year())
 			result.WriteString(year[1:])
 		case DCH_YY:
-			year := strconv.Itoa(t.Year())
+			year := fmt.Sprintf("%04d", t.Year())
 			result.WriteString(year[2:])
 		case DCH_Y:
-			result.WriteString(strconv.Itoa(t.Year())[3:])
+			year := fmt.Sprintf("%4d", t.Year())
+			result.WriteByte(year[3])
+		case DCH_FM, DCH_FX:
+			// TODO
+		case DCH_SP:
+			// TODO
+		case DCH_TH:
+			// TODO
 		default:
 			return empty_str, errors.New("unrechable")
 		}
@@ -1830,7 +1923,7 @@ func ToCharByDatetime(t time.Time, format string) (string, error) {
 }
 
 // 解析日期格式
-func parseFmt(format string) ([]dchKeyword, []string, int, error) {
+func parseDTFmt(format string) ([]dchKeyword, []string, int, error) {
 	dchKeywords := []dchKeyword{}
 
 	flen := len(format)
@@ -2137,25 +2230,30 @@ func parsePrefixH(fi *int, flen int, format string) (dchKeyword, error) {
 	if *fi < flen {
 		if format[*fi] == 'H' || format[*fi] == 'h' {
 			*fi++
-			if format[*fi] == '2' {
-				*fi++
-				if *fi < flen {
-					// DCH HH24
-					if format[*fi] == '4' {
-						keyword = DCH_HH24
+			if *fi < flen {
+				if format[*fi] == '2' {
+					*fi++
+					if *fi < flen {
+						// DCH HH24
+						if format[*fi] == '4' {
+							keyword = DCH_HH24
+							*fi++
+						}
 					}
-				}
-			} else if format[*fi] == '1' {
-				*fi++
-				if *fi < flen {
-					// DCH HH12
-					if format[*fi] == '2' {
-						keyword = DCH_HH12
+				} else if format[*fi] == '1' {
+					*fi++
+					if *fi < flen {
+						// DCH HH12 同 HH
+						if format[*fi] == '2' {
+							keyword = DCH_HH12
+							*fi++
+						}
 					}
+				} else {
+					// DCH HH 同 HH12
+					keyword = DCH_HH
 				}
-			}
-
-			if keyword == DCH_EMPTY {
+			} else {
 				// DCH HH 同 HH12
 				keyword = DCH_HH
 			}
@@ -2165,7 +2263,6 @@ func parsePrefixH(fi *int, flen int, format string) (dchKeyword, error) {
 	} else {
 		return DCH_EMPTY, errors.New(dch_fmt_length_err + "H")
 	}
-	*fi++
 	return keyword, nil
 }
 
@@ -2194,6 +2291,9 @@ func parsePrefixI(fi *int, flen int, format string) (dchKeyword, error) {
 				// DCH IY
 				keyword = DCH_IY
 			}
+		default:
+			// DCH I
+			keyword = DCH_I
 		}
 	} else {
 		// DCH I
