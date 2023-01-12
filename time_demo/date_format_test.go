@@ -28,3 +28,12 @@ func TestTimeParse33(xx *testing.T) {
 	}
 	fmt.Println(t)
 }
+
+func TestDateFormat(t *testing.T) {
+	//select DATE('2021 01 28 13 14 15');
+	str := "2021 01 28 13 14 15"
+	format := ""
+
+	// YYYY MM DD HH mm SS FFFFFFFFF
+
+}

@@ -69,7 +69,7 @@ func ReplaceLibPQTimePrefix(s string) string {
 
 // TODO To simplify the date function, the current date format support is limited
 // Currently, only the following time formats are supported:
-// timeutil.DateFormat
+// timeutil.DateWithMinusFormat
 // timeutil.TimestampWithoutTZFormat
 // timeutil.TimeWithoutTZFormat
 // timeutil.TimestampNumWithoutTZFormat
@@ -82,8 +82,8 @@ func ParseTime(s string) (time.Time, string, error) {
 			t, err = time.Parse(TimestampWithoutTZFormat, s)
 			format = TimestampWithoutTZFormat
 		} else {
-			t, err = time.Parse(DateFormat, s)
-			format = DateFormat
+			t, err = time.Parse(DateWithMinusFormat, s)
+			format = DateWithMinusFormat
 		}
 	} else if strings.ContainsAny(s, ":") {
 		t, err = time.Parse(TimeWithoutTZFormat, s)
@@ -92,6 +92,16 @@ func ParseTime(s string) (time.Time, string, error) {
 		t, err = time.Parse(TimestampNumWithoutTZFormat, s)
 		format = TimestampNumWithoutTZFormat
 	}
+
+	return t, format, err
+}
+
+func ParseTime2(s string) (time.Time, string, error) {
+	var t time.Time
+	var err error
+	var format string
+	t, err = time.Parse(TimestampWithoutTZFormat, s)
+	format = TimestampWithoutTZFormat
 
 	return t, format, err
 }

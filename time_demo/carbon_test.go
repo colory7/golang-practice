@@ -1,9 +1,24 @@
 package time_demo
 
 import (
+	"fmt"
 	"gitee.com/go-package/carbon"
+	"strconv"
 	"testing"
 )
+
+func TestCarbon2(t *testing.T) {
+	s := carbon.Parse("2021 01 28 13 14 15").Tomorrow().ToDateTimeString()
+	fmt.Println(s)
+
+	s = carbon.Parse("20210128131415").Tomorrow().ToDateTimeString()
+	fmt.Println(s)
+
+	i, err := strconv.ParseInt("20210128131415", 10, 64)
+	fmt.Println(i)
+	fmt.Println(err)
+
+}
 
 func TestCarbon(t *testing.T) {
 	// 今天此刻

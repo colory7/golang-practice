@@ -32,8 +32,13 @@ const TimeWithTZFormat = "15:04:05.999999-07"
 // without a time zone offset.
 const TimeWithoutTZFormat = "15:04:05.999999"
 
-// DateFormat is the time format used to display a date.
-const DateFormat = "2006-01-02"
+// DateWithMinusFormat is the time format used to display a date.
+const DateWithMinusFormat = "2006-01-02"
+const DateWithSlashFormat = "2006/01/02"
+const DateFormat = "20060102"
+const DatetimeFormat = "20060102150405"
+const DatetimeFormat2 = "2006-01-02 15:04:05"
+const DatetimeFormat3 = "2006/01/02 15:04:05"
 
 // TimestampNumWithoutTZFormat is the time format used to display
 // timestamps without a time zone offset. The minutes and seconds

@@ -44,7 +44,7 @@ func TestParseTime2(xxx *testing.T) {
 
 func TestParseTime3(xxx *testing.T) {
 	dt1 := "2022-08-11"
-	t, err := time.Parse(timeutil.DateFormat, dt1)
+	t, err := time.Parse(timeutil.DateWithMinusFormat, dt1)
 	if err != nil {
 		panic(err)
 	}
