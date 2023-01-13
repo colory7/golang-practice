@@ -419,6 +419,52 @@ func TestDateFormat5(t *testing.T) {
 	}
 }
 
+func TestDateFormat6(t *testing.T) {
+	tests := []struct {
+		i         int
+		ch        string
+		format    string
+		expected  string
+		exception bool
+	}{
+		{1, "2018-01-01 23:39:39.123456789", "%u %v %x - %U %V %X %W %w", "01 01 2018 - 00 53 2017 Monday 1", false},
+		{1, "2019-01-01 23:39:39.123456789", "%u %v %x - %U %V %X %W %w", "01 01 2019 - 00 52 2018 Tuesday 2", false},
+		{1, "2020-01-01 23:39:39.123456789", "%u %v %x - %U %V %X %W %w", "01 01 2020 - 00 52 2019 Wednesday 3", false},
+		{1, "2021-01-01 23:39:39.123456789", "%u %v %x - %U %V %X %W %w", "00 53 2020 - 00 52 2020 Friday 5", false},
+		{1, "2022-01-01 23:39:39.123456789", "%u %v %x - %U %V %X %W %w", "00 52 2021 - 00 52 2021 Saturday 6", false},
+		{1, "2023-01-01 23:39:39.123456789", "%u %v %x - %U %V %X %W %w", "00 52 2022 - 01 01 2023 Sunday 0", false},
+		{1, "2024-01-01 23:39:39.123456789", "%u %v %x - %U %V %X %W %w", "01 01 2024 - 00 53 2023 Monday 1", false},
+		{1, "2025-01-01 23:39:39.123456789", "%u %v %x - %U %V %X %W %w", "01 01 2025 - 00 52 2024 Wednesday 3", false},
+		{1, "2026-01-01 23:39:39.123456789", "%u %v %x - %U %V %X %W %w", "01 01 2026 - 00 52 2025 Thursday 4", false},
+		{1, "2027-01-01 23:39:39.123456789", "%u %v %x - %U %V %X %W %w", "00 53 2026 - 00 52 2026 Friday 5", false},
+		{1, "2028-01-01 23:39:39.123456789", "%u %v %x - %U %V %X %W %w", "00 52 2027 - 00 52 2027 Saturday 6", false},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%d", test.i), func(t *testing.T) {
+			tm, err := time.Parse("2006-01-02 15:04:05", test.ch)
+			if err != nil {
+				panic(err)
+			}
+			actual, err := DateFormat(tm, test.format)
+			if test.exception {
+				assert.Error(t, err)
+				//fmt.Println(err)
+			} else {
+				if err != nil {
+					assert.NoError(t, err)
+				}
+
+				if actual != test.expected {
+					fmt.Println("actual  : " + actual)
+					fmt.Println("expected: " + test.expected)
+					t.Fail()
+				}
+			}
+		})
+	}
+}
+
 func TestSuite(t *testing.T) {
 	tests := []struct {
 		i         int
