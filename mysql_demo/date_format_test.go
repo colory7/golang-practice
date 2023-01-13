@@ -290,7 +290,7 @@ func TestDateFormat3(t *testing.T) {
 		{1, "2001-01-05 00:00:00", "%u %v %x - %U %V %X", "01 01 2001 - 00 53 2000", false},
 		{1, "2001-01-06 00:00:00", "%u %v %x - %U %V %X", "01 01 2001 - 00 53 2000", false},
 		{1, "2001-01-07 00:00:00", "%u %v %x - %U %V %X", "01 01 2001 - 01 01 2001", false},
-		{1, "2001-01-08 00:00:00", "%u %v %x - %U %V %X", "01 01 2001 - 01 01 2001", false},
+		{1, "2001-01-08 00:00:00", "%u %v %x - %U %V %X", "02 02 2001 - 01 01 2001", false},
 	}
 
 	for _, test := range tests {
@@ -307,7 +307,7 @@ func TestDateFormat3(t *testing.T) {
 				if err != nil {
 					assert.NoError(t, err)
 				}
-				fmt.Println("actual: " + actual)
+				fmt.Println("actual:   " + actual)
 				if actual != test.expected {
 					fmt.Println("expected: " + test.expected)
 					t.Fail()
@@ -325,19 +325,19 @@ func TestDateFormat4(t *testing.T) {
 		expected  string
 		exception bool
 	}{
-		{1, "2001-12-27 00:00:00", "%u %v %x - %U %V %X %W %w", "52 52 2001 - 51 2001 Thursday 4", false},
-		{1, "2001-12-28 00:00:00", "%u %v %x - %U %V %X %W %w", "52 52 2001 - 51 2001 Friday 5", false},
-		{1, "2001-12-29 00:00:00", "%u %v %x - %U %V %X %W %w", "52 52 2001 - 51 2001 Saturday 6", false},
-		{1, "2001-12-30 00:00:00", "%u %v %x - %U %V %X %W %w", "52 52 2001 - 52 2001 Sunday 0", false},
-		{1, "2001-12-31 00:00:00", "%u %v %x - %U %V %X %W %w", "53 01 2002 - 52 2001 Monday 1", false},
-		{1, "2002-01-01 00:00:00", "%u %v %x - %U %V %X %W %w", "01 01 2002 - 52 2001 Tuesday 2", false},
-		{1, "2002-01-02 00:00:00", "%u %v %x - %U %V %X %W %w", "01 01 2002 - 52 2001 Wednesday 3", false},
-		{1, "2002-01-03 00:00:00", "%u %v %x - %U %V %X %W %w", "01 01 2002 - 52 2001 Thursday 4", false},
-		{1, "2002-01-04 00:00:00", "%u %v %x - %U %V %X %W %w", "01 01 2002 - 52 2001 Friday 5", false},
-		{1, "2002-01-05 00:00:00", "%u %v %x - %U %V %X %W %w", "01 01 2002 - 52 2001 Saturday 6", false},
-		{1, "2002-01-06 00:00:00", "%u %v %x - %U %V %X %W %w", "01 01 2002 - 01 2002 Sunday 0", false},
-		{1, "2002-01-07 00:00:00", "%u %v %x - %U %V %X %W %w", "02 02 2002 - 01 2002 Monday 1", false},
-		{1, "2002-01-08 00:00:00", "%u %v %x - %U %V %X %W %w", "02 02 2002 - 01 2002 Tuesday 2", false},
+		{1, "2001-12-27 00:00:00", "%u %v %x - %U %V %X %W %w", "52 52 2001 - 51 51 2001 Thursday 4", false},
+		{1, "2001-12-28 00:00:00", "%u %v %x - %U %V %X %W %w", "52 52 2001 - 51 51 2001 Friday 5", false},
+		{1, "2001-12-29 00:00:00", "%u %v %x - %U %V %X %W %w", "52 52 2001 - 51 51 2001 Saturday 6", false},
+		{1, "2001-12-30 00:00:00", "%u %v %x - %U %V %X %W %w", "52 52 2001 - 52 52 2001 Sunday 0", false},
+		{1, "2001-12-31 00:00:00", "%u %v %x - %U %V %X %W %w", "53 01 2002 - 52 52 2001 Monday 1", false},
+		{1, "2002-01-01 00:00:00", "%u %v %x - %U %V %X %W %w", "01 01 2002 - 00 52 2001 Tuesday 2", false},
+		{1, "2002-01-02 00:00:00", "%u %v %x - %U %V %X %W %w", "01 01 2002 - 00 52 2001 Wednesday 3", false},
+		{1, "2002-01-03 00:00:00", "%u %v %x - %U %V %X %W %w", "01 01 2002 - 00 52 2001 Thursday 4", false},
+		{1, "2002-01-04 00:00:00", "%u %v %x - %U %V %X %W %w", "01 01 2002 - 00 52 2001 Friday 5", false},
+		{1, "2002-01-05 00:00:00", "%u %v %x - %U %V %X %W %w", "01 01 2002 - 00 52 2001 Saturday 6", false},
+		{1, "2002-01-06 00:00:00", "%u %v %x - %U %V %X %W %w", "01 01 2002 - 01 01 2002 Sunday 0", false},
+		{1, "2002-01-07 00:00:00", "%u %v %x - %U %V %X %W %w", "02 02 2002 - 01 01 2002 Monday 1", false},
+		{1, "2002-01-08 00:00:00", "%u %v %x - %U %V %X %W %w", "02 02 2002 - 01 01 2002 Tuesday 2", false},
 	}
 
 	for _, test := range tests {
@@ -841,7 +841,7 @@ func week(t time.Time, mode byte) (string, string) {
 			w++
 		}
 	}
-	if mode == 'u' {
+	if mode == 'u' && dfw >= 4 {
 		w++
 	}
 	return fmt.Sprintf("%04d", y), fmt.Sprintf("%02d", w)
