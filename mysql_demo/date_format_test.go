@@ -86,23 +86,29 @@ func DateFormat(t time.Time, f string) (string, error) {
 				case 'd':
 					add(fmt.Sprintf("%02d", t.Day()))
 				case 'D':
-					add(builtins.NumToOrdinalWord(t.Day()))
+					add(builtins.NumToWithOrdinalSuffix(t.Day()))
 				case 'e':
 					add(strconv.FormatUint(uint64(t.Day()), 10))
 				case 'f':
 					add(fmt.Sprintf("%06d", t.Nanosecond()/1000))
-				case 'H', 'k':
+				case 'H':
 					add(fmt.Sprintf("%02d", t.Hour()))
+				case 'k':
+					add(strconv.FormatUint(uint64(t.Hour()), 10))
 				case 'h', 'I':
 					h := t.Hour()
-					if h <= 12 {
+					if h == 0 {
+						add("12")
+					} else if h <= 12 {
 						add(fmt.Sprintf("%02d", h))
 					} else {
 						add(fmt.Sprintf("%02d", h-12))
 					}
 				case 'l':
 					h := t.Hour()
-					if h <= 12 {
+					if h == 0 {
+						add("12")
+					} else if h <= 12 {
 						add(strconv.FormatUint(uint64(h), 10))
 					} else {
 						add(strconv.FormatUint(uint64(h-12), 10))
@@ -122,7 +128,7 @@ func DateFormat(t time.Time, f string) (string, error) {
 						add("PM")
 					}
 				case 'r':
-					s, err := DateFormat(t, "%I:%M:%S %p")
+					s, err := DateFormat(t, "%I:%H:%S %p")
 					if err != nil {
 						return "", err
 					}
@@ -338,6 +344,54 @@ func TestDateFormat4(t *testing.T) {
 		{1, "2002-01-06 00:00:00", "%u %v %x - %U %V %X %W %w", "01 01 2002 - 01 01 2002 Sunday 0", false},
 		{1, "2002-01-07 00:00:00", "%u %v %x - %U %V %X %W %w", "02 02 2002 - 01 01 2002 Monday 1", false},
 		{1, "2002-01-08 00:00:00", "%u %v %x - %U %V %X %W %w", "02 02 2002 - 01 01 2002 Tuesday 2", false},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%d", test.i), func(t *testing.T) {
+			tm, err := time.Parse("2006-01-02 15:04:05", test.ch)
+			if err != nil {
+				panic(err)
+			}
+			actual, err := DateFormat(tm, test.format)
+			if test.exception {
+				assert.Error(t, err)
+				//fmt.Println(err)
+			} else {
+				if err != nil {
+					assert.NoError(t, err)
+				}
+
+				if actual != test.expected {
+					fmt.Println("actual  : " + actual)
+					fmt.Println("expected: " + test.expected)
+					t.Fail()
+				}
+			}
+		})
+	}
+}
+
+func TestDateFormat5(t *testing.T) {
+	tests := []struct {
+		i         int
+		ch        string
+		format    string
+		expected  string
+		exception bool
+	}{
+		{1, "2001-12-27 00:00:00", "%a - %b - %c, - %D, - %d, - %e, - %f, - %H, - %h, - %I, - %i, - %j, - %k, - %l, - %M, - %m, - %p, - %r, - %S, - %s, - %T, - %U, - %u, - %V, - %v, - %W, - %w, - %X, - %x, - %Y, - %y - %%", "Thu - Dec - 12, - 27th, - 27, - 27, - 000000, - 00, - 12, - 12, - 00, - 361, - 0, - 12, - December, - 12, - AM, - 12:00:00 AM, - 00, - 00, - 00:00:00, - 51, - 52, - 51, - 52, - Thursday, - 4, - 2001, - 2001, - 2001, - 01 - %", false},
+		{1, "2001-12-28 00:00:00", "%a - %b - %c, - %D, - %d, - %e, - %f, - %H, - %h, - %I, - %i, - %j, - %k, - %l, - %M, - %m, - %p, - %r, - %S, - %s, - %T, - %U, - %u, - %V, - %v, - %W, - %w, - %X, - %x, - %Y, - %y - %%", "Fri - Dec - 12, - 28th, - 28, - 28, - 000000, - 00, - 12, - 12, - 00, - 362, - 0, - 12, - December, - 12, - AM, - 12:00:00 AM, - 00, - 00, - 00:00:00, - 51, - 52, - 51, - 52, - Friday, - 5, - 2001, - 2001, - 2001, - 01 - %", false},
+		{1, "2001-12-29 00:00:00", "%a - %b - %c, - %D, - %d, - %e, - %f, - %H, - %h, - %I, - %i, - %j, - %k, - %l, - %M, - %m, - %p, - %r, - %S, - %s, - %T, - %U, - %u, - %V, - %v, - %W, - %w, - %X, - %x, - %Y, - %y - %%", "Sat - Dec - 12, - 29th, - 29, - 29, - 000000, - 00, - 12, - 12, - 00, - 363, - 0, - 12, - December, - 12, - AM, - 12:00:00 AM, - 00, - 00, - 00:00:00, - 51, - 52, - 51, - 52, - Saturday, - 6, - 2001, - 2001, - 2001, - 01 - %", false},
+		{1, "2001-12-30 00:00:00", "%a - %b - %c, - %D, - %d, - %e, - %f, - %H, - %h, - %I, - %i, - %j, - %k, - %l, - %M, - %m, - %p, - %r, - %S, - %s, - %T, - %U, - %u, - %V, - %v, - %W, - %w, - %X, - %x, - %Y, - %y - %%", "Sun - Dec - 12, - 30th, - 30, - 30, - 000000, - 00, - 12, - 12, - 00, - 364, - 0, - 12, - December, - 12, - AM, - 12:00:00 AM, - 00, - 00, - 00:00:00, - 52, - 52, - 52, - 52, - Sunday, - 0, - 2001, - 2001, - 2001, - 01 - %", false},
+		{1, "2001-12-31 00:00:00", "%a - %b - %c, - %D, - %d, - %e, - %f, - %H, - %h, - %I, - %i, - %j, - %k, - %l, - %M, - %m, - %p, - %r, - %S, - %s, - %T, - %U, - %u, - %V, - %v, - %W, - %w, - %X, - %x, - %Y, - %y - %%", "Mon - Dec - 12, - 31st, - 31, - 31, - 000000, - 00, - 12, - 12, - 00, - 365, - 0, - 12, - December, - 12, - AM, - 12:00:00 AM, - 00, - 00, - 00:00:00, - 52, - 53, - 52, - 01, - Monday, - 1, - 2001, - 2002, - 2001, - 01 - %", false},
+		{1, "2002-01-01 00:00:00", "%a - %b - %c, - %D, - %d, - %e, - %f, - %H, - %h, - %I, - %i, - %j, - %k, - %l, - %M, - %m, - %p, - %r, - %S, - %s, - %T, - %U, - %u, - %V, - %v, - %W, - %w, - %X, - %x, - %Y, - %y - %%", "Tue - Jan - 1, - 1st, - 01, - 1, - 000000, - 00, - 12, - 12, - 00, - 001, - 0, - 12, - January, - 01, - AM, - 12:00:00 AM, - 00, - 00, - 00:00:00, - 00, - 01, - 52, - 01, - Tuesday, - 2, - 2001, - 2002, - 2002, - 02 - %", false},
+		{1, "2002-01-02 00:00:00", "%a - %b - %c, - %D, - %d, - %e, - %f, - %H, - %h, - %I, - %i, - %j, - %k, - %l, - %M, - %m, - %p, - %r, - %S, - %s, - %T, - %U, - %u, - %V, - %v, - %W, - %w, - %X, - %x, - %Y, - %y - %%", "Wed - Jan - 1, - 2nd, - 02, - 2, - 000000, - 00, - 12, - 12, - 00, - 002, - 0, - 12, - January, - 01, - AM, - 12:00:00 AM, - 00, - 00, - 00:00:00, - 00, - 01, - 52, - 01, - Wednesday, - 3, - 2001, - 2002, - 2002, - 02 - %", false},
+		{1, "2002-01-03 00:00:00", "%a - %b - %c, - %D, - %d, - %e, - %f, - %H, - %h, - %I, - %i, - %j, - %k, - %l, - %M, - %m, - %p, - %r, - %S, - %s, - %T, - %U, - %u, - %V, - %v, - %W, - %w, - %X, - %x, - %Y, - %y - %%", "Thu - Jan - 1, - 3rd, - 03, - 3, - 000000, - 00, - 12, - 12, - 00, - 003, - 0, - 12, - January, - 01, - AM, - 12:00:00 AM, - 00, - 00, - 00:00:00, - 00, - 01, - 52, - 01, - Thursday, - 4, - 2001, - 2002, - 2002, - 02 - %", false},
+		{1, "2002-01-04 00:00:00", "%a - %b - %c, - %D, - %d, - %e, - %f, - %H, - %h, - %I, - %i, - %j, - %k, - %l, - %M, - %m, - %p, - %r, - %S, - %s, - %T, - %U, - %u, - %V, - %v, - %W, - %w, - %X, - %x, - %Y, - %y - %%", "Fri - Jan - 1, - 4th, - 04, - 4, - 000000, - 00, - 12, - 12, - 00, - 004, - 0, - 12, - January, - 01, - AM, - 12:00:00 AM, - 00, - 00, - 00:00:00, - 00, - 01, - 52, - 01, - Friday, - 5, - 2001, - 2002, - 2002, - 02 - %", false},
+		{1, "2002-01-05 00:00:00", "%a - %b - %c, - %D, - %d, - %e, - %f, - %H, - %h, - %I, - %i, - %j, - %k, - %l, - %M, - %m, - %p, - %r, - %S, - %s, - %T, - %U, - %u, - %V, - %v, - %W, - %w, - %X, - %x, - %Y, - %y - %%", "Sat - Jan - 1, - 5th, - 05, - 5, - 000000, - 00, - 12, - 12, - 00, - 005, - 0, - 12, - January, - 01, - AM, - 12:00:00 AM, - 00, - 00, - 00:00:00, - 00, - 01, - 52, - 01, - Saturday, - 6, - 2001, - 2002, - 2002, - 02 - %", false},
+		{1, "2002-01-06 00:00:00", "%a - %b - %c, - %D, - %d, - %e, - %f, - %H, - %h, - %I, - %i, - %j, - %k, - %l, - %M, - %m, - %p, - %r, - %S, - %s, - %T, - %U, - %u, - %V, - %v, - %W, - %w, - %X, - %x, - %Y, - %y - %%", "Sun - Jan - 1, - 6th, - 06, - 6, - 000000, - 00, - 12, - 12, - 00, - 006, - 0, - 12, - January, - 01, - AM, - 12:00:00 AM, - 00, - 00, - 00:00:00, - 01, - 01, - 01, - 01, - Sunday, - 0, - 2002, - 2002, - 2002, - 02 - %", false},
+		{1, "2002-01-07 00:00:00", "%a - %b - %c, - %D, - %d, - %e, - %f, - %H, - %h, - %I, - %i, - %j, - %k, - %l, - %M, - %m, - %p, - %r, - %S, - %s, - %T, - %U, - %u, - %V, - %v, - %W, - %w, - %X, - %x, - %Y, - %y - %%", "Mon - Jan - 1, - 7th, - 07, - 7, - 000000, - 00, - 12, - 12, - 00, - 007, - 0, - 12, - January, - 01, - AM, - 12:00:00 AM, - 00, - 00, - 00:00:00, - 01, - 02, - 01, - 02, - Monday, - 1, - 2002, - 2002, - 2002, - 02 - %", false},
+		{1, "2002-01-08 00:00:00", "%a - %b - %c, - %D, - %d, - %e, - %f, - %H, - %h, - %I, - %i, - %j, - %k, - %l, - %M, - %m, - %p, - %r, - %S, - %s, - %T, - %U, - %u, - %V, - %v, - %W, - %w, - %X, - %x, - %Y, - %y - %%", "Tue - Jan - 1, - 8th, - 08, - 8, - 000000, - 00, - 12, - 12, - 00, - 008, - 0, - 12, - January, - 01, - AM, - 12:00:00 AM, - 00, - 00, - 00:00:00, - 01, - 02, - 01, - 02, - Tuesday, - 2, - 2002, - 2002, - 2002, - 02 - %", false},
 	}
 
 	for _, test := range tests {
@@ -872,7 +926,11 @@ func getDaysOfFirstWeek(t time.Time, sundayAsFirstDay bool) int {
 }
 
 func TestA(txx *testing.T) {
-	t1, _ := time.Parse(time.RFC3339, "2020-01-05T22:08:41+00:00")
+	t1, _ := time.Parse(time.RFC3339, "2020-01-25T22:08:41+00:00")
 	t2 := t1.AddDate(0, 0, -t1.YearDay())
 	fmt.Println(t2)
+
+	fmt.Println(builtins.NumToOrdinalWord(t1.Day()))
+	fmt.Println(builtins.NumToCardinalWord(t1.Day()))
+	fmt.Println(builtins.NumToWithOrdinalSuffix(t1.Day()))
 }
