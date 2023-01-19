@@ -100,6 +100,7 @@ func ParseTime2(s string) (time.Time, string, error) {
 	var t time.Time
 	var err error
 	var format string
+
 	t, err = time.Parse(TimestampWithoutTZFormat, s)
 	format = TimestampWithoutTZFormat
 

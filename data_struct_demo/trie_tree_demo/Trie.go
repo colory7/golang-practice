@@ -1,4 +1,4 @@
-package postgresql_demo
+package trie_tree_demo
 
 import "fmt"
 

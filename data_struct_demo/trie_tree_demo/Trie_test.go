@@ -1,4 +1,4 @@
-package postgresql_demo
+package trie_tree_demo
 
 import (
 	"fmt"
@@ -58,4 +58,13 @@ func TestTrie3(t *testing.T) {
 	PrintTree(trie.childNodes)
 
 	fmt.Println(trie.SearchNode([]byte("EEEE")))
+}
+
+func TestTrie4(t *testing.T) {
+	trie := NewTrie()
+	trie.AddWord([]byte("EEEE"))
+	trie.AddWord([]byte("EE"))
+
+	fmt.Println(trie.SearchNode([]byte("E")))
+	fmt.Println(trie.SearchNode([]byte("EE")))
 }
