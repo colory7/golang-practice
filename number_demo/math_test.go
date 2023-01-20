@@ -18,3 +18,9 @@ func TestRound(t *testing.T) {
 	fmt.Println(math.Round(889898.999666))
 
 }
+
+func TestNumSqrt(t *testing.T) {
+	n := 10006
+	fmt.Println(int(math.Sqrt(float64(n))))
+
+}

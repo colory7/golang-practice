@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"golang_practice/oracle_demo/builtins"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -43,7 +44,7 @@ func TestDateFormat(t *testing.T) {
 				if err != nil {
 					assert.NoError(t, err)
 				}
-				fmt.Println("actual: " + actual)
+				fmt.Println("actual:   " + actual)
 				if actual != test.expected {
 					t.Fail()
 				}
@@ -87,7 +88,7 @@ func TestDateFormat2(t *testing.T) {
 				if err != nil {
 					assert.NoError(t, err)
 				}
-				fmt.Println("actual: " + actual)
+				fmt.Println("actual:   " + actual)
 				if actual != test.expected {
 					fmt.Println("expected: " + test.expected)
 					t.Fail()
@@ -707,4 +708,406 @@ func TestA(txx *testing.T) {
 	fmt.Println(builtins.NumToOrdinalWord(t1.Day()))
 	fmt.Println(builtins.NumToCardinalWord(t1.Day()))
 	fmt.Println(builtins.NumToWithOrdinalSuffix(t1.Day()))
+}
+
+func TestYearWeekInverse(t *testing.T) {
+	tests := []struct {
+		i                int
+		year             int
+		weeks            int
+		weekDay          int
+		sundayAsFirstDay bool
+		expected         string
+		exception        bool
+	}{
+		{1, 2019, 51, 6, true, "2019-12-28", false},
+		{1, 2019, 52, 0, true, "2019-12-29", false},
+		{1, 2019, 52, 1, true, "2019-12-30", false},
+		{1, 2019, 52, 2, true, "2019-12-31", false},
+		{1, 2019, 52, 3, true, "2020-01-01", false},
+		{1, 2019, 52, 4, true, "2020-01-02", false},
+		{1, 2019, 52, 5, true, "2020-01-03", false},
+		{1, 2019, 52, 6, true, "2020-01-04", false},
+		{1, 2020, 1, 0, true, "2020-01-05", false},
+		{1, 2020, 1, 1, true, "2020-01-06", false},
+		{1, 2020, 2, 6, true, "2020-01-18", false},
+		{1, 2020, 3, 0, true, "2020-01-19", false},
+
+		{1, 1998, 52, 0, true, "1998-12-27", false},
+		{1, 1998, 52, 1, true, "1998-12-28", false},
+		{1, 1998, 52, 2, true, "1998-12-29", false},
+		{1, 1998, 52, 3, true, "1998-12-30", false},
+		{1, 1998, 52, 4, true, "1998-12-31", false},
+		{1, 1998, 52, 5, true, "1999-01-01", false},
+		{1, 1998, 52, 6, true, "1999-01-02", false},
+		{1, 1999, 1, 0, true, "1999-01-03", false},
+		{1, 1999, 1, 1, true, "1999-01-04", false},
+		{1, 1999, 12, 5, true, "1999-03-26", false},
+
+		{1, 2000, 51, 5, true, "2000-12-22", false},
+		{1, 2000, 51, 6, true, "2000-12-23", false},
+		{1, 2000, 52, 0, true, "2000-12-24", false},
+		{1, 2000, 52, 1, true, "2000-12-25", false},
+		{1, 2000, 52, 2, true, "2000-12-26", false},
+		{1, 2000, 52, 3, true, "2000-12-27", false},
+		{1, 2000, 52, 4, true, "2000-12-28", false},
+		{1, 2000, 52, 5, true, "2000-12-29", false},
+		{1, 2000, 52, 6, true, "2000-12-30", false},
+		{1, 2000, 53, 0, true, "2000-12-31", false},
+		{1, 2000, 53, 1, true, "2001-01-01", false},
+		{1, 2000, 53, 2, true, "2001-01-02", false},
+		{1, 2000, 53, 3, true, "2001-01-03", false},
+		{1, 2000, 53, 4, true, "2001-01-04", false},
+		{1, 2000, 53, 5, true, "2001-01-05", false},
+		{1, 2000, 53, 6, true, "2001-01-06", false},
+		{1, 2001, 1, 0, true, "2001-01-07", false},
+		{1, 2001, 1, 1, true, "2001-01-08", false},
+		{1, 2001, 1, 2, true, "2001-01-09", false},
+		{1, 2001, 1, 3, true, "2001-01-10", false},
+		{1, 2001, 1, 4, true, "2001-01-11", false},
+		{1, 2001, 1, 5, true, "2001-01-12", false},
+		{1, 2001, 1, 6, true, "2001-01-13", false},
+		{1, 2001, 2, 0, true, "2001-01-14", false},
+		{1, 2001, 2, 1, true, "2001-01-15", false},
+	}
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%d", test.i), func(t *testing.T) {
+			tm, err := yearWeekInverse(test.year, test.weeks, time.Weekday(test.weekDay), test.sundayAsFirstDay)
+			expectedTime, err := time.Parse("2006-01-02", test.expected)
+			actual := tm
+			if test.exception {
+				assert.Error(t, err)
+				//fmt.Println(err)
+			} else {
+				if err != nil {
+					assert.NoError(t, err)
+				}
+				fmt.Println("actual:   ", actual)
+				if actual != expectedTime {
+					fmt.Println("expected: ", expectedTime)
+					t.Fail()
+				}
+			}
+		})
+	}
+}
+
+func TestYearWeekInverse2(t *testing.T) {
+	tests := []struct {
+		i                int
+		year             int
+		weeks            int
+		weekDay          int
+		sundayAsFirstDay bool
+		expected         string
+		exception        bool
+	}{
+		{1, 2019, 51, 6, false, "2019-12-21", false},
+		{1, 2019, 51, 0, false, "2019-12-22", false},
+		{1, 2019, 52, 1, false, "2019-12-23", false},
+		{1, 2019, 52, 2, false, "2019-12-24", false},
+		{1, 2019, 52, 3, false, "2019-12-25", false},
+		{1, 2019, 52, 4, false, "2019-12-26", false},
+		{1, 2019, 52, 5, false, "2019-12-27", false},
+		{1, 2019, 52, 6, false, "2019-12-28", false},
+		{1, 2020, 52, 0, false, "2019-12-29", false},
+		{1, 2020, 1, 1, false, "2019-12-30", false},
+		{1, 2020, 1, 2, false, "2019-12-31", false},
+		{1, 2020, 1, 3, false, "2020-01-01", false},
+		{1, 2020, 1, 4, false, "2020-01-02", false},
+		{1, 2020, 1, 5, false, "2020-01-03", false},
+		{1, 2020, 1, 6, false, "2020-01-04", false},
+		{1, 2020, 1, 0, false, "2020-01-05", false},
+		{1, 2020, 2, 1, false, "2020-01-06", false},
+		{1, 2020, 32, 5, false, "2020-08-07", false},
+		{1, 2020, 32, 0, false, "2020-08-09", false},
+
+		{1, 1998, 52, 6, false, "1998-12-26", false},
+		{1, 1998, 52, 0, false, "1998-12-27", false},
+		{1, 1998, 53, 1, false, "1998-12-28", false},
+		{1, 1998, 53, 2, false, "1998-12-29", false},
+		{1, 1998, 53, 3, false, "1998-12-30", false},
+		{1, 1998, 53, 4, false, "1998-12-31", false},
+		{1, 1998, 53, 5, false, "1999-01-01", false},
+		{1, 1998, 53, 6, false, "1999-01-02", false},
+		{1, 1998, 53, 0, false, "1999-01-03", false},
+		{1, 1999, 1, 1, false, "1999-01-04", false},
+		{1, 1999, 1, 2, false, "1999-01-05", false},
+
+		{1, 2000, 51, 5, false, "2000-12-22", false},
+		{1, 2000, 51, 6, false, "2000-12-23", false},
+		{1, 2000, 51, 0, false, "2000-12-24", false},
+		{1, 2000, 52, 1, false, "2000-12-25", false},
+		{1, 2000, 52, 2, false, "2000-12-26", false},
+		{1, 2000, 52, 3, false, "2000-12-27", false},
+		{1, 2000, 52, 4, false, "2000-12-28", false},
+		{1, 2000, 52, 5, false, "2000-12-29", false},
+		{1, 2000, 52, 6, false, "2000-12-30", false},
+		{1, 2000, 52, 0, false, "2000-12-31", false},
+		{1, 2001, 1, 1, false, "2001-01-01", false},
+		{1, 2001, 1, 2, false, "2001-01-02", false},
+		{1, 2001, 1, 3, false, "2001-01-03", false},
+		{1, 2001, 1, 4, false, "2001-01-04", false},
+		{1, 2001, 1, 5, false, "2001-01-05", false},
+		{1, 2001, 1, 6, false, "2001-01-06", false},
+		{1, 2001, 1, 0, false, "2001-01-07", false},
+		{1, 2001, 2, 1, false, "2001-01-08", false},
+		{1, 2001, 2, 2, false, "2001-01-09", false},
+		{1, 2001, 2, 3, false, "2001-01-10", false},
+		{1, 2001, 2, 4, false, "2001-01-11", false},
+		{1, 2001, 2, 5, false, "2001-01-12", false},
+		{1, 2001, 2, 6, false, "2001-01-13", false},
+		{1, 2001, 2, 0, false, "2001-01-14", false},
+		{1, 2001, 3, 1, false, "2001-01-15", false},
+	}
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%d", test.i), func(t *testing.T) {
+			tm, err := yearWeekInverse(test.year, test.weeks, time.Weekday(test.weekDay), test.sundayAsFirstDay)
+			expectedTime, err := time.Parse("2006-01-02", test.expected)
+			actual := tm
+			if test.exception {
+				assert.Error(t, err)
+				//fmt.Println(err)
+			} else {
+				if err != nil {
+					assert.NoError(t, err)
+				}
+				fmt.Println("actual:   ", actual)
+				if actual != expectedTime {
+					fmt.Println("expected: ", expectedTime)
+					t.Fail()
+				}
+			}
+		})
+	}
+}
+
+func TestStrToDate(t *testing.T) {
+	tests := []struct {
+		i         int
+		param     string
+		format    string
+		expected  string
+		exception bool
+	}{
+		{1, "1999-01-01", "%Y-%m-%d", "1999-01-01 00:00:00", false},
+		{1, "1999-01-01", "%Y-%m-%d", "1999-01-01 00:00:00", false},
+		{1, "1999-12-15", "%Y-%m-%d", "1999-12-15 00:00:00", false},
+		{1, "1999-11-30", "%Y-%m-%d", "1999-11-30 00:00:00", false},
+
+		{1, "1999-01-01 00:00:00", "%Y-%m-%d %H:%i:%s", "1999-01-01 00:00:00", false},
+		{1, "1999-01-01 01:02:03", "%Y-%m-%d %H:%i:%s", "1999-01-01 01:02:03", false},
+		{1, "1999-12-15 12:14:13", "%Y-%m-%d %H:%i:%s", "1999-12-15 12:14:13", false},
+		{1, "1999-11-30 23:14:13", "%Y-%m-%d %H:%i:%s", "1999-11-30 23:14:13", false},
+
+		{1, "1999-Nov-30 23:14:13", "%Y-%b-%d %H:%i:%s", "1999-11-30 23:14:13", false},
+		{1, "1999-3-30 23:14:13", "%Y-%c-%d %H:%i:%s", "1999-03-30 23:14:13", false},
+		{1, "1999-January-30 23:14:13", "%Y-%M-%d %H:%i:%s", "1999-01-30 23:14:13", false},
+		{1, "1999-February-28 23:14:13", "%Y-%M-%d %H:%i:%s", "1999-02-28 23:14:13", false},
+		//{1, "1999-February-30 23:14:13", "%Y-%M-%d %H:%i:%s", "1999-02-30 23:14:13", true},
+		{1, "1999-March-30 23:14:13", "%Y-%M-%d %H:%i:%s", "1999-03-30 23:14:13", false},
+		{1, "1999-April-30 23:14:13", "%Y-%M-%d %H:%i:%s", "1999-04-30 23:14:13", false},
+		{1, "1999-May-30 23:14:13", "%Y-%M-%d %H:%i:%s", "1999-05-30 23:14:13", false},
+		{1, "1999-June-30 23:14:13", "%Y-%M-%d %H:%i:%s", "1999-06-30 23:14:13", false},
+		{1, "1999-July-30 23:14:13", "%Y-%M-%d %H:%i:%s", "1999-07-30 23:14:13", false},
+		{1, "1999-August-30 23:14:13", "%Y-%M-%d %H:%i:%s", "1999-08-30 23:14:13", false},
+		{1, "1999-September-30 23:14:13", "%Y-%M-%d %H:%i:%s", "1999-09-30 23:14:13", false},
+		{1, "1999-October-30 23:14:13", "%Y-%M-%d %H:%i:%s", "1999-10-30 23:14:13", false},
+		{1, "1999-November-30 23:14:13", "%Y-%M-%d %H:%i:%s", "1999-11-30 23:14:13", false},
+		{1, "1999-December-30 23:14:13", "%Y-%M-%d %H:%i:%s", "1999-12-30 23:14:13", false},
+
+		{1, "1999-11", "%Y-%j", "1999-01-11 00:00:00", false},
+		{1, "1999-64", "%Y-%j", "1999-03-05 00:00:00", false},
+		{1, "99-29", "%y-%j", "1999-01-29 00:00:00", false},
+		{1, "20-29", "%y-%j", "2020-01-29 00:00:00", false},
+		{1, "32-29", "%y-%j", "2032-01-29 00:00:00", false},
+
+		{1, "68-29", "%y-%j", "2068-01-29 00:00:00", false},
+		{1, "69-29", "%y-%j", "2069-01-29 00:00:00", false},
+		{1, "70-2", "%y-%j", "1970-01-02 00:00:00", false},
+		{1, "78-325", "%y-%j", "1978-11-21 00:00:00", false},
+
+		// 日期类型 TODO
+		//{1, "1999-01-01", "%Y-%m-%d", "1999-01-01", false},
+		//{1, "1999-01-01", "%Y-%m-%d", "1999-01-01", false},
+		//{1, "1999-12-15", "%Y-%m-%d", "1999-12-15", false},
+		//{1, "1999-11-30", "%Y-%m-%d", "1999-11-30", false},
+
+		// 时间类型 TODO
+		//{1, "11:14:13 PM", "%r", "", false},
+		//{1, "11:14:13 AM", "%r", "", false},
+		//{1, "12:14:13 PM", "%r", "", false},
+		//{1, "13:14:13 PM", "%r", "", true},
+		//{1, "24:14:13 PM", "%r", "", true},
+		//
+		//{1, "23:14:13 PM", "%T", "", false},
+		//{1, "11:14:13 PM", "%T", "", false},
+		//{1, "12:14:13 PM", "%T", "", false},
+		//{1, "24:14:13 PM", "%T", "", true},
+	}
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%d", test.i), func(t *testing.T) {
+			actual, err := StrToDate(test.param, test.format)
+			expected, err2 := time.Parse("2006-01-02 15:04:05", test.expected)
+			if err2 != nil {
+				panic(err2)
+			}
+			if test.exception {
+				assert.Error(t, err)
+				//fmt.Println(err)
+			} else {
+				if err != nil {
+					assert.NoError(t, err)
+				}
+				fmt.Println("actual:   ", actual)
+				fmt.Println("expected: ", expected)
+				if actual != expected {
+					t.Fail()
+				}
+			}
+		})
+	}
+}
+
+func TestStrToDate2(t *testing.T) {
+	tests := []struct {
+		i         int
+		param     string
+		format    string
+		expected  string
+		exception bool
+	}{
+		{1, "1999-11-30 23:14:13.123456789", "%Y-%m-%d %H:%i:%s.%f", "1999-11-30 23:14:13.123456789", false},
+		{1, "1999-11-30 23:14:13.123", "%Y-%m-%d %H:%i:%s.%f", "1999-11-30 23:14:13.123", false},
+		{1, "1999-11-30 23:14:13.67", "%Y-%m-%d %H:%i:%s.%f", "1999-11-30 23:14:13.67", false},
+	}
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%d", test.i), func(t *testing.T) {
+			actual, err := StrToDate(test.param, test.format)
+			expected, err2 := time.Parse("2006-01-02 15:04:05.999999999", test.expected)
+			if err2 != nil {
+				panic(err2)
+			}
+			if test.exception {
+				assert.Error(t, err)
+				//fmt.Println(err)
+			} else {
+				if err != nil {
+					assert.NoError(t, err)
+				}
+				fmt.Println("actual:   ", actual)
+				fmt.Println("expected: ", expected)
+				if actual != expected {
+					t.Fail()
+				}
+			}
+		})
+	}
+}
+
+func TestStrToDateXVw(t *testing.T) {
+	tests := []struct {
+		i         int
+		param     string
+		format    string
+		expected  string
+		exception bool
+	}{
+		{1, "1998 52 0", "%X %V %w", "1998-12-27", false},
+		{1, "1998 52 1", "%X %V %w", "1998-12-28", false},
+		{1, "1998 52 2", "%X %V %w", "1998-12-29", false},
+		{1, "1998 52 3", "%X %V %w", "1998-12-30", false},
+		{1, "1998 52 4", "%X %V %w", "1998-12-31", false},
+		{1, "1998 52 5", "%X %V %w", "1999-01-01", false},
+		{1, "1998 52 6", "%X %V %w", "1999-01-02", false},
+		{1, "1999 1 0", "%X %V %w", "1999-01-03", false},
+		{1, "1999 1 1", "%X %V %w", "1999-01-04", false},
+		{1, "1999 12 5", "%X %V %w", "1999-03-26", false},
+
+		{1, "52 0 1998", "%V %w %X", "1998-12-27", false},
+		{1, "52 1 1998", "%V %w %X", "1998-12-28", false},
+		{1, "52 2 1998", "%V %w %X", "1998-12-29", false},
+		{1, "52 3 1998", "%V %w %X", "1998-12-30", false},
+		{1, "52 4 1998", "%V %w %X", "1998-12-31", false},
+		{1, "52 5 1998", "%V %w %X", "1999-01-01", false},
+		{1, "52 6 1998", "%V %w %X", "1999-01-02", false},
+		{1, "1 0 1999", "%V %w %X", "1999-01-03", false},
+		{1, "1 1999 1", "%V %X %w", "1999-01-04", false},
+		{1, "Fri 12 1999", "%a %V %X", "1999-03-26", false},
+		{1, "12 Fri 1999", "%V %a %X", "1999-03-26", false},
+		{1, "12 FRi 1999", "%V %a %X", "1999-03-26", false},
+		{1, "12 FrIa 1999", "%V %a %X", "1999-03-26", true},
+		{1, "12 FrIa 1999", "%V %aa %X", "1999-03-26", false},
+		{1, "12 Sunday 1999", "%V %W %X", "1999-03-26", false},
+		{1, "12 FriDay 1999", "%V %W %X", "1999-03-26", false},
+	}
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%d", test.i), func(t *testing.T) {
+			actual, err := StrToDate(test.param, test.format)
+			expected, err2 := time.Parse("2006-01-02", test.expected)
+			if err2 != nil {
+				panic(err2)
+			}
+			if test.exception {
+				assert.Error(t, err)
+				//fmt.Println(err)
+			} else {
+				if err != nil {
+					assert.NoError(t, err)
+				}
+				fmt.Println("actual:   ", actual)
+				fmt.Println("expected: ", expected)
+				if actual != expected {
+					t.Fail()
+				}
+			}
+		})
+	}
+}
+
+// 第2周有可能是iso yearweek的第1周，也可能是iso yearweek的第2周
+func yearWeekInverse3(year int, weeks int, weekDay time.Weekday, sundayAsFirstDay bool) (time.Time, error) {
+	var t time.Time
+	var err error
+
+	firstDay := time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	wd := firstDay.Weekday()
+	if !sundayAsFirstDay {
+		//if wd == 0 {
+		//	wd = 6
+		//} else {
+		//	wd--
+		//}
+	}
+
+	// 计算阳历第一周前一天的iso yearweek
+	tPreviousDay := firstDay.AddDate(0, 0, -int(wd+1))
+	isoYearStr, _ := yearWeek(t, 'v')
+	isoYear, err := strconv.Atoi(isoYearStr)
+	if err != nil {
+		return tPreviousDay, nil
+	}
+
+	if tPreviousDay.Year() == isoYear {
+		// iso yearweek的第2周
+		t = firstDay.AddDate(0, 0, -int(wd)+(weeks-2)*7+int(weekDay))
+
+	} else {
+		// iso yearweek的第1周
+		t = firstDay.AddDate(0, 0, -int(wd)+(weeks-1)*7+int(weekDay))
+	}
+
+	return t, err
+}
+
+func TestFirstUpper(t *testing.T) {
+	fmt.Println(FirstUpper(""))
+	fmt.Println(FirstUpper("a"))
+	fmt.Println(FirstUpper("A"))
+	fmt.Println(FirstUpper("ab"))
+	fmt.Println(FirstUpper("Ab"))
+	fmt.Println(FirstUpper("abc"))
+	fmt.Println(FirstUpper("Abc"))
+	fmt.Println(FirstUpper("Abc"))
 }

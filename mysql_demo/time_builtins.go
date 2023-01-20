@@ -11,9 +11,9 @@ import (
 	"time"
 )
 
-var mismatchError = "mismatch error"
-var contentMismatchError = errors.New("format and parameter content mismatch error")
-var lengthMismatchError = errors.New("format and parameter length mismatch error")
+var mismatchTip = "mismatch error "
+var mismatchError = errors.New(mismatchTip)
+var lengthMismatchError = errors.New("format and parameter length mismatch")
 var illegalCharacterError = errors.New("illegal character")
 
 var longWeekDayNames = []string{
@@ -246,12 +246,15 @@ func DateFormat(t time.Time, f string) (string, error) {
 }
 
 func StrToDate(param string, f string) (time.Time, error) {
-	var t *time.Time
+	var t time.Time
 	var err error
 
 	year, month, day := 0, time.Month(0), 0
 	hour, min, sec, nsec := 0, 0, 0, 0
-	var week *time.Weekday
+	weekDay := time.Weekday(-1)
+
+	yearX := 0
+	weeksV := 0
 
 	format := []rune(f)
 
@@ -261,6 +264,7 @@ func StrToDate(param string, f string) (time.Time, error) {
 	flen := len(format)
 	fli := flen - 1
 	isPM := false
+
 	for ; fi < flen; fi++ {
 		switch format[fi] {
 		case '%':
@@ -270,51 +274,40 @@ func StrToDate(param string, f string) (time.Time, error) {
 				case 'a':
 					pi += 3
 					if pi < plen {
-						*week = shortWeekDayNamesInverse[param[pi-3:pi]]
+						weekDay = shortWeekDayNamesInverse[FirstUpper(param[pi-3:pi])]
 					} else {
-						return *t, lengthMismatchError
+						return t, lengthMismatchError
 					}
 				// 月份名 缩写
 				case 'b':
 					pi += 3
 					if pi < plen {
-						month = shortMonthNamesInverse[param[pi-3:pi]]
+						month = shortMonthNamesInverse[FirstUpper(param[pi-3:pi])]
 					} else {
-						return *t, lengthMismatchError
+						return t, lengthMismatchError
 					}
 				// 月份 1-12
 				case 'c':
-					firstChar := param[pi]
-					pi++
-					if pi < plen {
-						secondChar := param[pi]
-						if secondChar >= '0' && secondChar <= '9' {
-							month = time.Month((firstChar-30)*10 + (secondChar - 30))
-						}
-					} else {
-						return *t, lengthMismatchError
+					m, err := parseNChars(param, &pi, plen, 2, false)
+					if err != nil {
+						return t, err
 					}
+					month = time.Month(m)
 				// 月份的天 01-31
 				case 'd':
-					pi += 2
-					if pi < plen {
-						day, err = strconv.Atoi(param[pi-2 : pi])
-						if err != nil {
-							return *t, err
-						}
-					} else {
-						return *t, lengthMismatchError
+					day, err = parseNChars(param, &pi, plen, 2, true)
+					if err != nil {
+						return t, err
 					}
 				// 月份的天 1-31 序数词后缀
 				case 'D':
 					firstChar := param[pi]
-					pi++
 					if pi < plen {
 						secondChar := param[pi]
 						if secondChar >= '0' && secondChar <= '9' {
-							month = time.Month((firstChar-30)*10 + secondChar - 30)
+							month = time.Month((firstChar-48)*10 + secondChar - 48)
 						} else {
-							month = time.Month(firstChar - 30)
+							month = time.Month(firstChar - 48)
 						}
 						// 校验后缀
 						pi += 2
@@ -322,153 +315,92 @@ func StrToDate(param string, f string) (time.Time, error) {
 							switch month {
 							case time.January:
 								if param[pi-2:pi] != "st" {
-									return *t, errors.New(mismatchError + " with D")
+									return t, errors.New(mismatchTip + " with D")
 								}
 							case time.February:
 								if param[pi-2:pi] != "nd" {
-									return *t, errors.New(mismatchError + " with D")
+									return t, errors.New(mismatchTip + " with D")
 								}
 							case time.March:
 								if param[pi-2:pi] != "rd" {
-									return *t, errors.New(mismatchError + " with D")
+									return t, errors.New(mismatchTip + " with D")
 								}
 							default:
 								if param[pi-2:pi] != "th" {
-									return *t, errors.New(mismatchError + " with D")
+									return t, errors.New(mismatchTip + " with D")
 								}
 							}
 						} else {
-							return *t, lengthMismatchError
+							return t, lengthMismatchError
 						}
 					} else {
-						return *t, lengthMismatchError
+						return t, lengthMismatchError
 					}
+					pi++
 				// 月份的天 1-31
 				case 'e':
-					firstChar := param[pi]
-					pi++
-					if pi < plen {
-						secondChar := param[pi]
-						if secondChar >= '0' && secondChar <= '9' {
-							month = time.Month((firstChar-30)*10 + secondChar - 30)
-						} else {
-							month = time.Month(firstChar - 30)
-						}
-					} else {
-						month = time.Month(firstChar - 30)
+					day, err = parseNChars(param, &pi, plen, 2, false)
+					if err != nil {
+						return t, err
 					}
 				// 秒的小数部分
 				case 'f':
-					tmp := bytes.Buffer{}
-					for i := 0; i < 9 && pi < plen; i++ {
-						pi++
-						nextChar := param[pi]
-						if nextChar >= '0' && nextChar <= '9' {
-							tmp.WriteByte(nextChar)
-						} else {
-							break
-						}
-					}
-					fracStr := tmp.String()
-					frac, err := strconv.Atoi(fracStr)
-					nsec = frac * int(math.Pow10(9-len(fracStr)))
+					frac, err := parseNChars(param, &pi, plen, 2, true)
 					if err != nil {
-						return *t, nil
+						return t, err
+					}
+					nsec = frac * int(math.Pow10(9-len(strconv.Itoa(frac))))
+					if err != nil {
+						return t, nil
 					}
 				// 小时 24小时制 00-23
 				case 'H':
-					pi += 2
-					if pi < plen {
-						hour, err = strconv.Atoi(param[pi-2 : pi])
-						if err != nil {
-							return *t, err
-						}
-					} else {
-						return *t, lengthMismatchError
+					hour, err = parseNChars(param, &pi, plen, 2, true)
+					if err != nil {
+						return t, err
 					}
 				// 小时 24小时制 0-23
 				case 'k':
-					firstChar := param[pi]
-					pi++
-					if pi < plen {
-						secondChar := param[pi]
-						if secondChar >= '0' && secondChar <= '9' {
-							hour = int((firstChar-30)*10 + secondChar - 30)
-						} else {
-							hour = int(firstChar - 30)
-						}
-					} else {
-						hour = int(firstChar - 30)
+					hour, err = parseNChars(param, &pi, plen, 2, false)
+					if err != nil {
+						return t, err
 					}
 				// 小时 12小时制 01-12
 				case 'h', 'I':
-					pi += 2
-					if pi < plen {
-						hour, err = strconv.Atoi(param[pi-2 : pi])
-						if err != nil {
-							return *t, contentMismatchError
-						}
-					} else {
-						return *t, lengthMismatchError
+					hour, err = parseNChars(param, &pi, plen, 2, true)
+					if err != nil {
+						return t, err
 					}
 				// 小时 12小时制 1-12
 				case 'l':
-					firstChar := param[pi]
-					pi++
-					if pi < plen {
-						secondChar := param[pi]
-						if secondChar >= '0' && secondChar <= '9' {
-							hour = int((firstChar-30)*10 + secondChar - 30)
-						} else {
-							hour = int(firstChar - 30)
-						}
-					} else {
-						return *t, lengthMismatchError
+					hour, err = parseNChars(param, &pi, plen, 2, false)
+					if err != nil {
+						return t, err
 					}
 				// 分钟 00-59
 				case 'i':
-					pi += 2
-					if pi < plen {
-						min, err = strconv.Atoi(param[pi-2 : pi])
-						if err != nil {
-							return *t, contentMismatchError
-						}
-					} else {
-						return *t, lengthMismatchError
+					min, err = parseNChars(param, &pi, plen, 2, true)
+					if err != nil {
+						return t, err
 					}
 				// 年的天 001-366
 				case 'j':
-					tmp := bytes.Buffer{}
-					for i := 0; i < 3 && pi < plen; i++ {
-						pi++
-						nextChar := param[pi]
-						if nextChar >= '0' && nextChar <= '9' {
-							tmp.WriteByte(nextChar)
-						} else {
-							break
-						}
-					}
-					day, err = strconv.Atoi(tmp.String())
+					day, err = parseNChars(param, &pi, plen, 3, false)
 					if err != nil {
-						return *t, err
+						return t, err
 					}
 					month = time.January
 				// 月份 00-12
 				case 'm':
-					pi += 2
-					if pi < plen {
-						monthInt, err := strconv.Atoi(param[pi-2 : pi])
-						month = time.Month(monthInt)
-						if err != nil {
-							return *t, contentMismatchError
-						}
-					} else {
-						return *t, lengthMismatchError
+					m, err := parseNChars(param, &pi, plen, 2, true)
+					if err != nil {
+						return t, err
 					}
+					month = time.Month(m)
 				case 'M':
 					month, err = matchMonthByFullName(&pi, plen, param)
 					if err != nil {
-						return *t, contentMismatchError
+						return t, mismatchError
 					}
 				// 上午 下午 AM 或 PM
 				case 'p':
@@ -479,10 +411,10 @@ func StrToDate(param string, f string) (time.Time, error) {
 						} else if strings.ToUpper(chs) == "PM" {
 							isPM = true
 						} else {
-							return *t, contentMismatchError
+							return t, mismatchError
 						}
 					} else {
-						return *t, lengthMismatchError
+						return t, lengthMismatchError
 					}
 				// hh:mm:ss AM或PM 12小时制
 				case 'r':
@@ -491,51 +423,46 @@ func StrToDate(param string, f string) (time.Time, error) {
 					if pi < plen {
 						hour, err = strconv.Atoi(param[start : start+2])
 						if err != nil {
-							return *t, err
+							return t, err
 						}
 						if param[start+2] == ':' {
 							start += 3
 						} else {
-							return *t, contentMismatchError
+							return t, mismatchError
 						}
 						min, err = strconv.Atoi(param[start : start+2])
 						if err != nil {
-							return *t, err
+							return t, err
 						}
 						if param[start+2] == ':' {
 							start += 3
 						} else {
-							return *t, contentMismatchError
+							return t, mismatchError
 						}
 						sec, err = strconv.Atoi(param[start : start+2])
 						if err != nil {
-							return *t, err
+							return t, err
 						}
 						if param[start+2] == ' ' {
 							start += 3
 						} else {
-							return *t, contentMismatchError
+							return t, mismatchError
 						}
 						meridiem := param[start : start+2]
 						if strings.ToUpper(meridiem) == "AM" {
 						} else if strings.ToUpper(meridiem) == "PM" {
 							isPM = true
 						} else {
-							return *t, contentMismatchError
+							return t, mismatchError
 						}
 					} else {
-						return *t, lengthMismatchError
+						return t, lengthMismatchError
 					}
 				// 秒 00-59
 				case 's', 'S':
-					pi += 2
-					if pi < plen {
-						sec, err = strconv.Atoi(param[pi-2 : pi])
-						if err != nil {
-							return *t, contentMismatchError
-						}
-					} else {
-						return *t, lengthMismatchError
+					sec, err = parseNChars(param, &pi, plen, 2, true)
+					if err != nil {
+						return t, err
 					}
 				// hh:mm:ss 24小时制
 				case 'T':
@@ -544,190 +471,228 @@ func StrToDate(param string, f string) (time.Time, error) {
 					if pi < plen {
 						hour, err = strconv.Atoi(param[start : start+2])
 						if err != nil {
-							return *t, err
+							return t, err
 						}
 						if param[start+2] == ':' {
 							start += 3
 						} else {
-							return *t, contentMismatchError
+							return t, mismatchError
 						}
 						min, err = strconv.Atoi(param[start : start+2])
 						if err != nil {
-							return *t, err
+							return t, err
 						}
 						if param[start+2] == ':' {
 							start += 3
 						} else {
-							return *t, contentMismatchError
+							return t, mismatchError
 						}
 						sec, err = strconv.Atoi(param[start : start+2])
 						if err != nil {
-							return *t, err
+							return t, err
 						}
 					} else {
-						return *t, lengthMismatchError
+						return t, lengthMismatchError
 					}
-				// 周 星期日是一周的第一天 00-53 TODO
+				// 周 星期日是一周的第一天 00-53
+				// NB: MySQL中不支持
 				case 'U':
-				// 周 星期一是一周的第一天 00-53 TODO
+					return t, errors.New("not support")
+				// 周 星期一是一周的第一天 00-53
+				// NB: MySQL中不支持
 				case 'u':
-				// 周 星期日是一周的第一天 01-53 与%X中的年对应 TODO
+					return t, errors.New("not support")
+				// 周 星期日是一周的第一天 01-53 与%X中的年对应
+				// X V + 星期几
 				case 'V':
+					weeksV, err = parseNChars(param, &pi, plen, 2, false)
+					if err != nil {
+						return t, err
+					}
 				// 周 星期一是一周的第一天 01-53 与%x中的年对应 TODO
+				// x v + 星期几
 				case 'v':
-
 				// 星期几 全名
 				case 'W':
-					*week, err = matchWeekByFullName(&pi, plen, param)
+					weekDay, err = matchWeekByFullName(&pi, plen, param)
 					if err != nil {
-						return *t, err
+						return t, err
 					}
 				// 星期几 数值 0=星期日 ,6=星期六
 				case 'w':
-					pi++
-					if pi < plen {
-						ch := param[pi]
-						if ch >= '0' && ch <= '9' {
-							*week = (time.Weekday)(ch - 30)
-						} else {
-							return *t, errors.New("out of range error")
-						}
-					} else {
-						return *t, lengthMismatchError
+					w, err := parseNChars(param, &pi, plen, 1, true)
+					if err != nil {
+						return t, err
 					}
-				// 年 星期日是一周的第一天 与%V中的年对应 TODO
+					weekDay = time.Weekday(w)
+				// 年 星期日是一周的第一天 与%V中的年对应
+				// X V + 星期几
 				case 'X':
+					yearX, err = parseNChars(param, &pi, plen, 4, true)
+					if err != nil {
+						return t, err
+					}
 				// 年 星期一是一周的第一天 与%v中的年对应 TODO
+				// x v + 星期几
 				case 'x':
 				// 年 4位
 				case 'Y':
-					pi += 4
-					if pi < plen {
-						year, err = strconv.Atoi(param[pi-4 : pi])
-						if err != nil {
-							return *t, err
-						}
-					} else {
-						return *t, lengthMismatchError
+					year, err = parseNChars(param, &pi, plen, 4, true)
+					if err != nil {
+						return t, err
 					}
 				// 年 2位
 				case 'y':
-					pi += 2
-					if pi < plen {
-						year, err = strconv.Atoi(param[pi-2 : pi])
-						if err != nil {
-							return *t, err
-						}
+					year, err = parseNChars(param, &pi, plen, 2, true)
+					if year <= 69 {
+						year = 2000 + year
 					} else {
-						return *t, lengthMismatchError
+						year = 1900 + year
+					}
+					if err != nil {
+						return t, err
 					}
 				case '%':
 					pi++
 				default:
-					return *t, illegalCharacterError
+					return t, illegalCharacterError
 				}
 				fi++
 			}
 		default:
+			if rune(param[pi]) != format[fi] {
+				return t, mismatchError
+			}
 			pi++
 		}
 	}
 
-	// 最后处理
+	// TODO 格式重复问题待解决
+
+	// 最后处理部分
 	if isPM && hour > 12 {
 		hour += 12
 	}
 
-	*t = time.Date(year, month, day, hour, min, sec, nsec, time.UTC)
-	return *t, err
+	// X V + 星期 确定年月日
+	if yearX != 0 || weeksV != 0 || weekDay != -1 {
+		if yearX != 0 && weeksV != 0 && weekDay != -1 {
+			tXV, err := yearWeekInverse(yearX, weeksV, weekDay, true)
+			if err != nil {
+				return t, err
+			}
+			year = tXV.Year()
+			month = tXV.Month()
+			day = tXV.Day()
+		} else {
+			return t, errors.New("format error")
+		}
+	}
 
+	return time.Date(year, month, day, hour, min, sec, nsec, time.UTC), err
 }
 
+func parseNChars(param string, pi *int, plen int, n int, strict bool) (int, error) {
+	var num int
+	var err error
+	tmp := bytes.Buffer{}
+	if *pi < plen {
+		i := 0
+		for ; i < n && *pi < plen; i++ {
+			nextChar := param[*pi]
+			if nextChar >= '0' && nextChar <= '9' {
+				tmp.WriteByte(nextChar)
+			} else {
+				if strict {
+					errors.New("out of range error")
+				} else {
+					break
+				}
+			}
+			*pi++
+		}
+		if i != n && strict {
+			return num, lengthMismatchError
+		}
+		num, err = strconv.Atoi(tmp.String())
+	} else {
+		return num, lengthMismatchError
+	}
+	return num, err
+}
 func matchMonthByFullName(pi *int, plen int, param string) (time.Month, error) {
 	found := false
 	var month time.Month
 	var err error
-	*pi++
 	switch param[*pi] {
 	case 'A', 'a':
-		*pi++
-		if *pi < plen {
-			switch param[*pi] {
-			// April
-			case 'P', 'p':
-				found, err = matchIgnoreCase(pi, plen, param, "ril")
-				if found {
-					month = time.April
-				}
-			// August
-			case 'U', 'u':
-				found, err = matchIgnoreCase(pi, plen, param, "gust")
-				if found {
-					month = time.August
-				}
-			default:
-				err = contentMismatchError
+		found, err = matchIgnoreCase(pi, plen, param, "APRIL")
+		if found {
+			month = time.April
+		}
+		if !found {
+			found, err = matchIgnoreCase(pi, plen, param, "AUGUST")
+			if found {
+				month = time.August
 			}
-		} else {
-			err = lengthMismatchError
 		}
 	// December
 	case 'D', 'd':
-		found, err = matchIgnoreCase(pi, plen, param, "ecember")
+		found, err = matchIgnoreCase(pi, plen, param, "DECEMBER")
 		if found {
 			month = time.December
 		}
 	// February
 	case 'F', 'f':
-		found, err = matchIgnoreCase(pi, plen, param, "ebruary")
+		found, err = matchIgnoreCase(pi, plen, param, "FEBRUARY")
 		if found {
-			month = time.December
+			month = time.February
 		}
 	// January June July
 	case 'J', 'j':
-		found, err = matchIgnoreCase(pi, plen, param, "uly")
+		found, err = matchIgnoreCase(pi, plen, param, "JULY")
 		if found {
 			month = time.July
 		}
 		if !found {
-			found, err = matchIgnoreCase(pi, plen, param, "une")
+			found, err = matchIgnoreCase(pi, plen, param, "JUNE")
 			if found {
 				month = time.June
 			}
 		}
 		if !found {
-			found, err = matchIgnoreCase(pi, plen, param, "anuary")
+			found, err = matchIgnoreCase(pi, plen, param, "JANUARY")
 			if found {
 				month = time.January
 			}
 		}
 	// March May
 	case 'M', 'm':
-		found, err = matchIgnoreCase(pi, plen, param, "ay")
+		found, err = matchIgnoreCase(pi, plen, param, "MAY")
 		if found {
 			month = time.May
 		}
 		if !found {
-			found, err = matchIgnoreCase(pi, plen, param, "arch")
+			found, err = matchIgnoreCase(pi, plen, param, "MARCH")
 			if found {
 				month = time.March
 			}
 		}
 	// November
 	case 'N', 'n':
-		found, err = matchIgnoreCase(pi, plen, param, "ovember")
+		found, err = matchIgnoreCase(pi, plen, param, "NOVEMBER")
 		if found {
 			month = time.November
 		}
 	// October
 	case 'O', 'o':
-		found, err = matchIgnoreCase(pi, plen, param, "ctober")
+		found, err = matchIgnoreCase(pi, plen, param, "OCTOBER")
 		if found {
 			month = time.October
 		}
 	// September
 	case 'S', 's':
-		found, err = matchIgnoreCase(pi, plen, param, "eptember")
+		found, err = matchIgnoreCase(pi, plen, param, "SEPTEMBER")
 		if found {
 			month = time.September
 		}
@@ -736,7 +701,7 @@ func matchMonthByFullName(pi *int, plen int, param string) (time.Month, error) {
 	}
 
 	if !found {
-		return month, contentMismatchError
+		return month, mismatchError
 	}
 	return month, err
 }
@@ -749,6 +714,7 @@ func matchIgnoreCase(pi *int, plen int, param string, match string) (bool, error
 		if strings.ToUpper(param[*pi-n:*pi]) == match {
 			found = true
 		} else {
+			*pi -= n
 			return found, illegalCharacterError
 		}
 	} else {
@@ -757,86 +723,85 @@ func matchIgnoreCase(pi *int, plen int, param string, match string) (bool, error
 	return found, nil
 }
 
+// S Sunday Saturday
+// M Monday
+// T Tuesday Thursday
+// W Wednesday
+// F Friday
 func matchWeekByFullName(pi *int, plen int, param string) (time.Weekday, error) {
-	//S Sunday Saturday
-	//M Monday
-	//T Tuesday Thursday
-	//W Wednesday
-	//F Friday
-	var week *time.Weekday
+	var week time.Weekday = -1
 	var err error
 	found := false
-	*pi++
 	if *pi < plen {
 		switch param[*pi] {
 		case 'F', 'f':
 			found, err = matchIgnoreCase(pi, plen, param, "RIDAY")
 			if found {
-				*week = time.Friday
+				week = time.Friday
 			}
 		case 'M', 'm':
 			found, err = matchIgnoreCase(pi, plen, param, "ONDAY")
 			if found {
-				*week = time.Monday
+				week = time.Monday
 			}
 		case 'S', 's':
 			// 2
-			*pi++
 			if *pi < plen {
 				switch param[*pi] {
 				case 'A', 'a':
 					found, err = matchIgnoreCase(pi, plen, param, "TURDAY")
 					if found {
-						*week = time.Saturday
+						week = time.Saturday
 					}
 				case 'U', 'u':
 					found, err = matchIgnoreCase(pi, plen, param, "NDAY")
 					if found {
-						*week = time.Sunday
+						week = time.Sunday
 					}
 				default:
-					return *week, illegalCharacterError
+					return week, illegalCharacterError
 				}
 			} else {
-				return *week, lengthMismatchError
+				return week, lengthMismatchError
 			}
+			*pi++
 		case 'T', 't':
 			// 2
-			*pi++
 			if *pi < plen {
 				switch param[*pi] {
 				case 'H', 'h':
 					found, err = matchIgnoreCase(pi, plen, param, "URSDAY")
 					if found {
-						*week = time.Thursday
+						week = time.Thursday
 					}
 				case 'U', 'u':
 					found, err = matchIgnoreCase(pi, plen, param, "ESDAY")
 					if found {
-						*week = time.Tuesday
+						week = time.Tuesday
 					}
 				default:
-					return *week, illegalCharacterError
+					return week, illegalCharacterError
 				}
 			} else {
-				return *week, lengthMismatchError
+				return week, lengthMismatchError
 			}
+			*pi++
 		case 'W', 'w':
 			found, err = matchIgnoreCase(pi, plen, param, "EDNESDAY")
 			if found {
-				*week = time.Wednesday
+				week = time.Wednesday
 			}
 		default:
-			return *week, illegalCharacterError
+			return week, illegalCharacterError
 		}
 	} else {
-		return *week, lengthMismatchError
+		return week, lengthMismatchError
 	}
 	if !found {
-		return *week, contentMismatchError
+		return week, mismatchError
 	}
 
-	return *week, err
+	return week, err
 }
 
 func yearWeek(t time.Time, mode byte) (string, string) {
@@ -854,9 +819,9 @@ func yearWeek(t time.Time, mode byte) (string, string) {
 	w := 0
 	yearDay := t.YearDay()
 
-	dfw := getDaysOfFirstWeek(t, sundayAsFirstDay)
+	daysOfFirstWeek := getDaysOfFirstWeek(t, sundayAsFirstDay)
 
-	diff := yearDay - dfw
+	diff := yearDay - daysOfFirstWeek
 
 	if diff <= 0 {
 		if mode == 'V' || mode == 'v' || mode == 'X' || mode == 'x' {
@@ -870,7 +835,7 @@ func yearWeek(t time.Time, mode byte) (string, string) {
 			w++
 		}
 	}
-	if mode == 'u' && dfw >= 4 {
+	if mode == 'u' && daysOfFirstWeek >= 4 {
 		w++
 	}
 	return fmt.Sprintf("%04d", y), fmt.Sprintf("%02d", w)
@@ -898,4 +863,22 @@ func getDaysOfFirstWeek(t time.Time, sundayAsFirstDay bool) int {
 	}
 
 	return daysOfFirstWeek
+}
+
+func yearWeekInverse(year int, weeks int, weekDay time.Weekday, sundayAsFirstDay bool) (time.Time, error) {
+	firstDay := time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	if !sundayAsFirstDay {
+		// TODO
+	}
+
+	return firstDay.AddDate(0, 0, -int(firstDay.Weekday())+(weeks)*7+int(weekDay)), nil
+}
+
+// FirstUpper 字符串首字母大写
+func FirstUpper(s string) string {
+	if s == "" {
+		return ""
+	}
+	return strings.ToUpper(s[:1]) + strings.ToLower(s[1:])
 }
