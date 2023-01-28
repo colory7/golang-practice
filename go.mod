@@ -26,17 +26,23 @@ require (
 	github.com/fyne-io/image v0.0.0-20220602074514-4956b0afb3d2 // indirect
 	github.com/go-gl/gl v0.0.0-20211210172815-726fda9656d6 // indirect
 	github.com/go-gl/glfw/v3.3/glfw v0.0.0-20221017161538-93cebf72946b // indirect
+	github.com/go-logfmt/logfmt v0.5.1 // indirect
+	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-text/typesetting v0.0.0-20221212183139-1eb938670a1f // indirect
 	github.com/gobuffalo/envy v1.10.2 // indirect
 	github.com/gobuffalo/packd v1.0.2 // indirect
 	github.com/gobuffalo/packr v1.30.1 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
+	github.com/godror/godror v0.36.0 // indirect
+	github.com/godror/knownpb v0.1.0 // indirect
 	github.com/goki/freetype v0.0.0-20220119013949-7a161fd3728c // indirect
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect
 	github.com/joho/godotenv v1.4.0 // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
+	github.com/lib/pq v1.10.7 // indirect
+	github.com/mattn/go-oci8 v0.1.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
