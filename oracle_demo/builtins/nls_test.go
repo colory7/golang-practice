@@ -158,3 +158,15 @@ func TestIntegerToEnUs(t *testing.T) {
 		})
 	}
 }
+
+func TestNls(t *testing.T) {
+	fmt.Println(NumToWithOrdinalSuffix(31))
+	fmt.Println(NumToWithOrdinalSuffix(30))
+	fmt.Println(NumToWithOrdinalSuffix(030))
+
+	fmt.Println(NumToCardinalWord(30))
+	fmt.Println(NumToOrdinalWord(30))
+
+	fmt.Println(NumToOrdinalWord(30))
+
+}

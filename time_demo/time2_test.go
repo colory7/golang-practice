@@ -217,7 +217,6 @@ func TestTimeZone(txx *testing.T) {
 	fmt.Println(t.Local())
 	fmt.Println(t.Local().Zone())
 	fmt.Println("====")
-	fmt.Println(t.ZoneBounds())
 	fmt.Println(t.UTC())
 }
 
@@ -281,8 +280,15 @@ func TestParseTime(txx *testing.T) {
 }
 
 func TestParseTime2(txx *testing.T) {
-	layout := "2006-01-02 15:04:05"
-	t, _ := time.Parse(layout, "2021-01-10 15:01:02")
+	layout := "200612 15:04:05"
+	t, _ := time.Parse(layout, "202111 15:01:02")
+	fmt.Println(t)
+	fmt.Println(t.Format(layout))
+}
+
+func TestParseTime3(txx *testing.T) {
+	layout := "2006/1/02"
+	t, _ := time.Parse(layout, "2019/5/07")
 	fmt.Println(t)
 	fmt.Println(t.Format(layout))
 }

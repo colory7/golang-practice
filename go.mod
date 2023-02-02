@@ -17,8 +17,11 @@ require (
 
 require (
 	fyne.io/systray v1.10.1-0.20221115204952-d16a6177e6f1 // indirect
+	gitee.com/aochulai/GoMiniblink v0.0.0-20210226101737-d92030802324 // indirect
 	github.com/benoitkugler/textlayout v0.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/del-xiong/miniblink v0.0.0-20220609045710-8ec016458de6 // indirect
+	github.com/elazarl/go-bindata-assetfs v1.0.0 // indirect
 	github.com/fredbi/uri v0.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/fyne-io/gl-js v0.0.0-20220119005834-d2da28d9ccfe // indirect
@@ -39,10 +42,16 @@ require (
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect
+	github.com/jishulangcom/go-amount-decimal v0.0.0-20221219144157-30f86655247b // indirect
 	github.com/joho/godotenv v1.4.0 // indirect
+	github.com/json-iterator/go v1.1.11 // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
 	github.com/lib/pq v1.10.7 // indirect
+	github.com/lxn/win v0.0.0-20191128105842-2da648fda5b4 // indirect
 	github.com/mattn/go-oci8 v0.1.1 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421 // indirect
+	github.com/modern-go/reflect2 v1.0.1 // indirect
+	github.com/mushroomsir/mimetypes v0.0.0-20171113080813-3b41529ef757 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect

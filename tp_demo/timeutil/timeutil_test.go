@@ -63,6 +63,8 @@ func TestParseTime2(t *testing.T) {
 		{1, "2002-01-06 00:00:00.1234567891", true},
 		{1, "2017-06-23", false},
 		{1, "2017-06-23 11:39:39.123456789", false},
+		{1, "2019/01/02", false},
+		{1, "2019/1/02", false},
 	}
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%d", test.i), func(t *testing.T) {

@@ -89,3 +89,14 @@ func popMicrosecond(i int) int {
 	}
 	return i
 }
+
+func TestFormat(t *testing.T) {
+	fmt.Println(fmt.Sprintf("%04d\n", 21))
+	fmt.Println(fmt.Sprintf("%04s\n", "21"))
+	fmt.Println(fmt.Sprintf("%04s\n", "021"))
+	fmt.Println(fmt.Sprintf("%01s\n", "3"))
+	fmt.Println(fmt.Sprintf("%01s\n", ""))
+	fmt.Println(fmt.Sprintf("%01s\n", "0"))
+	fmt.Println(fmt.Sprintf("%00s\n", "68"))
+	fmt.Println(fmt.Sprintf("%0s\n", "69"))
+}

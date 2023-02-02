@@ -94,25 +94,26 @@ func NumToCardinalWord(input int) string {
 }
 
 func NumToWithOrdinalSuffix(input int) string {
-	if input == 0 {
-		return "0th"
-	}
-
 	words := bytes.Buffer{}
 	words.WriteString(strconv.Itoa(input))
+	words.WriteString(GetOrdinalSuffix(input))
+	return words.String()
+}
 
+func GetOrdinalSuffix(input int) string {
 	remainder := input % 10
+	var suffix string
 	switch remainder {
 	case 1:
-		words.WriteString("st")
+		suffix = "st"
 	case 2:
-		words.WriteString("nd")
+		suffix = "nd"
 	case 3:
-		words.WriteString("rd")
+		suffix = "rd"
 	default:
-		words.WriteString("th")
+		suffix = "th"
 	}
-	return words.String()
+	return suffix
 }
 
 // integerToEnUs converts an integer to American English words
@@ -210,7 +211,7 @@ func integerToTriplets(number int) []int {
 	return triplets
 }
 
-func toRoman(num int) *bytes.Buffer {
+func ToRoman(num int) *bytes.Buffer {
 	romes := []string{"M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"}
 	numbers := []int{1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1}
 
@@ -224,14 +225,14 @@ func toRoman(num int) *bytes.Buffer {
 	return rm
 }
 
-func toJulian(year int, month int, day int) int {
+func ToJulian(year int, month int, day int) int {
 	adj := (14 - month) / 12
 	y := year + 4800 - adj
 	m := month + 12*adj - 3
 	return day + (153*m+2)/5 + y*365 + y/4 - y/100 + y/400 - 32045
 }
 
-func toRRRR(thisYear int, RR int) int {
+func ToRRRR(thisYear int, RR int) int {
 	year := 0
 	firstTwo := thisYear / 100
 	lastTwo := thisYear % 100

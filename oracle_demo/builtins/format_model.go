@@ -1120,7 +1120,7 @@ func toDatetime(dch string, format string, dtType dtType) (*time.Time, error) {
 					if err != nil {
 						return nil, err
 					}
-					year = toRRRR(now.Year(), RR)
+					year = ToRRRR(now.Year(), RR)
 					dtFlag |= dt_flag_year
 				} else {
 					return nil, errors.New(duplicate_error + "year")
@@ -1564,7 +1564,7 @@ func toChar(numStr string, numFloat float64, format string) (string, error) {
 		if negative {
 			return empty_str, errors.New(not_support_err)
 		}
-		result.WriteString(toRoman(int(numFloat)).String())
+		result.WriteString(ToRoman(int(numFloat)).String())
 	// 最小文本 TM 独占
 	case outputModeTM:
 		result.WriteString(strconv.FormatFloat(numFloat, 'f', -1, 64))
@@ -1804,7 +1804,7 @@ func ToCharByDatetime(t time.Time, format string) (string, error) {
 			y, _ := t.ISOWeek()
 			result.WriteByte(fmt.Sprintf("%04d", y)[3])
 		case DCH_J:
-			result.WriteString(strconv.Itoa(toJulian(t.Year(), int(t.Month()), t.Day())))
+			result.WriteString(strconv.Itoa(ToJulian(t.Year(), int(t.Month()), t.Day())))
 		case DCH_MI:
 			if t.Minute() < 1e1 {
 				result.WriteByte('0')
@@ -1820,7 +1820,7 @@ func ToCharByDatetime(t time.Time, format string) (string, error) {
 		case DCH_Q:
 			result.WriteString(strconv.Itoa(int(t.Month()+2) / 3))
 		case DCH_RM:
-			result.WriteString(toRoman(int(t.Month())).String())
+			result.WriteString(ToRoman(int(t.Month())).String())
 		case DCH_RR:
 			if t.Year() < 1e1 {
 				result.WriteByte('0')
