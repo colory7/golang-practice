@@ -37,3 +37,7 @@ func Test2(tx *testing.T) {
 	t = time.Date(2020, 1, 60, 0, 0, 0, 0, time.UTC)
 	fmt.Println(t)
 }
+
+func Test(t *testing.T) {
+	fmt.Println(1 | 4)
+}

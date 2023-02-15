@@ -1,4 +1,4 @@
-package oop_demo
+package inherit1_demo
 
 import (
 	"fmt"

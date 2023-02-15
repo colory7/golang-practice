@@ -23,6 +23,7 @@ func (d Door) open() {
 
 func TestInterface(t *testing.T) {
 	var oc OpenClose
-	//oc = Door{} // 这里编译错误，提示只实现了一个接口
+	// 这里编译错误，提示只实现了一个接口
+	//oc = Door{}
 	oc.open()
 }

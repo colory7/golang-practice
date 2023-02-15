@@ -1,9 +1,12 @@
-package oracle_demo
+package bit_demo
 
 import (
 	"fmt"
 	"math/rand"
+	"runtime"
+	"strconv"
 	"testing"
+	"unsafe"
 )
 
 // https://tingzi.vip/417847.html
@@ -81,6 +84,10 @@ func TestNot(t *testing.T) {
 	var a byte = 0x0F
 	fmt.Printf("%08b\n", a)
 	fmt.Printf("%08b\n", ^a)
+
+	a = 3
+	fmt.Printf("%08b\n", a)
+	fmt.Printf("%08b\n", ^a)
 }
 
 func TestShift(t *testing.T) {
@@ -112,12 +119,20 @@ func TestShift4(t *testing.T) {
 	fmt.Printf("%08b\n", a)
 	fmt.Printf("%08b\n", 1<<2)
 	fmt.Printf("%08b\n", 4)
-	if a&(1<<2) != 0 {
-		fmt.Println("take action")
+	if a&1 != 0 {
+		fmt.Println("二进制位第1位是 1")
+	} else {
+		fmt.Println("二进制位第1位是 0")
 	}
-
-	if a&(1<<2) == 0 {
-		fmt.Println("test2")
+	if a&(1<<1) != 0 {
+		fmt.Println("二进制位第2位是 1")
+	} else {
+		fmt.Println("二进制位第2位是 0")
+	}
+	if a&(1<<2) != 0 {
+		fmt.Println("二进制位第3位是 1")
+	} else {
+		fmt.Println("二进制位第1位是 0")
 	}
 }
 
@@ -127,4 +142,32 @@ func TestShift5(t *testing.T) {
 	fmt.Printf("%04b\n", a)
 	a = a &^ (1 << 2)
 	fmt.Printf("%04b\n", a)
+}
+
+func TestShift6(t *testing.T) {
+	fmt.Println(runtime.GOARCH)  //CPU型号
+	fmt.Println(strconv.IntSize) //int位数
+
+	var a int = 12
+	fmt.Println(unsafe.Sizeof(a))
+
+	fmt.Printf("%08b\n", a)
+	fmt.Printf("%08b\n", 1<<2)
+	fmt.Printf("%08b\n", 4)
+	if a&1 != 0 {
+		fmt.Println("二进制位第1位是 1")
+	} else {
+		fmt.Println("二进制位第1位是 0")
+	}
+	if a&(1<<1) != 0 {
+		fmt.Println("二进制位第2位是 1")
+	} else {
+		fmt.Println("二进制位第2位是 0")
+	}
+	if a&(1<<2) != 0 {
+		fmt.Println("二进制位第3位是 1")
+	} else {
+		fmt.Println("二进制位第1位是 0")
+	}
+
 }

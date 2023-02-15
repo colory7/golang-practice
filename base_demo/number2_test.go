@@ -2,6 +2,7 @@ package base_demo
 
 import (
 	"fmt"
+	"math"
 	"testing"
 )
 
@@ -18,4 +19,21 @@ func TestScience(t *testing.T) {
 func TestScience2(t *testing.T) {
 	s := fmt.Sprintf("%.6E", 1237823123.0)
 	fmt.Println(s)
+}
+
+func TestFloat(t *testing.T) {
+	n1 := 999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999.9
+	fmt.Println(n1)
+
+	n2 := float32(999999999999999999999999999999)
+	fmt.Println(n2)
+
+	n3 := int64(99999999999999999999)
+	fmt.Println(n3)
+
+	//n4 := 9999999999999999999999999999999999999999999999999999999
+	//fmt.Println(n4)
+
+	fmt.Println(math.MaxFloat32)
+	fmt.Println(math.MaxFloat64)
 }
