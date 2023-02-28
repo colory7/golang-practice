@@ -87,16 +87,16 @@ func Test4(t *testing.T) {
 	}
 }
 
-func SubstringIndex2(str string, delim string, count int) string {
+func SubstringIndex(str string, sep string, count int) string {
 	strLen := len(str)
-	delimLen := len(delim)
+	delimLen := len(sep)
 	if strLen == 0 || delimLen == 0 || count == 0 {
 		return ""
 	}
 	if count > 0 {
 		for i := 0; i < strLen && count > 0; i++ {
-			if str[i] == delim[0] {
-				if strLen-i >= delimLen && str[i:i+delimLen] == delim {
+			if str[i] == sep[0] {
+				if strLen-i >= delimLen && str[i:i+delimLen] == sep {
 					count--
 					if count == 0 {
 						return str[:i]
@@ -108,8 +108,8 @@ func SubstringIndex2(str string, delim string, count int) string {
 		return str
 	} else {
 		for i := strLen - 1; i >= 0 && count < 0; i-- {
-			if str[i] == delim[0] {
-				if i+delimLen <= strLen && str[i:i+delimLen] == delim {
+			if str[i] == sep[0] {
+				if i+delimLen <= strLen && str[i:i+delimLen] == sep {
 					count++
 					if count == 0 {
 						return str[i+delimLen:]

@@ -115,12 +115,12 @@ func FindInSet(s, strs string) int {
 // @Param sep 区分大小写
 // @Param count
 //
-//	 0 返回空字符串
-//		负数 从右向左 匹配 取右半部分字符串
-//		正数 从左向右 匹配 取左半部分字符串
+//	0 返回空字符串
+//	负数 从右向左 匹配 取右半部分字符串
+//	正数 从左向右 匹配 取左半部分字符串
 //
 // @Return 不包含分隔符
-func SubstringIndex(s, sep string, count int) string {
+func SubstringIndex2(s, sep string, count int) string {
 	if count == 0 {
 		return ""
 	}

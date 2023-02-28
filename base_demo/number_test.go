@@ -100,3 +100,42 @@ func TestFormat(t *testing.T) {
 	fmt.Println(fmt.Sprintf("%00s\n", "68"))
 	fmt.Println(fmt.Sprintf("%0s\n", "69"))
 }
+
+func TestFormatFloat(t *testing.T) {
+	fmt.Printf("|%f|\n", 123.456)     //|123.456000|
+	fmt.Printf("|%12f|\n", 123.456)   //|  123.456000|
+	fmt.Printf("|%.3f|\n", 123.456)   //|123.456|
+	fmt.Printf("|%12.3f|\n", 123.456) //|     123.456|
+	fmt.Printf("|%12.f|\n", 123.456)  //|         123|
+
+	fmt.Printf("|%.2f|\n", 123.456)
+	fmt.Printf("|%.0f|\n", 123.456)
+
+	f := fmt.Sprintf("|%.2f|", 12689907.456)
+	fmt.Println(f)
+}
+
+func TestFormatFloat2(t *testing.T) {
+	f := 12689907.456
+	fmt.Println(math.Floor(f))
+	fmt.Println(int(math.Floor(f)))
+	fmt.Println(int(f))
+
+	fmt.Println(int(math.Round(f)))
+	fmt.Println(int(math.Round(f + 0.5)))
+	fmt.Println(int(math.RoundToEven(f + 0.5)))
+	fmt.Println(int(math.Floor(f)))
+	fmt.Println(int(math.Floor(f + 0.5)))
+
+	fmt.Printf("%.3f\n", math.Mod(-1.2345, 2))
+
+	d, f := math.Modf(math.MaxFloat32)
+	fmt.Println(d, f)
+	fmt.Printf("%.4f\n", f)
+	fmt.Printf("%.5f\n", f)
+	fmt.Printf("%.6f\n", f)
+	fmt.Printf("%.7f\n", f)
+	fmt.Printf("%.15f\n", f)
+	fmt.Printf("%.16f\n", f)
+
+}

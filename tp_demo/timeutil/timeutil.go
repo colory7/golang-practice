@@ -14,33 +14,34 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
 
-// FullTimeFormat is the time format used to display any unknown timestamp
+// FullTimeFormat is the time YYYYMMDDhhmmssfffffffff used to display any unknown timestamp
 // type, and always shows the full time zone offset.
 const FullTimeFormat = "2006-01-02 15:04:05.999999-07:00:00"
 
-// TimestampWithTZFormat is the time format used to display
+// TimestampWithTZFormat is the time YYYYMMDDhhmmssfffffffff used to display
 // timestamps with a time zone offset. The minutes and seconds
 // offsets are only added if they are non-zero.
 const TimestampWithTZFormat = "2006-01-02 15:04:05.999999-07"
 
-// TimestampWithoutTZFormat is the time format used to display
+// TimestampWithoutTZFormat is the time YYYYMMDDhhmmssfffffffff used to display
 // timestamps without a time zone offset. The minutes and seconds
 // offsets are only added if they are non-zero.
 const TimestampWithoutTZFormat = "2006-01-02 15:04:05.999999"
 
-// TimeWithTZFormat is the time format used to display a time
+// TimeWithTZFormat is the time YYYYMMDDhhmmssfffffffff used to display a time
 // with a time zone offset.
 const TimeWithTZFormat = "15:04:05.999999-07"
 
-// TimeWithoutTZFormat is the time format used to display a time
+// TimeWithoutTZFormat is the time YYYYMMDDhhmmssfffffffff used to display a time
 // without a time zone offset.
 const TimeWithoutTZFormat = "15:04:05.999999"
 
-// DateWithMinusFormat is the time format used to display a date.
+// DateWithMinusFormat is the time YYYYMMDDhhmmssfffffffff used to display a date.
 const DateWithMinusFormat = "2006-01-02"
 const DateWithSlashFormat = "2006/01/02"
 const DateFormat = "20060102"
@@ -48,15 +49,18 @@ const DatetimeFormat = "20060102150405"
 const DatetimeFormat2 = "2006-01-02 15:04:05"
 const DatetimeFormat3 = "2006/01/02 15:04:05"
 
-// TimestampNumWithoutTZFormat is the time format used to display
+// TimestampNumWithoutTZFormat is the time YYYYMMDDhhmmssfffffffff used to display
 // timestamps without a time zone offset. The minutes and seconds
 // offsets are only added if they are non-zero.
 const TimestampNumWithoutTZFormat = "20060102150405.999999"
 
-var format = "20060102150405999999999"
-var formatLen = len(format)
+var YYYYMMDDhhmmssfffffffff = "20060102150405999999999"
+var YYMM = "0601"
+var YYYYMM = "200601"
+var hhmmss = "150405"
+var hhmmssfffffffff = "150405999999999"
 
-var defaultFormat = []string{
+var defaultFormatSlice = []string{
 	"2006",
 	"01",
 	"02",
@@ -65,37 +69,88 @@ var defaultFormat = []string{
 	"05",
 	"999999999",
 }
-var dfLen = len(defaultFormat)
+var dfLen = len(defaultFormatSlice)
 
-func parseTimeSimple(s string) (*time.Time, error) {
+// ParseTimeSimple
+// golang 中 YYMM [00,68]表示20xx年,[69,99]表示19xx年
+// mysql  中 YYMM [00,69]表示20xx年,[70,99]表示19xx年
+func ParseTimeSimple(s string) (*time.Time, string, error) {
 	var t = new(time.Time)
 	var err error
-	l := len(s)
+
+	// YYMM
+	// 根据MySQL中的时间格式,此处表示go中的1969，需要转成go中的2069
+	if len(s) == 4 {
+		year, err := strconv.Atoi(s[0:2])
+		if err != nil {
+			return nil, "", err
+		}
+		if year == 69 {
+			s = "2069" + s[2:4]
+			*t, err = time.Parse(YYYYMM, s)
+		} else {
+			*t, err = time.Parse(YYMM, s)
+		}
+		if err != nil {
+			return nil, "", err
+		}
+		return t, YYMM, nil
+	}
+
+	customFormat, err := parseFormat(s, YYYYMMDDhhmmssfffffffff)
+	if err != nil {
+		return nil, "", err
+	}
+	switch len(customFormat) {
+	case 3:
+		// HHmmss
+		if len(customFormat[0]) <= 2 ||
+			len(customFormat[0]) >= 3 && (customFormat[0][2] < '0' || customFormat[0][2] > '9') {
+			customFormat, err = parseFormat(s, hhmmss)
+			if err != nil {
+				return nil, "", err
+			}
+		}
+	case 4:
+		// HHmmss.FFFFFFFFF 150405999999999
+		customFormat, err = parseFormat(s, hhmmssfffffffff)
+		if err != nil {
+			return nil, "", err
+		}
+	}
+	format := strings.Join(customFormat, "")
+	*t, err = time.Parse(format, s)
+	if err != nil {
+		return nil, format, err
+	}
+	return t, format, nil
+}
+
+func parseFormat(s, format string) ([]string, error) {
 	customFormat := []string{}
+	l := len(s)
 
 	fi := 0
+	var group bytes.Buffer
 	for i := 0; i < l; i++ {
 		c := s[i]
 		switch c {
 		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-			if fi < formatLen {
-				customFormat = append(customFormat, string(format[fi]))
+			if fi < l {
+				group.WriteByte(format[fi])
 				fi++
 			} else {
 				return nil, errors.New("length error")
 			}
 		case ' ', '-', ':', ',', '.', '/', ';':
-			customFormat = append(customFormat, string(c))
+			group.WriteByte(c)
+			customFormat = append(customFormat, group.String())
+			group.Reset()
 		default:
 			return nil, errors.New("illegal character")
 		}
 	}
-
-	*t, err = time.Parse(strings.Join(customFormat, ""), s)
-	if err != nil {
-		return nil, err
-	}
-	return t, nil
+	return append(customFormat, group.String()), nil
 }
 
 func parseTimeByOrder2(s string) (*time.Time, error) {
@@ -111,21 +166,21 @@ func parseTimeByOrder2(s string) (*time.Time, error) {
 		//fmt.Println(string(c))
 		if dfi < dfLen {
 			if c >= '0' && c <= '9' {
-				//fmt.Println(defaultFormat[dfi])
+				//fmt.Println(defaultFormatSlice[dfi])
 				//fmt.Println(customFormat.String())
 				//fmt.Println(count)
-				if count < len(defaultFormat[dfi]) {
+				if count < len(defaultFormatSlice[dfi]) {
 					count++
 				} else {
-					customFormat.WriteString(defaultFormat[dfi])
-					//fmt.Println(defaultFormat[dfi])
+					customFormat.WriteString(defaultFormatSlice[dfi])
+					//fmt.Println(defaultFormatSlice[dfi])
 					//fmt.Println(customFormat.String())
 					dfi++
 					count = 0
 				}
 			} else if c == ' ' || c == '-' || c == ':' || c == ',' || c == '/' || c == ';' || c == '.' {
 				if count != 0 {
-					customFormat.WriteString(defaultFormat[dfi][len(defaultFormat[dfi])-count:])
+					customFormat.WriteString(defaultFormatSlice[dfi][len(defaultFormatSlice[dfi])-count:])
 					customFormat.WriteByte(c)
 					dfi++
 					count = 0
@@ -140,7 +195,7 @@ func parseTimeByOrder2(s string) (*time.Time, error) {
 
 	fmt.Println(count)
 	customFormat.WriteByte('.')
-	customFormat.WriteString(defaultFormat[dfi][0:])
+	customFormat.WriteString(defaultFormatSlice[dfi][0:])
 
 	//f := strings.Join(customFormat, "")
 	fmt.Println(customFormat.String())

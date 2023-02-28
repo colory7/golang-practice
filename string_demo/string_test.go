@@ -2,6 +2,7 @@ package string_demo
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -51,6 +52,31 @@ func TestUtf8(t *testing.T) {
 	fmt.Println("方法二  转化输出格式")
 	for _, ch2 := range str {
 		fmt.Println(string(ch2))
+	}
+
+}
+
+func TestRune(t *testing.T) {
+	s := "smallming张"
+	fmt.Println(len(s))
+	fmt.Println(s[1:4])
+	fmt.Println(s[:2])
+	fmt.Println(s[5:])
+}
+
+// 遍历中文
+func TestRune2(t *testing.T) {
+	s := "smallming你好"
+	s1 := []rune(s)
+	fmt.Println(len(s1))
+	fmt.Println(s1[9])
+	fmt.Printf("%c\n", s1[9])
+	fmt.Printf("%c\n", s1[10])
+	//遍历字符串中内容
+	j := 0
+	for i, n := range s {
+		fmt.Println("字节索引: "+strconv.Itoa(i), "字符索引: "+strconv.Itoa(j), "字符: "+string(n))
+		j++
 	}
 
 }

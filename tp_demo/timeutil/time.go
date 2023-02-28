@@ -67,7 +67,7 @@ func ReplaceLibPQTimePrefix(s string) string {
 	return s
 }
 
-// TODO To simplify the date function, the current date format support is limited
+// TODO To simplify the date function, the current date YYYYMMDDhhmmssfffffffff support is limited
 // Currently, only the following time formats are supported:
 // timeutil.DateWithMinusFormat
 // timeutil.TimestampWithoutTZFormat

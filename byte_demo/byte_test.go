@@ -68,3 +68,7 @@ func TestAscii(t *testing.T) {
 	}
 
 }
+
+func TestBoolByte(t *testing.T) {
+	fmt.Println(bool(false))
+}

@@ -197,3 +197,53 @@ func TestApdCorrect(t *testing.T) {
 	fmt.Println("===============================")
 
 }
+
+func TestApdFloat(t *testing.T) {
+	d := &apd.Decimal{}
+	d.SetFloat64(math.MaxFloat64)
+
+	fmt.Println(d.String())
+	fmt.Println(d.Text('f'))
+	fmt.Println(d)
+	fmt.Println(d.Coeff)
+	fmt.Println(d.Form)
+	fmt.Println(d.Negative)
+	fmt.Println(d.Exponent)
+
+	integ := &apd.Decimal{}
+	frac := &apd.Decimal{}
+
+	d.Modf(integ, frac)
+
+	fmt.Println(d.String())
+	fmt.Println(d.Text('f'))
+	fmt.Println(integ.Text('f'))
+	fmt.Println(frac.Text('f'))
+
+	d.SetFloat64(math.MaxFloat32)
+	d.Modf(integ, frac)
+
+	fmt.Println(d.String())
+	fmt.Println(d.Text('f'))
+	fmt.Println(integ.Text('f'))
+	fmt.Println(frac.Text('f'))
+
+	fmt.Println("==")
+	f := 202432563425463453410101160700.333666920939824728917424792749724975932
+	fmt.Println(f)
+
+	d.SetFloat64(f)
+	d.Modf(integ, frac)
+
+	fmt.Println(d.String())
+	fmt.Println(d.Text('f'))
+	fmt.Println(integ.Text('f'))
+	fmt.Println(frac.Text('f'))
+}
+
+func TestFloat(t *testing.T) {
+	f := 20243256342999999999999999999995.232490508
+	fmt.Println(math.MaxFloat64)
+	fmt.Println(f)
+	fmt.Printf("%55.28f", f)
+}

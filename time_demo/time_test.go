@@ -133,7 +133,7 @@ func Test11(t *testing.T) {
 }
 
 func Test12(t *testing.T) {
-	eg, err := time.Parse("15:04:05", "15:27:36")
+	eg, err := time.Parse("15:04:05.999", "15:27:36.567")
 	if err != nil {
 		panic(err)
 	}
@@ -147,6 +147,9 @@ func Test12(t *testing.T) {
 
 	beforeDay := eg.AddDate(0, 0, -1)
 	fmt.Println(beforeDay.Day())
+	fmt.Println(eg.UnixNano())
+	fmt.Println(eg.Unix())
+	fmt.Println(eg.Nanosecond())
 
 }
 
