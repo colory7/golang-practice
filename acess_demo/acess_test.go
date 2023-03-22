@@ -1,7 +1,7 @@
 package acess_demo
 
 import (
-	"cobra_demo/acess_demo/mycom"
+	"golang_practice/acess_demo/mycom"
 	"testing"
 )
 
