@@ -1,0 +1,10 @@
+syntax = "proto3";
+package model;
+option go_package = ".;protobuf_demo5";
+
+message RegMessage {
+  int32 id = 1; // 主键,唯一
+  string username = 2; // 帐号
+  string password = 3; // 密码
+  optional string email = 4; // 邮箱(可选)
+}

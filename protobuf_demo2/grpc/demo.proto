@@ -1,0 +1,33 @@
+syntax = "proto3";
+import "google/protobuf/empty.proto";
+
+package main;
+option go_package = "github.com/xiexianbin/go-rpc-demo/grpc";
+
+message NumRequest {
+    repeated int64 Nums = 1;
+}
+
+message NumResponse {
+    int64 Result = 1;
+}
+
+message VersionResponse {
+    string Version = 1;
+}
+
+message FilePath {
+    string path = 1;
+}
+
+message FileResponse {
+    bytes content = 1;
+}
+
+service Service {
+    rpc Sum(NumRequest) returns (NumResponse) {}
+    rpc Diff(NumRequest) returns (NumResponse) {}
+
+    rpc Version(google.protobuf.Empty) returns (VersionResponse) {}
+    rpc ReadFile(FilePath) returns (FileResponse) {}
+}

@@ -1,0 +1,9 @@
+syntax = "proto3";
+package msg;
+option go_package = "./;msg_pb";
+
+message Msg {
+  int64 MsgId = 1;
+  string MsgInfo = 2;
+  string MsgFrom = 3;
+}
