@@ -67,3 +67,8 @@ func Unix(sec int64, nsec int64) time.Time {
 	time.Local = local
 	return t
 }
+
+func TestNano(t *testing.T) {
+	nano := time.Now().Nanosecond()
+	fmt.Println(nano)
+}

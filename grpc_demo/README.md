@@ -6,5 +6,5 @@ go install google.golang.org/grpc/cmd/protoc-gen-go-grpc
 mkdir gen
 protoc --go_out=./gen --go_opt=paths=source_relative --go-grpc_out=./gen --go-grpc_opt=paths=source_relative hello.proto
 
-protoc --go_out=. --go-grpc_out=. hello.proto
+或者 protoc --go_out=. --go-grpc_out=. hello.proto
 
